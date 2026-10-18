@@ -291,31 +291,65 @@ async function analyze() {
   $('searchBtn').disabled = true; $('results').hidden = true; $('error').hidden = true; $('loading').hidden = false;
   $('loadingText').textContent = 'Загружаю профиль…';
   try {
-    const [profile, wl, recent, heroes, totals] = await Promise.all([
-      getJSON(`${API}/players/${id}`), getJSON(`${API}/players/${id}/wl`), getJSON(`${API}/players/${id}/recentMatches`),
-      getJSON(`${API}/players/${id}/heroes`), getJSON(`${API}/players/${id}/totals`),
+    const [profile, recent, poolHeroes, period] = await Promise.all([
+      getJSON(`${API}/players/${id}`), getJSON(`${API}/players/${id}/recentMatches`),
+      getJSON(`${API}/players/${id}/heroes`), fetchPeriod(id),
     ]);
     if (!profile.profile) throw new Error('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».');
-    S.playerId = Number(id); S.profile = profile; S.playerHeroes = heroes; S.recent = recent;
+    S.playerId = Number(id); S.profile = profile; S.poolHeroes = poolHeroes; S.recent = recent; S.period = period;
     S.group = groupOfTier(profile.rank_tier);
-    const G = await loadGroup(S.group).catch(() => null);
+    await loadGroup(S.group).catch(() => null);
 
     $('loadingText').textContent = 'Загружаю матчи 0/' + recent.length;
     const ms = await pool(recent.map(r => () => loadMatch(r.match_id)), 3, d => { $('loadingText').textContent = `Загружаю матчи ${d}/${recent.length}`; });
     S.matches = {};
     ms.forEach(m => { if (m) S.matches[m.match_id] = prepareMatch(m); });
 
-    renderProfile(profile, wl);
-    renderStats(totals);
+    renderPeriod();
     renderPositions();
-    renderIssues(totals, recent, heroes);
-    setMetaTab(S.metaTab, G);
     renderMatches();
     $('results').hidden = false;
   } catch (e) {
     showError(e.message || 'Не удалось загрузить данные.');
   } finally {
     $('searchBtn').disabled = false; $('loading').hidden = true;
+  }
+}
+
+const PERIODS = [[20, '20 игр'], [100, '100 игр'], [0, 'Вся история']];
+S.limit = store.get('period') ?? 20;
+const minGames = () => ({ 20: 2, 100: 4 })[S.limit] ?? 5;
+const losingGames = () => ({ 20: 4, 100: 7 })[S.limit] ?? 10;
+const periodLabel = () => S.limit ? `за последние ${S.limit} игр` : 'за всю историю';
+
+async function fetchPeriod(id) {
+  const qs = S.limit ? `?limit=${S.limit}` : '';
+  const [wl, heroes, totals] = await Promise.all([
+    getJSON(`${API}/players/${id}/wl${qs}`), getJSON(`${API}/players/${id}/heroes${qs}`), getJSON(`${API}/players/${id}/totals${qs}`),
+  ]);
+  return { wl, heroes: heroes.filter(h => h.games > 0), totals };
+}
+
+function renderPeriod() {
+  S.playerHeroes = S.period.heroes;
+  $('periodTabs').innerHTML = PERIODS.map(([n, label]) => `<button class="tab" data-n="${n}" aria-selected="${n === S.limit}">${label}</button>`).join('');
+  $('periodTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => changePeriod(+b.dataset.n)));
+  renderProfile(S.profile, S.period.wl);
+  renderStats(S.period.totals);
+  renderIssues(S.period.totals, S.recent, S.period.heroes);
+  setMetaTab(S.metaTab, S.groups[S.group]);
+}
+
+async function changePeriod(n) {
+  if (n === S.limit) return;
+  S.limit = n; store.set('period', n);
+  $('periodTabs').querySelectorAll('.tab').forEach(b => { b.disabled = true; b.setAttribute('aria-selected', String(+b.dataset.n === n)); });
+  try {
+    S.period = await fetchPeriod(S.playerId);
+    renderPeriod();
+  } catch (e) {
+    showError(e.message || 'Не удалось загрузить статистику.');
+    $('periodTabs').querySelectorAll('.tab').forEach(b => { b.disabled = false; });
   }
 }
 
@@ -326,7 +360,7 @@ function renderProfile(profile, wl) {
   const p = profile.profile, total = wl.win + wl.lose, wr = total ? wl.win / total * 100 : 0;
   $('profile').innerHTML = `
     <img src="${esc(p.avatarfull)}" alt="">
-    <div><h2>${esc(p.personaname)}</h2><div class="meta">${rankName(profile.rank_tier)} · ${total.toLocaleString('ru')} матчей · мета по ${GROUPS[S.group]}</div></div>
+    <div><h2>${esc(p.personaname)}</h2><div class="meta">${rankName(profile.rank_tier)} · ${S.limit ? `винрейт за последние ${total} игр` : `${total.toLocaleString('ru')} матчей всего`} · мета по ${GROUPS[S.group]}</div></div>
     <div class="wl"><div class="big" style="color:${wr >= 52 ? 'var(--good)' : wr >= 48 ? 'var(--fg)' : 'var(--bad)'}">${wr.toFixed(1)}%</div>
     <div class="note"><span class="pos">${wl.win} W</span> / <span class="neg">${wl.lose} L</span></div></div>`;
 }
@@ -382,8 +416,8 @@ function renderIssues(t, recent, heroes) {
   if (lhm < 4) add('bad', 'Мало ластхитов', `${lhm.toFixed(1)} в минуту. Потренируй добивание в демо.`, lhm.toFixed(1));
   else if (lhm < 6) add('warn', 'Ластхиты средние', `${lhm.toFixed(1)} в минуту.`, lhm.toFixed(1));
 
-  const losing = heroes.filter(h => h.games >= 10 && h.win / h.games < 0.45).sort((a, b) => b.games - a.games)[0];
-  if (losing) add('bad', `Сливаешь на ${heroName(losing.hero_id)}`, `${losing.games} игр, винрейт ${(losing.win / losing.games * 100).toFixed(0)}%. Отложи героя или разбери свои игры на нём.`, (losing.win / losing.games * 100).toFixed(0) + '%');
+  const losing = heroes.filter(h => h.games >= losingGames() && h.win / h.games < 0.45).sort((a, b) => b.games - a.games)[0];
+  if (losing) add('bad', `Сливаешь на ${heroName(losing.hero_id)}`, `${losing.games} игр ${periodLabel()}, винрейт ${(losing.win / losing.games * 100).toFixed(0)}%. Отложи героя или разбери свои игры на нём.`, (losing.win / losing.games * 100).toFixed(0) + '%');
 
   const mine = Object.values(S.matches).map(m => m._me).filter(Boolean);
   const byPos = [1, 2, 3, 4, 5].map(pos => { const ps = mine.filter(p => p._pos === pos); return { pos, n: ps.length, wr: ps.length ? ps.filter(isWin).length / ps.length : 0 }; });
@@ -400,29 +434,29 @@ function renderIssues(t, recent, heroes) {
   $('issues').innerHTML = items.map(i => `<div class="card issue ${i.sev}"><div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div><div class="val" style="color:var(--${i.sev})">${i.val}</div></div>`).join('');
 }
 
-document.querySelectorAll('#viewPlayer .tabs .tab').forEach(b => b.addEventListener('click', () => setMetaTab(b.dataset.tab, S.groups[S.group])));
+document.querySelectorAll('#mineTabs .tab').forEach(b => b.addEventListener('click', () => setMetaTab(b.dataset.tab, S.groups[S.group])));
 
 function setMetaTab(tab, G) {
   S.metaTab = tab;
-  document.querySelectorAll('#viewPlayer .tabs .tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  document.querySelectorAll('#mineTabs .tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   const g = GROUPS[S.group];
   if (!G) { $('metaNote').textContent = 'Данные меты ещё не собраны.'; $('metaTable').innerHTML = ''; return; }
   const mine = Object.fromEntries(S.playerHeroes.map(h => [h.hero_id, h]));
   const myWr = h => h && h.games ? h.win / h.games * 100 : null;
   const mwr = id => heroWr(G, id) * 100;
   if (tab === 'mine') {
-    $('metaNote').textContent = `Твой винрейт против общего винрейта героя в ${g} за последние ${G.days} дней. Плюс значит, что ты играешь его лучше среднего.`;
-    const rows = S.playerHeroes.filter(h => h.games >= 5).sort((a, b) => b.games - a.games).slice(0, 15);
+    $('metaNote').textContent = `Твой винрейт ${periodLabel()} против общего винрейта героя в ${g}. Плюс значит, что ты играешь его лучше среднего.${S.limit === 20 ? ' На 2–3 играх разница сильно зависит от случая.' : ''}`;
+    const rows = S.playerHeroes.filter(h => h.games >= minGames()).sort((a, b) => b.games - a.games).slice(0, 15);
     $('metaTable').innerHTML = `<thead><tr><th>Герой</th><th class="num">Игр</th><th class="num">Твой WR</th><th class="num">WR в ${g}</th><th class="num">Разница</th></tr></thead><tbody>` +
       rows.map(h => `<tr><td>${heroCell(h.hero_id)}</td><td class="num">${h.games}</td><td class="num">${myWr(h).toFixed(1)}%</td><td class="num muted">${mwr(h.hero_id).toFixed(1)}%</td><td class="num ${signCls(myWr(h) - mwr(h.hero_id))}">${pct(myWr(h) - mwr(h.hero_id))}</td></tr>`).join('') + '</tbody>';
   } else if (tab === 'meta') {
-    $('metaNote').textContent = `Самые сильные популярные герои в ${g}. Справа твой опыт на них.`;
+    $('metaNote').textContent = `Самые сильные популярные герои в ${g}. Справа твой опыт на них ${periodLabel()}.`;
     const rows = Object.keys(S.heroes).map(Number).filter(h => heroPick(G, h) >= 0.04).sort((a, b) => heroWr(G, b) - heroWr(G, a)).slice(0, 15);
     $('metaTable').innerHTML = `<thead><tr><th>Герой</th><th class="num">WR в ${g}</th><th class="num">Пик</th><th class="num">Твоих игр</th><th class="num">Твой WR</th></tr></thead><tbody>` +
-      rows.map(h => { const m = mine[h]; return `<tr><td>${heroCell(h)}</td><td class="num pos">${mwr(h).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${m ? m.games : 0}</td><td class="num">${m && m.games >= 3 ? myWr(m).toFixed(1) + '%' : '<span class="dim">—</span>'}</td></tr>`; }).join('') + '</tbody>';
+      rows.map(h => { const m = mine[h]; return `<tr><td>${heroCell(h)}</td><td class="num pos">${mwr(h).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${m ? m.games : 0}</td><td class="num">${m && m.games >= minGames() ? myWr(m).toFixed(1) + '%' : '<span class="dim">—</span>'}</td></tr>`; }).join('') + '</tbody>';
   } else {
-    $('metaNote').textContent = `Герои, которые сильны в ${g} и у тебя уже получаются. Их стоит спамить ради рейтинга.`;
-    const rows = S.playerHeroes.filter(h => h.games >= 5 && mwr(h.hero_id) >= 50 && myWr(h) >= 52)
+    $('metaNote').textContent = `Герои, которые сильны в ${g} и у тебя уже получаются (${periodLabel()}). Их стоит спамить ради рейтинга.`;
+    const rows = S.playerHeroes.filter(h => h.games >= minGames() && mwr(h.hero_id) >= 50 && myWr(h) >= 52)
       .map(h => ({ ...h, s: (myWr(h) - 50) * Math.log(h.games) + (mwr(h.hero_id) - 50) * 2 })).sort((a, b) => b.s - a.s).slice(0, 10);
     $('metaTable').innerHTML = rows.length
       ? `<thead><tr><th>Герой</th><th class="num">Твой WR</th><th class="num">Игр</th><th class="num">WR в ${g}</th></tr></thead><tbody>` + rows.map(h => `<tr><td>${heroCell(h.hero_id)}</td><td class="num pos">${myWr(h).toFixed(1)}%</td><td class="num">${h.games}</td><td class="num">${mwr(h.hero_id).toFixed(1)}%</td></tr>`).join('') + '</tbody>'
@@ -654,9 +688,9 @@ function renderDraft(m, G) {
     const myC = myIdx >= 0 ? list[myIdx] : { h: me.hero_id, vs: thH.map(e => [e, adv(G, me.hero_id, e)]), wi: allies.map(a => [a, syn(G, me.hero_id, a)]), base: (heroWr(G, me.hero_id) - .5) * 100 };
     if (myIdx < 0) myC.score = myC.vs.reduce((s, x) => s + x[1], 0) + myC.wi.reduce((s, x) => s + x[1], 0) + myC.base;
     const top = list.filter(c => c.h !== me.hero_id).slice(0, 6);
-    const poolIds = new Set(S.playerHeroes.filter(h => h.games >= 10).map(h => h.hero_id));
+    const poolIds = new Set((S.poolHeroes || []).filter(h => h.games >= 10).map(h => h.hero_id));
     const fromPool = list.filter(c => c.h !== me.hero_id && poolIds.has(c.h)).slice(0, 3);
-    const myHero = S.playerHeroes.find(h => h.hero_id === me.hero_id);
+    const myHero = (S.poolHeroes || []).find(h => h.hero_id === me.hero_id);
     html += `
       <div class="section"><h3 class="section-title">Твой пик: ${esc(heroName(me.hero_id))}</h3>
         <p class="note">Позиция ${me._pos} (${POS_NAMES[me._pos]}). ${myIdx >= 0 ? `${myIdx + 1}-е место из ${list.length} подходящих героев против этого состава.` : ''} Счёт = сумма матчапов против 5 врагов + сочетание с союзниками + сила героя в мете.</p>
