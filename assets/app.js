@@ -238,7 +238,8 @@ function trimMatch(m) {
 
 async function loadMatch(id, force) {
   const cached = !force && store.get('m:' + id);
-  if (cached && (cached.version || Date.now() - cached._ts < 15 * 60 * 1000)) return cached;
+  const parsePending = Date.now() - (store.get('pr:' + id) || 0) < 30 * 60 * 1000;
+  if (cached && (cached.version || (Date.now() - cached._ts < 15 * 60 * 1000 && !parsePending))) return cached;
   const m = trimMatch(await getJSON(`${API}/matches/${id}`));
   m._ts = Date.now();
   store.set('m:' + id, m);
@@ -442,7 +443,7 @@ $('parseAll').addEventListener('click', async () => {
   $('parseAll').disabled = true; $('parseStatus').hidden = false;
   let sent = 0;
   for (const id of ids) {
-    try { await fetch(`${API}/request/${id}`, { method: 'POST' }); sent++; } catch { /* keep going */ }
+    try { await fetch(`${API}/request/${id}`, { method: 'POST' }); store.set('pr:' + id, Date.now()); sent++; } catch { /* keep going */ }
     $('parseStatus').textContent = `Отправлено на разбор: ${sent}/${ids.length}. Старые реплеи (старше ~2 недель) Valve уже удалила, их не разобрать.`;
     await new Promise(r => setTimeout(r, 1100));
   }
@@ -501,13 +502,18 @@ function wireParse(m) {
   const b = $('parseOne'); if (!b) return;
   b.addEventListener('click', async () => {
     b.disabled = true; b.textContent = 'Отправлено…';
-    try { await fetch(`${API}/request/${m.match_id}`, { method: 'POST' }); } catch { /* polling below reports failure */ }
+    try { await fetch(`${API}/request/${m.match_id}`, { method: 'POST' }); store.set('pr:' + m.match_id, Date.now()); } catch { /* polling below reports failure */ }
     for (let i = 0; i < 30; i++) {
       await new Promise(r => setTimeout(r, 10000));
       b.textContent = `Жду разбор… ${(i + 1) * 10} с`;
       try {
         const fresh = await loadMatch(m.match_id, true);
-        if (fresh.version) { S.matches[m.match_id] = prepareMatch(fresh); current = S.matches[m.match_id]; renderPositions(); renderMatches(); showTab('overview'); return; }
+        if (fresh.version) {
+          S.matches[m.match_id] = prepareMatch(fresh);
+          if (S.playerId) { renderPositions(); renderMatches(); }
+          if ($('matchDlg').open && current?.match_id === m.match_id) { current = S.matches[m.match_id]; showTab('overview'); }
+          return;
+        }
       } catch { /* retry */ }
     }
     b.textContent = 'Не удалось. Реплей мог устареть';

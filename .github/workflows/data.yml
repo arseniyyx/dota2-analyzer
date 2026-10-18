@@ -32,4 +32,5 @@ jobs:
           git add data
           git diff --cached --quiet && exit 0
           git commit -m "Refresh meta data"
+          git pull --rebase origin main
           git push
