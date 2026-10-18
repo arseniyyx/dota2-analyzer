@@ -3,524 +3,132 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Dota 2 Analyzer</title>
+<meta name="description" content="Разбор игрока Dota 2: позиции, слабые стороны, драфт, тайминги, предметы против героев и мета патча.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<title>Dota 2 Analyzer</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
-<style>
-/* Layout: single column dashboard; match detail opens in a modal dialog */
-:root {
-  --bg: #0d1117; --bg-card: #161b22; --bg-hover: #1c2129; --border: #30363d;
-  --fg: #e6edf3; --fg-muted: #8b949e; --fg-dim: #5c646e;
-  --accent: #e8b84b; --accent-dim: rgba(232,184,75,.15);
-  --good: #3fb950; --warn: #d29922; --bad: #f85149;
-  --radiant: #3fb950; --dire: #f85149; --me: rgba(232,184,75,.12);
-  --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color-scheme: dark;
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #f6f8fa; --bg-card: #fff; --bg-hover: #f0f2f5; --border: #d0d7de;
-    --fg: #1f2328; --fg-muted: #59636e; --fg-dim: #8c959f;
-    --accent: #9a6b00; --accent-dim: rgba(154,107,0,.1);
-    --good: #1a7f37; --warn: #9a6700; --bad: #cf222e;
-    --radiant: #1a7f37; --dire: #cf222e; --me: rgba(154,107,0,.1);
-    color-scheme: light;
-  }
-}
-:root[data-theme="light"] {
-  --bg: #f6f8fa; --bg-card: #fff; --bg-hover: #f0f2f5; --border: #d0d7de;
-  --fg: #1f2328; --fg-muted: #59636e; --fg-dim: #8c959f;
-  --accent: #9a6b00; --accent-dim: rgba(154,107,0,.1);
-  --good: #1a7f37; --warn: #9a6700; --bad: #cf222e;
-  --radiant: #1a7f37; --dire: #cf222e; --me: rgba(154,107,0,.1);
-  color-scheme: light;
-}
-
-* { box-sizing: border-box; margin: 0; }
-body {
-  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.5;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 0;
-}
-h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: .02em; text-transform: uppercase; text-wrap: balance; }
-button { font-family: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 28px; }
-
-.search-box { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 24px; }
-.search-box h1 { font-size: clamp(30px, 5vw, 44px); color: var(--accent); }
-.search-box p { color: var(--fg-muted); text-align: center; max-width: 460px; }
-.search-row { display: flex; gap: 8px; width: 100%; max-width: 480px; }
-.search-row input {
-  flex: 1; min-width: 0; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--bg-card); color: var(--fg); font: inherit; font-size: 15px;
-}
-.search-row input:focus { border-color: var(--accent); outline: none; }
-.btn {
-  padding: 12px 22px; border-radius: 8px; border: none; background: var(--accent); color: #111;
-  font-weight: 600; font-size: 15px; cursor: pointer;
-}
-.btn:disabled { opacity: .5; cursor: wait; }
-
-.loading { text-align: center; padding: 40px 0; color: var(--fg-muted); }
-.spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
-.error-msg { padding: 16px; border: 1px solid var(--bad); border-radius: 8px; color: var(--fg); text-align: center; }
-
-.results { display: flex; flex-direction: column; gap: 28px; }
-.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; }
-
-.profile { display: flex; align-items: center; gap: 16px; padding: 18px; flex-wrap: wrap; }
-.profile img { width: 64px; height: 64px; border-radius: 8px; border: 2px solid var(--accent); }
-.profile h2 { font-size: 24px; text-transform: none; letter-spacing: 0; }
-.profile .meta { color: var(--fg-muted); font-size: 13px; }
-.profile .wl { margin-left: auto; text-align: right; }
-.profile .wr { font-family: var(--display); font-size: 36px; font-weight: 700; line-height: 1; }
-.profile .wl-detail { color: var(--fg-muted); font-size: 13px; }
-
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-.stat { padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
-.label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--fg-muted); font-weight: 500; }
-.stat .value { font-family: var(--display); font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.stat .sub { font-size: 12px; color: var(--fg-muted); }
-
-.section { display: flex; flex-direction: column; gap: 12px; }
-.section-title { font-size: 19px; display: flex; align-items: center; gap: 10px; }
-.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.section-note { color: var(--fg-muted); font-size: 13px; margin-top: -4px; }
-
-.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
-.tab { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--fg-muted); cursor: pointer; font-size: 13px; }
-.tab[aria-selected="true"] { background: var(--accent-dim); color: var(--fg); border-color: var(--accent); }
-
-.issue-list { display: flex; flex-direction: column; gap: 8px; }
-.issue { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-left: 3px solid var(--bad); }
-.issue.warn { border-left-color: var(--warn); }
-.issue.good { border-left-color: var(--good); }
-.issue .body { flex: 1; min-width: 0; }
-.issue .title { font-weight: 600; }
-.issue .detail { font-size: 13px; color: var(--fg-muted); }
-.issue .val { font-family: var(--display); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--fg-muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-td { padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-tbody tr:last-child td { border-bottom: none; }
-th.num, td.num { text-align: right; }
-.hero-cell { display: flex; align-items: center; gap: 8px; }
-.hero-cell img { width: 40px; height: 22px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
-.chip { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid currentColor; }
-.pos { color: var(--good); } .neg { color: var(--bad); } .muted { color: var(--fg-muted); }
-
-.matches { display: flex; flex-direction: column; gap: 6px; }
-.match {
-  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto auto 18px; align-items: center; gap: 12px;
-  padding: 9px 14px; border-left: 3px solid var(--good); cursor: pointer; text-align: left;
-  color: var(--fg); font: inherit; width: 100%; font-variant-numeric: tabular-nums;
-}
-.match:hover { background: var(--bg-hover); }
-.match.loss { border-left-color: var(--bad); }
-.match .res { font-family: var(--display); font-weight: 700; text-transform: uppercase; font-size: 13px; }
-.match .res.win { color: var(--good); } .match .res.loss { color: var(--bad); }
-.match .gpm { color: var(--accent); font-size: 13px; }
-.match .dur { color: var(--fg-muted); font-size: 13px; }
-.match .arrow { color: var(--fg-dim); }
-
-dialog {
-  width: min(980px, calc(100vw - 24px)); max-height: calc(100vh - 32px); padding: 0;
-  border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--fg);
-}
-dialog::backdrop { background: rgba(0,0,0,.6); }
-.dlg-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
-.dlg-head h2 { font-size: 20px; }
-.dlg-head .close { margin-left: auto; background: none; border: 1px solid var(--border); color: var(--fg); border-radius: 6px; padding: 4px 12px; cursor: pointer; }
-.dlg-body { padding: 18px; display: flex; flex-direction: column; gap: 22px; }
-.team-title { font-family: var(--display); font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.team-title.radiant { color: var(--radiant); } .team-title.dire { color: var(--dire); }
-tr.me td { background: var(--me); }
-.score { font-family: var(--display); font-size: 20px; font-weight: 700; }
-.items { display: flex; gap: 2px; }
-.items img { width: 28px; height: 20px; border-radius: 2px; object-fit: cover; }
-.bench { display: grid; grid-template-columns: 150px minmax(0,1fr) 54px; gap: 10px; align-items: center; font-size: 13px; }
-.bench .track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
-.bench .fill { height: 100%; border-radius: 4px; }
-.bench-list { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
-.links { display: flex; gap: 14px; font-size: 13px; }
-.links a { color: var(--accent); }
-
-@media (max-width: 640px) {
-  .profile .wl { margin-left: 0; width: 100%; text-align: left; }
-  .match { grid-template-columns: 38px minmax(0,1fr) auto 14px; gap: 8px; }
-  .match .gpm, .match .dur { display: none; }
-  .bench { grid-template-columns: 110px minmax(0,1fr) 44px; }
-}
-</style>
-
 <div class="wrap">
-  <div class="search-box">
-    <h1>Dota 2 Analyzer</h1>
-    <p>Steam ID, Friend ID или ссылка на профиль. Покажу слабые стороны, твоих героев против меты твоего ранга и разбор каждого матча.</p>
-    <form class="search-row" id="searchForm">
-      <input type="text" id="steamId" placeholder="Например 219167362 или ссылка Steam" autocomplete="off">
-      <button class="btn" id="searchBtn" type="submit">Анализ</button>
-    </form>
-  </div>
+  <header class="topbar">
+    <span class="brand">Dota 2 Analyzer</span>
+    <nav class="nav">
+      <a href="#player" id="navPlayer">Игрок</a>
+      <a href="#meta" id="navMeta">Мета</a>
+    </nav>
+    <span class="updated" id="updated"></span>
+  </header>
 
-  <div id="loading" hidden class="loading"><div class="spinner"></div><p>Загружаю данные из OpenDota…</p></div>
-  <div id="error" hidden class="error-msg"></div>
-
-  <div id="results" hidden class="results">
-    <div id="profile" class="card profile"></div>
-    <div id="stats" class="stats-grid"></div>
-
-    <div class="section">
-      <h2 class="section-title">Слабые и сильные стороны</h2>
-      <div id="issues" class="issue-list"></div>
+  <main id="viewPlayer" class="stack">
+    <div class="search-box">
+      <p>Steam ID, Friend ID или ссылка на профиль. Покажу позиции, слабые стороны, тебя против меты и подробный разбор каждой игры: драфт, драки, тайминги и предметы.</p>
+      <form class="search-row" id="searchForm">
+        <input type="text" id="steamId" placeholder="Например 1185373234 или ссылка Steam" autocomplete="off">
+        <button class="btn" id="searchBtn" type="submit">Анализ</button>
+      </form>
     </div>
+    <div id="loading" hidden class="loading"><div class="spinner"></div><p id="loadingText">Загружаю данные из OpenDota…</p></div>
+    <div id="error" hidden class="error-msg"></div>
 
-    <div class="section">
-      <h2 class="section-title">Ты против меты</h2>
-      <p class="section-note" id="metaNote"></p>
-      <div class="tabs" role="tablist">
-        <button class="tab" role="tab" id="tabMine" aria-selected="true">Мои герои</button>
-        <button class="tab" role="tab" id="tabMeta" aria-selected="false">Топ меты</button>
-        <button class="tab" role="tab" id="tabTry" aria-selected="false">Стоит играть</button>
+    <div id="results" hidden class="stack">
+      <div id="profile" class="card profile"></div>
+      <div id="stats" class="stats-grid"></div>
+
+      <section class="section">
+        <h2 class="section-title">Позиции</h2>
+        <p class="note" id="posNote"></p>
+        <div id="positions" class="pos-grid"></div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Слабые и сильные стороны</h2>
+        <div id="issues" class="issue-list"></div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Ты против меты</h2>
+        <p class="note" id="metaNote"></p>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" data-tab="mine" aria-selected="true">Мои герои</button>
+          <button class="tab" role="tab" data-tab="meta" aria-selected="false">Топ меты</button>
+          <button class="tab" role="tab" data-tab="try" aria-selected="false">Стоит играть</button>
+        </div>
+        <div class="card table-wrap"><table id="metaTable"></table></div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Последние матчи</h2>
+        <div class="row" style="justify-content: space-between">
+          <p class="note">Нажми на матч: драфт, контрпики, ход игры, драки, тайминги и предметы. <span class="posb">2</span> позиция по реплею, <span class="posb approx">2</span> примерная.</p>
+          <button class="btn ghost small" id="parseAll" hidden>Разобрать реплеи</button>
+        </div>
+        <p class="note" id="parseStatus" hidden></p>
+        <div id="matches" class="matches"></div>
+      </section>
+    </div>
+  </main>
+
+  <main id="viewMeta" class="stack" hidden>
+    <div class="row">
+      <div class="tabs" id="groupTabs"></div>
+      <div class="tabs" id="posTabs"></div>
+    </div>
+    <p class="note" id="metaInfo"></p>
+
+    <section class="section">
+      <h2 class="section-title">Сильнейшие герои</h2>
+      <p class="note" id="tierNote"></p>
+      <div class="card table-wrap"><table id="tierTable"></table></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Контрпик</h2>
+      <p class="note">Добавь героев, которых уже взяли враги (и союзники, если хочешь учесть сочетания). Лучшие варианты считаются по матчапам выбранного ранга и позиции.</p>
+      <div class="two-col">
+        <div class="picker card pad">
+          <label class="label" for="enemyInput">Враги</label>
+          <input class="field" id="enemyInput" list="heroList" placeholder="Начни вводить героя">
+          <div class="chips" id="enemyChips"></div>
+        </div>
+        <div class="picker card pad">
+          <label class="label" for="allyInput">Союзники</label>
+          <input class="field" id="allyInput" list="heroList" placeholder="Необязательно">
+          <div class="chips" id="allyChips"></div>
+        </div>
       </div>
-      <div class="card table-wrap"><table id="metaTable"></table></div>
-    </div>
+      <div class="two-col">
+        <div class="section"><h3 class="label">Лучше всего взять</h3><div class="card" id="counterBest"></div></div>
+        <div class="section"><h3 class="label">Не брать</h3><div class="card" id="counterWorst"></div></div>
+      </div>
+    </section>
 
-    <div class="section">
-      <h2 class="section-title">Последние матчи</h2>
-      <p class="section-note">Нажми на матч, чтобы увидеть, кто как сыграл и что можно было сделать лучше.</p>
-      <div id="matches" class="matches"></div>
-    </div>
-  </div>
+    <section class="section">
+      <h2 class="section-title">Предметы против героя</h2>
+      <p class="note">Что про-игроки патча собирают против героя чаще, чем обычно на своих героях. «×1.8» значит, что предмет берут в 1.8 раза чаще, когда этот герой у врагов.</p>
+      <div class="row"><input class="field" id="itemHeroInput" list="heroList" placeholder="Выбери героя" style="max-width: 320px"></div>
+      <div class="two-col">
+        <div class="section"><h3 class="label" id="itemHeroTitle">Предметы</h3><div class="card" id="itemCounters"></div></div>
+        <div class="section"><h3 class="label">Кто его контрит</h3><div class="card" id="heroCounters"></div></div>
+      </div>
+    </section>
+  </main>
 </div>
 
+<datalist id="heroList"></datalist>
+
 <dialog id="matchDlg">
-  <div class="dlg-head"><h2 id="dlgTitle">Матч</h2><button class="close" id="dlgClose">Закрыть</button></div>
+  <div class="dlg-head">
+    <div class="row"><h2 id="dlgTitle">Матч</h2><button class="btn ghost small" id="dlgClose">Закрыть</button></div>
+    <div class="tabs" id="dlgTabs" role="tablist">
+      <button class="tab" role="tab" data-tab="overview" aria-selected="true">Обзор</button>
+      <button class="tab" role="tab" data-tab="draft" aria-selected="false">Драфт</button>
+      <button class="tab" role="tab" data-tab="flow" aria-selected="false">Ход игры</button>
+      <button class="tab" role="tab" data-tab="items" aria-selected="false">Предметы</button>
+    </div>
+  </div>
   <div class="dlg-body" id="dlgBody"></div>
 </dialog>
 
-<script>
-const API = 'https://api.opendota.com/api';
-const CDN = 'https://cdn.cloudflare.steamstatic.com';
-const RANKS = ['', 'Herald', 'Guardian', 'Crusader', 'Archon', 'Legend', 'Ancient', 'Divine', 'Immortal'];
-
-const state = { heroes: {}, items: null, playerId: null, bracket: 7, playerHeroes: [], metaTab: 'mine' };
-
-const $ = id => document.getElementById(id);
-
-async function getJSON(url) {
-  const r = await fetch(url);
-  if (r.status === 429) throw new Error('OpenDota ограничил запросы. Подожди минуту и попробуй снова.');
-  if (!r.ok) throw new Error(`OpenDota ответил ошибкой ${r.status}`);
-  return r.json();
-}
-
-function parseId(input) {
-  input = input.trim();
-  let m = input.match(/\/players\/(\d+)/);
-  if (m) return m[1];
-  m = input.match(/steamcommunity\.com\/profiles\/(\d+)/);
-  if (m) return String(BigInt(m[1]) - 76561197960265728n);
-  m = input.match(/\[U:1:(\d+)\]/);
-  if (m) return m[1];
-  const num = input.replace(/\D/g, '');
-  if (!num) return null;
-  if (num.length >= 17) return String(BigInt(num) - 76561197960265728n);
-  return num;
-}
-
-$('searchForm').addEventListener('submit', e => { e.preventDefault(); analyze(); });
-
-async function analyze() {
-  const raw = $('steamId').value;
-  if (/steamcommunity\.com\/id\//.test(raw)) { showError('Ссылка с ником не подходит. Нужна ссылка вида steamcommunity.com/profiles/7656… или Friend ID из Dota.'); return; }
-  const id = parseId(raw);
-  if (!id) { showError('Введи Steam ID, Friend ID или ссылку на профиль.'); return; }
-
-  $('searchBtn').disabled = true;
-  $('results').hidden = true; $('error').hidden = true; $('loading').hidden = false;
-  try {
-    const [profile, wl, recent, heroes, totals, heroStats] = await Promise.all([
-      getJSON(`${API}/players/${id}`),
-      getJSON(`${API}/players/${id}/wl`),
-      getJSON(`${API}/players/${id}/recentMatches`),
-      getJSON(`${API}/players/${id}/heroes`),
-      getJSON(`${API}/players/${id}/totals`),
-      Object.keys(state.heroes).length ? null : getJSON(`${API}/heroStats`),
-    ]);
-    if (heroStats) heroStats.forEach(h => { state.heroes[h.id] = h; });
-    if (!profile.profile) throw new Error('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».');
-
-    state.playerId = Number(id);
-    const medal = profile.rank_tier ? Math.floor(profile.rank_tier / 10) : 7;
-    state.bracket = bracketWithData(medal);
-    state.playerHeroes = heroes;
-
-    renderProfile(profile, wl);
-    renderStats(totals);
-    renderIssues(totals, recent, heroes);
-    setMetaTab('mine');
-    renderMatches(recent);
-    $('results').hidden = false;
-  } catch (e) {
-    showError(e.message || 'Не удалось загрузить данные.');
-  } finally {
-    $('searchBtn').disabled = false; $('loading').hidden = true;
-  }
-}
-
-function bracketWithData(medal) {
-  for (let b = Math.min(Math.max(medal, 1), 8); b >= 1; b--) {
-    const sample = Object.values(state.heroes).reduce((s, h) => s + (h[`${b}_pick`] || 0), 0);
-    if (sample > 10000) return b;
-  }
-  return 7;
-}
-
-function showError(msg) { $('error').textContent = msg; $('error').hidden = false; }
-
-const avg = (totals, f) => { const t = totals.find(x => x.field === f); return t && t.n ? t.sum / t.n : 0; };
-const heroName = id => state.heroes[id]?.localized_name || `Hero ${id}`;
-const heroImg = id => state.heroes[id] ? CDN + state.heroes[id].img : '';
-const metaWr = id => { const h = state.heroes[id]; const p = h?.[`${state.bracket}_pick`] || 0; return p ? h[`${state.bracket}_win`] / p * 100 : null; };
-const metaPicks = id => state.heroes[id]?.[`${state.bracket}_pick`] || 0;
-const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n));
-const esc = s => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
-const heroCell = id => `<div class="hero-cell">${heroImg(id) ? `<img src="${heroImg(id)}" alt="">` : ''}<span>${esc(heroName(id))}</span></div>`;
-const signed = (v, d = 1) => `<span class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(d)}</span>`;
-
-function rankName(tier) {
-  if (!tier) return 'Без ранга';
-  const medal = Math.floor(tier / 10), stars = tier % 10;
-  return (RANKS[medal] || 'Rank') + (medal < 8 && stars ? ' ' + stars : '');
-}
-
-function renderProfile(profile, wl) {
-  const p = profile.profile, total = wl.win + wl.lose, wr = total ? wl.win / total * 100 : 0;
-  const col = wr >= 52 ? 'var(--good)' : wr >= 48 ? 'var(--fg)' : 'var(--bad)';
-  $('profile').innerHTML = `
-    <img src="${p.avatarfull}" alt="">
-    <div><h2>${esc(p.personaname)}</h2>
-      <div class="meta">${rankName(profile.rank_tier)} · ${total.toLocaleString('ru')} матчей · мета считается по ${RANKS[state.bracket]}</div></div>
-    <div class="wl"><div class="wr" style="color:${col}">${wr.toFixed(1)}%</div>
-      <div class="wl-detail"><span class="pos">${wl.win} W</span> / <span class="neg">${wl.lose} L</span></div></div>`;
-}
-
-function renderStats(t) {
-  const k = avg(t, 'kills'), d = avg(t, 'deaths'), a = avg(t, 'assists');
-  const kda = d ? (k + a) / d : k + a;
-  const card = (l, v, s) => `<div class="card stat"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`;
-  $('stats').innerHTML =
-    card('KDA', kda.toFixed(2), `${k.toFixed(1)} / ${d.toFixed(1)} / ${a.toFixed(1)}`) +
-    card('GPM', Math.round(avg(t, 'gold_per_min')), 'золото в минуту') +
-    card('XPM', Math.round(avg(t, 'xp_per_min')), 'опыт в минуту') +
-    card('Ластхиты', Math.round(avg(t, 'last_hits')), 'за матч') +
-    card('Урон по героям', fmt(avg(t, 'hero_damage')), 'за матч') +
-    card('Урон по башням', fmt(avg(t, 'tower_damage')), 'за матч');
-}
-
-function renderIssues(t, recent, heroes) {
-  const items = [];
-  const add = (sev, title, detail, val) => items.push({ sev, title, detail, val });
-  const deaths = avg(t, 'deaths'), gpm = avg(t, 'gold_per_min'), dur = avg(t, 'duration');
-  const kda = deaths ? (avg(t, 'kills') + avg(t, 'assists')) / deaths : 99;
-  const lhm = dur ? avg(t, 'last_hits') / (dur / 60) : 0;
-  const tower = avg(t, 'tower_damage');
-
-  if (deaths > 8) add('bad', 'Много смертей', `${deaths.toFixed(1)} за игру. Следи за картой, носи ТП, не фарми без вижна.`, deaths.toFixed(1));
-  else if (deaths > 6) add('warn', 'Частые смерти', `${deaths.toFixed(1)} за игру. Есть что подтянуть в позиционке.`, deaths.toFixed(1));
-  else add('good', 'Хорошо выживаешь', `${deaths.toFixed(1)} смертей за игру.`, deaths.toFixed(1));
-
-  if (kda < 2) add('bad', 'Низкий KDA', 'Мало участвуешь в убийствах или часто умираешь.', kda.toFixed(2));
-  else if (kda < 3) add('warn', 'KDA ниже среднего', 'Нормально, но можно лучше.', kda.toFixed(2));
-  else add('good', 'Хороший KDA', 'Влияешь на драки и не отдаёшь лишнего.', kda.toFixed(2));
-
-  if (gpm < 350) add('bad', 'Слабый фарм', 'Если играешь кор, фарми лес между волнами и не стой без дела.', Math.round(gpm));
-  else if (gpm < 420) add('warn', 'Средний фарм', 'Для кора можно выжимать больше золота.', Math.round(gpm));
-
-  if (lhm < 4) add('bad', 'Мало ластхитов', `${lhm.toFixed(1)} в минуту. Потренируй добивание в демо-режиме.`, lhm.toFixed(1));
-  else if (lhm < 6) add('warn', 'Ластхиты средние', `${lhm.toFixed(1)} в минуту.`, lhm.toFixed(1));
-
-  if (tower < 1000) add('warn', 'Мало давишь башни', 'После выигранной драки иди на объекты, а не в лес.', fmt(tower));
-
-  const pool = heroes.filter(h => h.games >= 10);
-  const losing = pool.filter(h => h.win / h.games < 0.45).sort((a, b) => b.games - a.games)[0];
-  if (losing) add('bad', `Сливаешь на ${heroName(losing.hero_id)}`, `${losing.games} игр с винрейтом ${(losing.win / losing.games * 100).toFixed(0)}%. Отложи героя или разбери свои матчи на нём.`, (losing.win / losing.games * 100).toFixed(0) + '%');
-
-  if (recent.length >= 10) {
-    const w = recent.slice(0, 10).filter(m => (m.player_slot < 128) === m.radiant_win).length;
-    if (w <= 3) add('bad', 'Похоже на тильт', `${w} побед в последних 10 играх. Сделай перерыв.`, `${w}/10`);
-    else if (w >= 7) add('good', 'Хорошая серия', `${w} побед в последних 10 играх.`, `${w}/10`);
-  }
-
-  const order = { bad: 0, warn: 1, good: 2 };
-  items.sort((a, b) => order[a.sev] - order[b.sev]);
-  $('issues').innerHTML = items.map(i => `
-    <div class="card issue ${i.sev}"><div class="body"><div class="title">${i.title}</div><div class="detail">${i.detail}</div></div>
-    <div class="val" style="color:var(--${i.sev})">${i.val}</div></div>`).join('');
-}
-
-/* ---- Meta ---- */
-['Mine', 'Meta', 'Try'].forEach(n => $('tab' + n).addEventListener('click', () => setMetaTab(n.toLowerCase())));
-
-function setMetaTab(tab) {
-  state.metaTab = tab;
-  ['mine', 'meta', 'try'].forEach(t => $('tab' + t[0].toUpperCase() + t.slice(1)).setAttribute('aria-selected', String(t === tab)));
-  const b = RANKS[state.bracket];
-  const mine = Object.fromEntries(state.playerHeroes.map(h => [h.hero_id, h]));
-  const myWr = h => h && h.games ? h.win / h.games * 100 : null;
-  const minPicks = Object.values(state.heroes).reduce((s, h) => s + (h[`${state.bracket}_pick`] || 0), 0) / Object.keys(state.heroes).length * 0.25;
-
-  if (tab === 'mine') {
-    $('metaNote').textContent = `Твой винрейт на героях против их общего винрейта в ${b}. Плюс значит, что ты играешь героя лучше среднего.`;
-    const rows = state.playerHeroes.filter(h => h.games >= 5).sort((a, b) => b.games - a.games).slice(0, 15);
-    $('metaTable').innerHTML = `<thead><tr><th>Герой</th><th class="num">Игр</th><th class="num">Твой WR</th><th class="num">WR в ${b}</th><th class="num">Разница</th></tr></thead><tbody>` +
-      rows.map(h => { const mw = metaWr(h.hero_id), w = myWr(h);
-        return `<tr><td>${heroCell(h.hero_id)}</td><td class="num">${h.games}</td><td class="num">${w.toFixed(1)}%</td><td class="num muted">${mw ? mw.toFixed(1) + '%' : '—'}</td><td class="num">${mw ? signed(w - mw) : '—'}</td></tr>`; }).join('') + '</tbody>';
-  } else if (tab === 'meta') {
-    $('metaNote').textContent = `Самые сильные герои в ${b} по винрейту (только популярные). Справа твой опыт на них.`;
-    const rows = Object.values(state.heroes).filter(h => metaPicks(h.id) >= minPicks).sort((a, c) => metaWr(c.id) - metaWr(a.id)).slice(0, 15);
-    $('metaTable').innerHTML = `<thead><tr><th>Герой</th><th class="num">WR в ${b}</th><th class="num">Пиков</th><th class="num">Твоих игр</th><th class="num">Твой WR</th></tr></thead><tbody>` +
-      rows.map(h => { const m = mine[h.id], w = myWr(m);
-        return `<tr><td>${heroCell(h.id)}</td><td class="num pos">${metaWr(h.id).toFixed(1)}%</td><td class="num muted">${fmt(metaPicks(h.id))}</td><td class="num">${m ? m.games : 0}</td><td class="num">${w !== null && m.games >= 3 ? w.toFixed(1) + '%' : '<span class="muted">—</span>'}</td></tr>`; }).join('') + '</tbody>';
-  } else {
-    $('metaNote').textContent = `Герои, которые сильны в ${b} и у тебя уже получаются. Их стоит спамить для набора рейтинга.`;
-    const rows = state.playerHeroes.filter(h => h.games >= 5 && metaWr(h.hero_id) >= 50 && myWr(h) >= 52)
-      .map(h => ({ ...h, score: (myWr(h) - 50) * Math.log(h.games) + (metaWr(h.hero_id) - 50) * 2 }))
-      .sort((a, c) => c.score - a.score).slice(0, 10);
-    $('metaTable').innerHTML = rows.length
-      ? `<thead><tr><th>Герой</th><th class="num">Твой WR</th><th class="num">Игр</th><th class="num">WR в ${b}</th></tr></thead><tbody>` +
-        rows.map(h => `<tr><td>${heroCell(h.hero_id)}</td><td class="num pos">${myWr(h).toFixed(1)}%</td><td class="num">${h.games}</td><td class="num">${metaWr(h.hero_id).toFixed(1)}%</td></tr>`).join('') + '</tbody>'
-      : `<tbody><tr><td class="muted">Пока нет героев, где и мета, и твой винрейт выше среднего. Посмотри вкладку «Топ меты» и попробуй героев оттуда.</td></tr></tbody>`;
-  }
-}
-
-/* ---- Matches ---- */
-function renderMatches(matches) {
-  $('matches').innerHTML = matches.slice(0, 20).map(m => {
-    const won = (m.player_slot < 128) === m.radiant_win;
-    const dur = `${Math.floor(m.duration / 60)}:${String(m.duration % 60).padStart(2, '0')}`;
-    return `<button class="card match ${won ? '' : 'loss'}" data-id="${m.match_id}">
-      <span class="res ${won ? 'win' : 'loss'}">${won ? 'Win' : 'Loss'}</span>
-      ${heroCell(m.hero_id)}
-      <span>${m.kills}/${m.deaths}/${m.assists}</span>
-      <span class="gpm">${m.gold_per_min} GPM</span>
-      <span class="dur">${dur}</span><span class="arrow">›</span></button>`;
-  }).join('');
-  $('matches').querySelectorAll('.match').forEach(b => b.addEventListener('click', () => openMatch(b.dataset.id)));
-}
-
-$('dlgClose').addEventListener('click', () => $('matchDlg').close());
-$('matchDlg').addEventListener('click', e => { if (e.target === $('matchDlg')) $('matchDlg').close(); });
-
-const METRICS = {
-  gold_per_min:        { name: 'Золото в минуту', tip: 'Фармишь меньше, чем большинство на этом герое. Бери лесные лагеря между волнами, не простаивай.' },
-  xp_per_min:          { name: 'Опыт в минуту', tip: 'Отстаёшь по уровню. Меньше умирай и дольше стой в зоне опыта.' },
-  last_hits_per_min:   { name: 'Ластхиты в минуту', tip: 'Мало добиваешь. Держи линию и лес, не пропускай волны.' },
-  kills_per_min:       { name: 'Убийства в минуту', tip: 'Мало убийств для этого героя. Ищи пики и драки в свои тайминги.' },
-  assists_per_min:     { name: 'Помощь в минуту', tip: 'Мало участия в драках. Держись ближе к команде и приходи на смоки и ганги.' },
-  deaths_per_min:      { name: 'Выживаемость', tip: 'Умираешь чаще, чем большинство на этом герое. Носи ТП, смотри на карту, не фарми без вижна.', invert: true },
-  hero_damage_per_min: { name: 'Урон по героям', tip: 'Мало урона в драках. Ищи позицию, откуда можешь бить дольше.' },
-  tower_damage:        { name: 'Урон по башням', tip: 'Мало урона по строениям. Конвертируй выигранные драки в башни.' },
-};
-const WEIGHTS = {
-  core:    { gold_per_min: .22, last_hits_per_min: .18, hero_damage_per_min: .2, tower_damage: .1, kills_per_min: .12, deaths_per_min: .18 },
-  support: { assists_per_min: .3, deaths_per_min: .25, hero_damage_per_min: .2, xp_per_min: .15, kills_per_min: .1 },
-};
-const pctOf = (p, k) => { const v = p.benchmarks?.[k]?.pct; return v == null ? null : (METRICS[k].invert ? 1 - v : v); };
-
-function scorePlayer(p) {
-  const w = WEIGHTS[p._role];
-  let s = 0, tw = 0;
-  for (const k in w) { const v = pctOf(p, k); if (v != null) { s += v * w[k]; tw += w[k]; } }
-  return tw ? s / tw * 10 : 0;
-}
-
-async function loadItems() {
-  if (state.items) return;
-  const [ids, items] = await Promise.all([getJSON(`${API}/constants/item_ids`), getJSON(`${API}/constants/items`)]);
-  state.items = {};
-  for (const id in ids) { const it = items[ids[id]]; if (it) state.items[id] = { name: it.dname, img: CDN + it.img }; }
-}
-
-async function openMatch(id) {
-  const dlg = $('matchDlg');
-  $('dlgTitle').textContent = `Матч ${id}`;
-  $('dlgBody').innerHTML = '<div class="loading"><div class="spinner"></div><p>Загружаю матч…</p></div>';
-  dlg.showModal();
-  try {
-    const [match] = await Promise.all([getJSON(`${API}/matches/${id}`), loadItems().catch(() => {})]);
-    renderMatch(match);
-  } catch (e) {
-    $('dlgBody').innerHTML = `<div class="error-msg">${esc(e.message)}</div>`;
-  }
-}
-
-function renderMatch(m) {
-  const teams = [m.players.filter(p => p.isRadiant), m.players.filter(p => !p.isRadiant)];
-  for (const team of teams) {
-    [...team].sort((a, b) => b.gold_per_min - a.gold_per_min).forEach((p, i) => { p._role = i < 3 ? 'core' : 'support'; });
-    team.forEach(p => { p._score = scorePlayer(p); });
-  }
-  const all = m.players;
-  const best = all.reduce((a, b) => b._score > a._score ? b : a);
-  const worst = all.reduce((a, b) => b._score < a._score ? b : a);
-  const me = all.find(p => p.account_id === state.playerId);
-  const dur = `${Math.floor(m.duration / 60)}:${String(m.duration % 60).padStart(2, '0')}`;
-  $('dlgTitle').textContent = `${m.radiant_win ? 'Победа Radiant' : 'Победа Dire'} · ${m.radiant_score}:${m.dire_score} · ${dur}`;
-
-  const scoreCol = s => s >= 6.5 ? 'var(--good)' : s >= 4 ? 'var(--warn)' : 'var(--bad)';
-  const items = p => `<div class="items">${[0,1,2,3,4,5].map(i => state.items?.[p['item_' + i]]).filter(Boolean).map(it => `<img src="${it.img}" alt="${esc(it.name)}" title="${esc(it.name)}">`).join('')}</div>`;
-  const teamTable = (team, side) => `
-    <div class="section"><div class="team-title ${side}">${side === 'radiant' ? 'Radiant' : 'Dire'} ${team[0].win ? '· победа' : ''}</div>
-    <div class="card table-wrap"><table>
-      <thead><tr><th>Игрок</th><th>Герой</th><th class="num">K/D/A</th><th class="num">GPM</th><th class="num">LH</th><th class="num">Урон</th><th>Предметы</th><th class="num">Оценка</th></tr></thead>
-      <tbody>${team.map(p => `<tr class="${p === me ? 'me' : ''}">
-        <td>${esc(p.personaname || 'Аноним')} ${p === best ? '<span class="chip pos">MVP</span>' : ''}${p === worst ? '<span class="chip neg">Худший</span>' : ''}<div class="muted" style="font-size:12px">${p.rank_tier ? rankName(p.rank_tier) : ''} · ${p._role === 'core' ? 'кор' : 'саппорт'}</div></td>
-        <td>${heroCell(p.hero_id)}</td>
-        <td class="num">${p.kills}/${p.deaths}/${p.assists}</td>
-        <td class="num">${p.gold_per_min}</td><td class="num">${p.last_hits}</td><td class="num">${fmt(p.hero_damage)}</td>
-        <td>${items(p)}</td>
-        <td class="num"><span class="score" style="color:${scoreCol(p._score)}">${p._score.toFixed(1)}</span></td></tr>`).join('')}</tbody>
-    </table></div></div>`;
-
-  let mine = '';
-  if (me) {
-    const keys = Object.keys(WEIGHTS[me._role]).concat(me._role === 'core' ? ['xp_per_min'] : ['gold_per_min', 'last_hits_per_min', 'tower_damage']);
-    const rows = keys.map(k => ({ k, v: pctOf(me, k) })).filter(r => r.v != null).sort((a, b) => a.v - b.v);
-    const weak = rows.filter(r => r.v < 0.4 && WEIGHTS[me._role][r.k]);
-    const strong = rows.filter(r => r.v >= 0.7);
-    const rank = [...all].sort((a, b) => b._score - a._score).indexOf(me) + 1;
-    mine = `
-      <div class="section"><h3 class="section-title">Где можно было лучше</h3>
-        <p class="section-note">Ты на ${esc(heroName(me.hero_id))} (${me._role === 'core' ? 'кор' : 'саппорт'}), ${rank}-е место из 10 по оценке. Полоса показывает, какую долю игроков на этом герое ты обошёл.</p>
-        <div class="card bench-list">${rows.map(r => `
-          <div class="bench"><span>${METRICS[r.k].name}</span><div class="track"><div class="fill" style="width:${(r.v * 100).toFixed(0)}%;background:${r.v >= .6 ? 'var(--good)' : r.v >= .4 ? 'var(--warn)' : 'var(--bad)'}"></div></div><span class="num">${(r.v * 100).toFixed(0)}%</span></div>`).join('')}
-        </div>
-        <div class="issue-list">
-          ${weak.map(r => `<div class="card issue"><div class="body"><div class="title">${METRICS[r.k].name}: хуже ${(100 - r.v * 100).toFixed(0)}% игроков</div><div class="detail">${METRICS[r.k].tip}</div></div></div>`).join('')}
-          ${strong.length ? `<div class="card issue good"><div class="body"><div class="title">Получилось хорошо</div><div class="detail">${strong.map(r => METRICS[r.k].name.toLowerCase()).join(', ')}: лучше 70%+ игроков на этом герое.</div></div></div>` : ''}
-          ${!weak.length ? '<div class="card issue good"><div class="body"><div class="title">Серьёзных провалов нет</div><div class="detail">По ключевым показателям для твоей роли ты не хуже большинства.</div></div></div>' : ''}
-        </div>
-      </div>`;
-  }
-
-  $('dlgBody').innerHTML = mine + teamTable(teams[0], 'radiant') + teamTable(teams[1], 'dire') + `
-    <p class="section-note">Оценка от 0 до 10: сравнение с другими игроками на том же герое по метрикам роли. Роль угадывается по золоту в команде (3 богатейших считаются корами).</p>
-    <div class="links"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">Открыть на OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Открыть на Dotabuff</a></div>`;
-}
-</script>
-
+<script src="assets/app.js"></script>
 </body>
 </html>
