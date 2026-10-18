@@ -236,10 +236,20 @@ function trimMatch(m) {
   };
 }
 
+const PARSE_WINDOW = 30 * 60 * 1000;
+const parsePendingSince = id => { const t = store.get('pr:' + id); return t && Date.now() - t < PARSE_WINDOW ? t : null; };
+async function requestParse(id) {
+  try {
+    const r = await fetch(`${API}/request/${id}`, { method: 'POST' });
+    if (!r.ok) return false;
+    store.set('pr:' + id, Date.now());
+    return true;
+  } catch { return false; }
+}
+
 async function loadMatch(id, force) {
   const cached = !force && store.get('m:' + id);
-  const parsePending = Date.now() - (store.get('pr:' + id) || 0) < 30 * 60 * 1000;
-  if (cached && (cached.version || (Date.now() - cached._ts < 15 * 60 * 1000 && !parsePending))) return cached;
+  if (cached && (cached.version || (Date.now() - cached._ts < 15 * 60 * 1000 && !parsePendingSince(id)))) return cached;
   const m = trimMatch(await getJSON(`${API}/matches/${id}`));
   m._ts = Date.now();
   store.set('m:' + id, m);
@@ -422,8 +432,10 @@ function setMetaTab(tab, G) {
 
 function renderMatches() {
   const unparsed = S.recent.filter(r => !S.matches[r.match_id]?.version);
+  const ready = unparsed.filter(r => !parsePendingSince(r.match_id));
   $('parseAll').hidden = unparsed.length === 0;
-  $('parseAll').textContent = `Разобрать реплеи (${unparsed.length})`;
+  $('parseAll').disabled = ready.length === 0;
+  $('parseAll').textContent = ready.length ? `Разобрать реплеи (${ready.length})` : `Разбор запрошен (${unparsed.length})`;
   $('matches').innerHTML = S.recent.map(r => {
     const m = S.matches[r.match_id], me = m?._me;
     const won = isWin(r);
@@ -439,16 +451,16 @@ function renderMatches() {
 }
 
 $('parseAll').addEventListener('click', async () => {
-  const ids = S.recent.filter(r => !S.matches[r.match_id]?.version).map(r => r.match_id);
+  const ids = S.recent.filter(r => !S.matches[r.match_id]?.version && !parsePendingSince(r.match_id)).map(r => r.match_id);
   $('parseAll').disabled = true; $('parseStatus').hidden = false;
   let sent = 0;
   for (const id of ids) {
-    try { await fetch(`${API}/request/${id}`, { method: 'POST' }); store.set('pr:' + id, Date.now()); sent++; } catch { /* keep going */ }
+    if (await requestParse(id)) sent++;
     $('parseStatus').textContent = `Отправлено на разбор: ${sent}/${ids.length}. Старые реплеи (старше ~2 недель) Valve уже удалила, их не разобрать.`;
     await new Promise(r => setTimeout(r, 1100));
   }
   $('parseStatus').textContent = `Отправлено на разбор: ${sent}. Обычно это занимает 1–5 минут. Потом нажми «Анализ» ещё раз.`;
-  $('parseAll').disabled = false;
+  renderMatches();
 });
 
 /* ---------- match dialog ---------- */
@@ -474,6 +486,7 @@ async function openMatch(id) {
 }
 
 function showTab(tab) {
+  S.dlgTab = tab;
   document.querySelectorAll('#dlgTabs .tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   if (!current) return;
   const G = S.groups[S.group];
@@ -496,27 +509,47 @@ const finalItems = p => [0, 1, 2, 3, 4, 5].map(i => S.itemIds?.[p['item_' + i]])
 
 function parseBlock(m) {
   if (m.version) return '';
-  return `<div class="card issue info"><div class="body"><div class="title">Реплей не разобран</div><div class="detail">Без разбора нет позиций по линиям, графика золота, драк и таймингов предметов. Разбор занимает 1–5 минут.</div></div><button class="btn small" id="parseOne">Разобрать</button></div>`;
+  const since = parsePendingSince(m.match_id);
+  if (since) {
+    const min = Math.floor((Date.now() - since) / 60000);
+    return `<div class="card issue info"><div class="body"><div class="title">Разбор запрошен ${min < 1 ? 'только что' : `${min} мин назад`}</div><div class="detail">Обычно это 1–5 минут. Окно обновится само, нажимать ничего не нужно.</div></div><div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
+  }
+  const failed = store.get('pr:' + m.match_id);
+  return `<div class="card issue info"><div class="body"><div class="title">Реплей не разобран</div><div class="detail">${failed ? 'Прошлый запрос за 30 минут так и не дал разбора: скорее всего, Valve уже удалила реплей (они хранятся около двух недель). Можно попробовать ещё раз.' : 'Без разбора нет позиций по линиям, графика золота, драк и таймингов предметов. Разбор занимает 1–5 минут.'}</div></div><button class="btn small" id="parseOne">Разобрать</button></div>`;
 }
+
+const pollers = new Set();
+async function pollParse(id) {
+  if (pollers.has(id)) return;
+  pollers.add(id);
+  try {
+    while (parsePendingSince(id)) {
+      await new Promise(r => setTimeout(r, 10000));
+      let fresh;
+      try { fresh = await loadMatch(id, true); } catch { continue; }
+      if (fresh.version) {
+        S.matches[id] = prepareMatch(fresh);
+        if (S.playerId) { renderPositions(); renderMatches(); }
+        if ($('matchDlg').open && current?.match_id === id) { current = S.matches[id]; showTab(S.dlgTab); }
+        return;
+      }
+    }
+    if ($('matchDlg').open && current?.match_id === id) showTab(S.dlgTab);
+    if (S.playerId) renderMatches();
+  } finally {
+    pollers.delete(id);
+  }
+}
+
 function wireParse(m) {
+  if (m.version) return;
+  if (parsePendingSince(m.match_id)) { pollParse(m.match_id); return; }
   const b = $('parseOne'); if (!b) return;
   b.addEventListener('click', async () => {
-    b.disabled = true; b.textContent = 'Отправлено…';
-    try { await fetch(`${API}/request/${m.match_id}`, { method: 'POST' }); store.set('pr:' + m.match_id, Date.now()); } catch { /* polling below reports failure */ }
-    for (let i = 0; i < 30; i++) {
-      await new Promise(r => setTimeout(r, 10000));
-      b.textContent = `Жду разбор… ${(i + 1) * 10} с`;
-      try {
-        const fresh = await loadMatch(m.match_id, true);
-        if (fresh.version) {
-          S.matches[m.match_id] = prepareMatch(fresh);
-          if (S.playerId) { renderPositions(); renderMatches(); }
-          if ($('matchDlg').open && current?.match_id === m.match_id) { current = S.matches[m.match_id]; showTab('overview'); }
-          return;
-        }
-      } catch { /* retry */ }
-    }
-    b.textContent = 'Не удалось. Реплей мог устареть';
+    b.disabled = true; b.textContent = 'Отправляю…';
+    if (!(await requestParse(m.match_id))) { b.disabled = false; b.textContent = 'Не отправилось, ещё раз'; return; }
+    if (S.playerId) renderMatches();
+    showTab(S.dlgTab);
   });
 }
 
