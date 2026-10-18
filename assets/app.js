@@ -63,6 +63,34 @@ const groupOfTier = t => t ? Math.min(4, Math.max(1, Math.floor((Math.floor(t / 
 const rankName = t => !t ? 'Без ранга' : (RANKS[Math.floor(t / 10)] || 'Rank') + (Math.floor(t / 10) < 8 && t % 10 ? ' ' + (t % 10) : '');
 const isWin = p => (p.player_slot < 128) === p.radiant_win;
 
+const ICONS = {
+  shield: '<path d="M12 2.5 20 6v6c0 4.6-3.3 8.4-8 9.5-4.7-1.1-8-4.9-8-9.5V6l8-3.5Z"/>',
+  swords: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 13 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2"/>',
+  coins: '<circle cx="8" cy="8" r="6"/><path d="M18.1 10.4A6 6 0 1 1 10.3 18M7 6h1v4M16.7 13.9l.7.7-2.8 2.8"/>',
+  trending: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+  castle: '<path d="M22 20v-9H2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2ZM18 11V4H6v7M15 22v-4a3 3 0 0 0-6 0v4M22 11V9M2 11V9M6 4V2M18 4V2M10 4V2M14 4V2"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  chevron: '<path d="m9 18 6-6-6-6"/>',
+  crown: '<path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zM5 20h14"/>',
+  alert: '<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/>',
+  down: '<path d="m22 17-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>',
+  check: '<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+};
+const icon = (name, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+const SEV_ICON = { bad: 'alert', warn: 'down', good: 'check', info: 'info' };
+const sevIcon = sev => `<span class="sev">${icon(SEV_ICON[sev] || 'info')}</span>`;
+function ago(ts) {
+  const m = Math.max(0, Math.round((Date.now() / 1000 - ts) / 60));
+  if (m < 60) return `${m} мин назад`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} ч назад`;
+  const d = Math.round(h / 24);
+  return d === 1 ? 'вчера' : `${d} дн назад`;
+}
+
 const store = {
   get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set(k, v) {
@@ -360,21 +388,21 @@ function renderProfile(profile, wl) {
   const p = profile.profile, total = wl.win + wl.lose, wr = total ? wl.win / total * 100 : 0;
   $('profile').innerHTML = `
     <img src="${esc(p.avatarfull)}" alt="">
-    <div><h2>${esc(p.personaname)}</h2><div class="meta">${rankName(profile.rank_tier)} · ${S.limit ? `винрейт за последние ${total} игр` : `${total.toLocaleString('ru')} матчей всего`} · мета по ${GROUPS[S.group]}</div></div>
+    <div><h2>${esc(p.personaname)}</h2><div class="meta"><span class="rank-pill">${icon('shield')}${rankName(profile.rank_tier)}</span><span>${S.limit ? `винрейт за последние ${total} игр` : `${total.toLocaleString('ru')} матчей всего`}</span><span>мета по ${GROUPS[S.group]}</span></div></div>
     <div class="wl"><div class="big" style="color:${wr >= 52 ? 'var(--good)' : wr >= 48 ? 'var(--fg)' : 'var(--bad)'}">${wr.toFixed(1)}%</div>
-    <div class="note"><span class="pos">${wl.win} W</span> / <span class="neg">${wl.lose} L</span></div></div>`;
+    <div class="note"><span class="pos">${wl.win} побед</span> · <span class="neg">${wl.lose} поражений</span></div></div>`;
 }
 
 function renderStats(t) {
   const k = avgOf(t, 'kills'), d = avgOf(t, 'deaths'), a = avgOf(t, 'assists');
-  const card = (l, v, s) => `<div class="card stat"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`;
+  const card = (ic, l, v, s) => `<div class="card stat"><div class="label">${icon(ic)}${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`;
   $('stats').innerHTML =
-    card('KDA', (d ? (k + a) / d : k + a).toFixed(2), `${k.toFixed(1)} / ${d.toFixed(1)} / ${a.toFixed(1)}`) +
-    card('GPM', Math.round(avgOf(t, 'gold_per_min')), 'золото в минуту') +
-    card('XPM', Math.round(avgOf(t, 'xp_per_min')), 'опыт в минуту') +
-    card('Ластхиты', Math.round(avgOf(t, 'last_hits')), 'за матч') +
-    card('Урон по героям', fmt(avgOf(t, 'hero_damage')), 'за матч') +
-    card('Урон по башням', fmt(avgOf(t, 'tower_damage')), 'за матч');
+    card('swords', 'KDA', (d ? (k + a) / d : k + a).toFixed(2), `${k.toFixed(1)} / ${d.toFixed(1)} / ${a.toFixed(1)}`) +
+    card('coins', 'GPM', Math.round(avgOf(t, 'gold_per_min')), 'золото в минуту') +
+    card('trending', 'XPM', Math.round(avgOf(t, 'xp_per_min')), 'опыт в минуту') +
+    card('target', 'Ластхиты', Math.round(avgOf(t, 'last_hits')), 'за матч') +
+    card('zap', 'Урон по героям', fmt(avgOf(t, 'hero_damage')), 'за матч') +
+    card('castle', 'Урон по башням', fmt(avgOf(t, 'tower_damage')), 'за матч');
 }
 
 function renderPositions() {
@@ -388,14 +416,17 @@ function renderPositions() {
   });
   const adjWr = b => (b.wr / 100 * b.n + 1) / (b.n + 2);
   const best = by.filter(b => b.n >= 3).sort((a, b) => adjWr(b) - adjWr(a) || b.score - a.score)[0];
-  $('positions').innerHTML = by.map(b => `
-    <div class="card pos-card ${best && b.pos === best.pos ? 'best' : ''}">
-      <div class="label">Pos ${b.pos} · ${POS_NAMES[b.pos]}</div>
-      <div class="value">${b.n ? b.wr.toFixed(0) + '%' : '—'}</div>
-      <div class="note">${b.n} игр${b.n ? ` · оценка ${b.score.toFixed(1)}` : ''}</div>
-      <div>${b.heroes.map(heroIcon).join(' ')}</div>
-      ${best && b.pos === best.pos ? '<div class="note pos">Лучше всего получается</div>' : ''}
-    </div>`).join('');
+  $('positions').innerHTML = by.map(b => {
+    const c = !b.n ? 'var(--fg-dim)' : b.wr >= 55 ? 'var(--good)' : b.wr >= 45 ? 'var(--accent)' : 'var(--bad)';
+    return `<div class="card pos-card ${best && b.pos === best.pos ? 'best' : ''}">
+      <div class="pos-top">
+        <div class="ring" style="--p:${b.n ? b.wr.toFixed(0) : 0};--c:${c}" role="img" aria-label="Винрейт ${b.n ? b.wr.toFixed(0) + '%' : 'нет игр'}"><span>${b.n ? b.wr.toFixed(0) + '%' : '—'}</span></div>
+        <div class="pos-name"><span class="label">Pos ${b.pos}</span><b>${POS_NAMES[b.pos]}</b><span class="note">${b.n} игр${b.n ? ` · оценка ${b.score.toFixed(1)}` : ''}</span></div>
+      </div>
+      <div class="pos-heroes">${b.heroes.map(heroIcon).join('')}</div>
+      ${best && b.pos === best.pos ? `<span class="best-tag">${icon('crown')}Лучше всего получается</span>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function renderIssues(t, recent, heroes) {
@@ -431,7 +462,7 @@ function renderIssues(t, recent, heroes) {
   }
   const order = { bad: 0, warn: 1, good: 2 };
   items.sort((a, b) => order[a.sev] - order[b.sev]);
-  $('issues').innerHTML = items.map(i => `<div class="card issue ${i.sev}"><div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div><div class="val" style="color:var(--${i.sev})">${i.val}</div></div>`).join('');
+  $('issues').innerHTML = items.map(i => `<div class="card issue ${i.sev}">${sevIcon(i.sev)}<div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div><div class="val" style="color:var(--${i.sev})">${i.val}</div></div>`).join('');
 }
 
 document.querySelectorAll('#mineTabs .tab').forEach(b => b.addEventListener('click', () => setMetaTab(b.dataset.tab, S.groups[S.group])));
@@ -474,12 +505,13 @@ function renderMatches() {
     const m = S.matches[r.match_id], me = m?._me;
     const won = isWin(r);
     const posb = me ? `<span class="posb ${me._posExact ? '' : 'approx'}" title="${POS_NAMES[me._pos]}${me._posExact ? '' : ' (примерно)'}">${me._pos}</span>` : '<span></span>';
-    return `<button class="card match ${won ? '' : 'loss'}" data-id="${r.match_id}">
-      <span class="res ${won ? 'win' : 'loss'}">${won ? 'Win' : 'Loss'}</span>${posb}
+    return `<button class="card match ${won ? '' : 'loss'}" data-id="${r.match_id}" aria-label="${won ? 'Победа' : 'Поражение'} на ${esc(heroName(r.hero_id))}, открыть разбор">
+      ${m?.version ? '<span class="parsed-dot" title="Реплей разобран"></span>' : ''}
+      <span class="res ${won ? 'win' : 'loss'}"><b>${won ? 'Победа' : 'Поражение'}</b><small>${ago(r.start_time + r.duration)}</small></span>${posb}
       ${heroCell(r.hero_id)}
-      <span>${r.kills}/${r.deaths}/${r.assists}</span>
+      <span class="kda">${r.kills} / <span class="d">${r.deaths}</span> / ${r.assists}</span>
       <span class="gpm">${r.gold_per_min} GPM</span>
-      <span class="dur">${mmss(r.duration)}</span><span class="dim">›</span></button>`;
+      <span class="dur">${icon('clock')}${mmss(r.duration)}</span>${icon('chevron', 'chev')}</button>`;
   }).join('');
   $('matches').querySelectorAll('.match').forEach(b => b.addEventListener('click', () => openMatch(Number(b.dataset.id))));
 }
@@ -546,10 +578,10 @@ function parseBlock(m) {
   const since = parsePendingSince(m.match_id);
   if (since) {
     const min = Math.floor((Date.now() - since) / 60000);
-    return `<div class="card issue info"><div class="body"><div class="title">Разбор запрошен ${min < 1 ? 'только что' : `${min} мин назад`}</div><div class="detail">Обычно это 1–5 минут. Окно обновится само, нажимать ничего не нужно.</div></div><div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
+    return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">Разбор запрошен ${min < 1 ? 'только что' : `${min} мин назад`}</div><div class="detail">Обычно это 1–5 минут. Окно обновится само, нажимать ничего не нужно.</div></div><div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
   }
   const failed = store.get('pr:' + m.match_id);
-  return `<div class="card issue info"><div class="body"><div class="title">Реплей не разобран</div><div class="detail">${failed ? 'Прошлый запрос за 30 минут так и не дал разбора: скорее всего, Valve уже удалила реплей (они хранятся около двух недель). Можно попробовать ещё раз.' : 'Без разбора нет позиций по линиям, графика золота, драк и таймингов предметов. Разбор занимает 1–5 минут.'}</div></div><button class="btn small" id="parseOne">Разобрать</button></div>`;
+  return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">Реплей не разобран</div><div class="detail">${failed ? 'Прошлый запрос за 30 минут так и не дал разбора: скорее всего, Valve уже удалила реплей (они хранятся около двух недель). Можно попробовать ещё раз.' : 'Без разбора нет позиций по линиям, графика золота, драк и таймингов предметов. Разбор занимает 1–5 минут.'}</div></div><button class="btn small" id="parseOne">Разобрать</button></div>`;
 }
 
 const pollers = new Set();
@@ -622,9 +654,9 @@ function renderOverview(m) {
         <p class="note">Ты на ${esc(heroName(me.hero_id))}, позиция ${me._pos} (${POS_NAMES[me._pos]}${me._posExact ? '' : ', примерно'}), ${rank}-е место из 10 по оценке. Полоса показывает, какую долю игроков на этом герое ты обошёл.${extra.length ? ' Ещё: ' + extra.join(', ') + '.' : ''}</p>
         <div class="card bench-list">${rows.map(r => `<div class="bench"><span>${METRICS[r.k].name}</span><div class="track"><div class="fill" style="width:${(r.v * 100).toFixed(0)}%;background:${r.v >= .6 ? 'var(--good)' : r.v >= .4 ? 'var(--warn)' : 'var(--bad)'}"></div></div><span class="num">${(r.v * 100).toFixed(0)}%</span></div>`).join('')}</div>
         <div class="issue-list">
-          ${weak.map(r => `<div class="card issue"><div class="body"><div class="title">${METRICS[r.k].name}: хуже ${(100 - r.v * 100).toFixed(0)}% игроков</div><div class="detail">${METRICS[r.k].tip}</div></div></div>`).join('')}
-          ${strong.length ? `<div class="card issue good"><div class="body"><div class="title">Получилось хорошо</div><div class="detail">${strong.map(r => METRICS[r.k].name.toLowerCase()).join(', ')}: лучше 70%+ игроков на этом герое.</div></div></div>` : ''}
-          ${!weak.length ? '<div class="card issue good"><div class="body"><div class="title">Серьёзных провалов нет</div><div class="detail">По ключевым показателям роли ты не хуже большинства.</div></div></div>' : ''}
+          ${weak.map(r => `<div class="card issue">${sevIcon('bad')}<div class="body"><div class="title">${METRICS[r.k].name}: хуже ${(100 - r.v * 100).toFixed(0)}% игроков</div><div class="detail">${METRICS[r.k].tip}</div></div></div>`).join('')}
+          ${strong.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">Получилось хорошо</div><div class="detail">${strong.map(r => METRICS[r.k].name.toLowerCase()).join(', ')}: лучше 70%+ игроков на этом герое.</div></div></div>` : ''}
+          ${!weak.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">Серьёзных провалов нет</div><div class="detail">По ключевым показателям роли ты не хуже большинства.</div></div></div>` : ''}
         </div></div>`;
   }
   $('dlgBody').innerHTML = parseBlock(m) + mineBlock + table(mine, me ? 'Твоя команда' : 'Radiant', me ? won : m.radiant_win) + table(theirs, me ? 'Враги' : 'Dire', me ? !won : !m.radiant_win) + `
@@ -728,7 +760,7 @@ function goldChart(adv, fights, roshans) {
     <path d="${area}" fill="var(--bad)" fill-opacity=".22" clip-path="url(#cpDn)"/>
     <polyline points="${pts}" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linejoin="round"/>
     ${roshans.map(r => `<g><line x1="${x(r.time / 60)}" x2="${x(r.time / 60)}" y1="${PT}" y2="${H - PB}" stroke="${r.ours ? 'var(--good)' : 'var(--bad)'}" stroke-dasharray="3 3" stroke-opacity=".6"/><text class="axis" x="${x(r.time / 60) + 3}" y="${PT + 10}">Рошан</text></g>`).join('')}
-    ${fights.map(f => `<circle cx="${x(f.mid / 60)}" cy="${y(at(f.mid))}" r="${4 + Math.min(4, f.deaths / 2)}" fill="${f.swing >= 0 ? 'var(--good)' : 'var(--bad)'}" stroke="var(--bg-card)" stroke-width="2"/>`).join('')}
+    ${fights.map(f => `<circle cx="${x(f.mid / 60)}" cy="${y(at(f.mid))}" r="${4 + Math.min(4, f.deaths / 2)}" fill="${f.swing >= 0 ? 'var(--good)' : 'var(--bad)'}" stroke="var(--surface)" stroke-width="2"/>`).join('')}
     <line id="gcCross" x1="0" x2="0" y1="${PT}" y2="${H - PB}" stroke="var(--fg-muted)" stroke-width="1" visibility="hidden"/>
     <rect id="gcHit" x="${PL}" y="${PT}" width="${W - PL - PR}" height="${H - PT - PB}" fill="transparent"/>
   </svg>`;
@@ -823,7 +855,7 @@ function renderFlow(m, G) {
       else if (!win) advice = 'Проигранная драка. Проверь, был ли вижн и все ли пришли.';
       else if (win && inWeak) advice = 'Отличная драка против более сильного по времени драфта.';
       else advice = 'Хорошая драка. Важно, что было после: взяли ли башню или Рошана.';
-      return `<div class="card issue ${win ? 'good' : 'bad'}"><div class="body"><div class="title">${mmss(f.start)} · ${win ? 'выиграна' : 'проиграна'} · смерти ${f.theirDeaths}:${f.ourDeaths}</div><div class="detail">${advice}</div></div><div class="val ${signCls(f.swing)}">${f.swing >= 0 ? '+' : ''}${fmt(f.swing)}</div></div>`;
+      return `<div class="card issue ${win ? 'good' : 'bad'}">${sevIcon(win ? 'good' : 'bad')}<div class="body"><div class="title">${mmss(f.start)} · ${win ? 'выиграна' : 'проиграна'} · смерти ${f.theirDeaths}:${f.ourDeaths}</div><div class="detail">${advice}</div></div><div class="val ${signCls(f.swing)}">${f.swing >= 0 ? '+' : ''}${fmt(f.swing)}</div></div>`;
     }).join('');
     const ourW = fights.filter(f => f.swing >= 0).length;
     if (fights.length) insights.push({ sev: ourW >= fights.length / 2 ? 'good' : 'warn', title: `Драки: ${ourW} из ${fights.length} выиграно`, detail: 'Ниже самые крупные драки по изменению золота.' });
@@ -846,7 +878,7 @@ function renderFlow(m, G) {
   html = `<div class="section"><h3 class="section-title">Когда вы были сильнее</h3>
     <p class="note">Перевес вашего драфта по длительности игры: как герои обеих команд выигрывают в зависимости от минуты окончания матча в ${GROUPS[S.group]}. Бледные столбики — время после конца этой игры.</p>
     <div class="card chart-wrap">${draftBars(curve, endBin)}</div></div>
-    <div class="issue-list">${insights.map(i => `<div class="card issue ${i.sev}"><div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div></div>`).join('')}</div>` + html;
+    <div class="issue-list">${insights.map(i => `<div class="card issue ${i.sev}">${sevIcon(i.sev)}<div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div></div>`).join('')}</div>` + html;
   $('dlgBody').innerHTML = html;
   const wrap = $('dlgBody').querySelectorAll('.chart-wrap')[1];
   if (wrap && m.radiant_gold_adv) {

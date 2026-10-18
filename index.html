@@ -5,14 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dota 2 Analyzer</title>
 <meta name="description" content="Разбор игрока Dota 2: позиции, слабые стороны, драфт, тайминги, предметы против героев и мета патча.">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <div class="wrap">
   <header class="topbar">
-    <span class="brand">Dota 2 Analyzer</span>
-    <nav class="nav">
+    <a class="brand" href="#player" aria-label="Dota 2 Analyzer, на главную">
+      <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20 6v6c0 4.6-3.3 8.4-8 9.5-4.7-1.1-8-4.9-8-9.5V6l8-3.5Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
+      <span class="brand-text"><small>Dota 2</small><span>Analyzer</span></span>
+    </a>
+    <nav class="nav" aria-label="Разделы">
       <a href="#player" id="navPlayer">Игрок</a>
       <a href="#meta" id="navMeta">Мета</a>
     </nav>
@@ -21,18 +26,22 @@
 
   <main id="viewPlayer" class="stack">
     <div class="search-box">
+      <h1>Разбор твоей игры</h1>
       <p>Steam ID, Friend ID или ссылка на профиль. Покажу позиции, слабые стороны, тебя против меты и подробный разбор каждой игры: драфт, драки, тайминги и предметы.</p>
       <form class="search-row" id="searchForm">
-        <input type="text" id="steamId" placeholder="Например 1185373234 или ссылка Steam" autocomplete="off">
+        <label class="search-field" for="steamId">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="text" id="steamId" placeholder="Например 1185373234 или ссылка Steam" autocomplete="off" aria-label="Steam ID, Friend ID или ссылка на профиль">
+        </label>
         <button class="btn" id="searchBtn" type="submit">Анализ</button>
       </form>
     </div>
     <div id="loading" hidden class="loading"><div class="spinner"></div><p id="loadingText">Загружаю данные из OpenDota…</p></div>
-    <div id="error" hidden class="error-msg"></div>
+    <div id="error" hidden class="error-msg" role="alert"></div>
 
-    <div id="results" hidden class="stack">
+    <div id="results" hidden class="stack reveal">
       <div id="profile" class="card profile"></div>
-      <div class="row"><span class="label">Статистика за</span><div class="tabs" id="periodTabs" role="tablist"></div></div>
+      <div class="period"><span class="label">Статистика за</span><div class="tabs" id="periodTabs" role="tablist"></div></div>
       <div id="stats" class="stats-grid"></div>
 
       <section class="section">
@@ -69,7 +78,7 @@
     </div>
   </main>
 
-  <main id="viewMeta" class="stack" hidden>
+  <main id="viewMeta" class="stack reveal" hidden>
     <div class="row">
       <div class="tabs" id="groupTabs"></div>
       <div class="tabs" id="posTabs"></div>
@@ -121,10 +130,10 @@
   <div class="dlg-head">
     <div class="row"><h2 id="dlgTitle">Матч</h2><button class="btn ghost small" id="dlgClose">Закрыть</button></div>
     <div class="tabs" id="dlgTabs" role="tablist">
-      <button class="tab" role="tab" data-tab="overview" aria-selected="true">Обзор</button>
-      <button class="tab" role="tab" data-tab="draft" aria-selected="false">Драфт</button>
-      <button class="tab" role="tab" data-tab="flow" aria-selected="false">Ход игры</button>
-      <button class="tab" role="tab" data-tab="items" aria-selected="false">Предметы</button>
+      <button class="tab" role="tab" data-tab="overview" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>Обзор</button>
+      <button class="tab" role="tab" data-tab="draft" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 13 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2"/></svg>Драфт</button>
+      <button class="tab" role="tab" data-tab="flow" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Ход игры</button>
+      <button class="tab" role="tab" data-tab="items" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 4.3 9 5.2M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>Предметы</button>
     </div>
   </div>
   <div class="dlg-body" id="dlgBody"></div>
