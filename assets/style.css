@@ -446,3 +446,22 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 }
 
 #heroSvg { pointer-events: none; }
+
+.hero-pick { display: flex; flex-direction: column; gap: 14px; }
+.hero-pick .search-field { max-width: 320px; }
+.hero-grid { display: flex; flex-direction: column; gap: 12px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.hg-label { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--fg-muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.hg-label i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.hg-label .attr-str { background: #e0573f; } .hg-label .attr-agi { background: #4fd286; } .hg-label .attr-int { background: #3b8ec2; } .hg-label .attr-all { background: #c9a14a; }
+.hg-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 4px; }
+.hg { display: block; padding: 0; border: 1px solid transparent; border-radius: 6px; background: var(--surface-2); overflow: hidden; cursor: pointer; aspect-ratio: 16 / 9; transition: transform .12s, border-color .12s, filter .12s; filter: saturate(.8) brightness(.85); }
+.hg img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.hg:hover { transform: scale(1.08); filter: none; border-color: var(--border-strong); z-index: 1; position: relative; }
+.hg[aria-pressed="true"] { filter: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 4px 16px -4px rgba(227,176,75,.6); }
+.hg:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.guide-pos { justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.pro-ava { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-strong); flex: none; }
+.pro-ava.big { width: 40px; height: 40px; }
+.pro-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pro-head > span { display: flex; flex-direction: column; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .hg { transition: none; } .hg:hover { transform: none; } }

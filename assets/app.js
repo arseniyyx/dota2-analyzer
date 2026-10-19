@@ -1492,6 +1492,7 @@ const PRO_METRIC = {
   kills_per_min: ['kills', L('убийства за игру', 'kills per game'), false, 1], assists_per_min: ['assists', L('помощь за игру', 'assists per game'), false, 1],
   tower_damage: ['td', L('урон по башням за игру', 'tower damage per game')],
 };
+const proAvatar = id => { const a = (S.pros || []).find(p => p.account_id === id)?.avatar; return a ? `<img class="pro-ava" src="${a}" alt="" loading="lazy" width="28" height="28">` : ''; };
 const prosAt = pos => (S.pros || []).filter(p => p.pos === pos);
 const myMainPos = () => {
   const c = [0, 0, 0, 0, 0, 0];
@@ -1512,7 +1513,7 @@ function proBuilds(heroId, limit = 3) {
   const rows = (S.pros || []).flatMap(p => p.heroes.filter(h => h.hero_id === heroId && h.build.length).map(h => ({ p, h }))).sort((a, b) => b.h.games - a.h.games).slice(0, limit);
   if (!rows.length) return '';
   return `<div class="section"><h3 class="label">${L('Как собирают про', 'How pros build it')}</h3><div class="card">${rows.map(({ p, h }) => `
-    <div class="pro-build"><div class="pro-name"><b>${esc(p.name)}</b><span class="note">${esc(p.team)} · ${h.games} ${L('игр', 'games')} · ${h.wr}%</span></div>
+    <div class="pro-build"><div class="pro-name">${proAvatar(p.account_id)}<b>${esc(p.name)}</b><span class="note">${esc(p.team)} · ${h.games} ${L('игр', 'games')} · ${h.wr}%</span></div>
     <div class="build-line">${h.build.map(([k, t]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b></div>`).join('')}</div></div>`).join('')}</div></div>`;
 }
 
@@ -1529,7 +1530,7 @@ function renderPros() {
   const sit = (label, [n, wr]) => n ? `<div class="sit"><span class="note">${label}</span><b class="${wr >= 50 ? 'pos' : 'neg'}">${wr}%</b><span class="dim">${n} ${L('игр', 'games')}</span></div>` : '';
   const phaseMax = Math.max(...(p?.farm_phases || []).filter(Boolean), 1);
   box.innerHTML = `
-    <div class="pro-cards">${list.map(x => `<button class="card pro-card ${x.account_id === S.proId ? 'active' : ''}" data-id="${x.account_id}"><b>${esc(x.name)}</b><span class="note">${esc(x.team)}</span><span class="pro-card-stats"><span>${x.wr}%</span><span>${x.gpm} GPM</span></span></button>`).join('')}</div>
+    <div class="pro-cards">${list.map(x => `<button class="card pro-card ${x.account_id === S.proId ? 'active' : ''}" data-id="${x.account_id}"><span class="pro-head">${x.avatar ? `<img class="pro-ava big" src="${x.avatar}" alt="" loading="lazy" width="40" height="40">` : ''}<span><b>${esc(x.name)}</b><span class="note">${esc(x.team)}</span></span></span><span class="pro-card-stats"><span>${x.wr}%</span><span>${x.gpm} GPM</span></span></button>`).join('')}</div>
     ${p ? `
     <div class="stats-grid">
       <div class="card stat"><div class="label">${L('Винрейт', 'Win rate')}</div><div class="value" data-count>${p.wr}%</div><div class="sub">${p.games} ${L('игр в патче', 'games this patch')}</div></div>
@@ -1648,6 +1649,7 @@ function renderLearn() {
   $('posGuide').innerHTML = POS_GUIDE[S.learnPos].map(([phase, items]) => `<div class="card pad"><div class="label">${phase}</div><ul class="lesson-tips">${items.map(t => `<li>${t}</li>`).join('')}</ul></div>`).join('');
 
   if (!S.learnHeroPicked) S.learnHero = [...(S.playerHeroes || [])].sort((a, b) => b.games - a.games)[0]?.hero_id || S.itemHero || 1;
+  renderHeroGrid();
   renderHeroGuide();
   renderPros();
 }
@@ -1656,6 +1658,10 @@ async function renderHeroGuide() {
   const h = S.learnHero;
   const G = await loadGroup(S.group || 3).catch(() => null);
   await loadItems().catch(() => {});
+  if (!S.heroPos) S.heroPos = await getJSON('data/heroes.json').catch(() => ({}));
+  const hp = S.heroPos[h] || {}, posList = Object.keys(hp).map(Number).sort((a, b) => hp[b].n - hp[a].n);
+  if (!posList.includes(S.guidePos)) S.guidePos = posList.includes(myMainPos()) ? myMainPos() : posList[0];
+  const gp = hp[S.guidePos];
   const pro = S.meta?.pro_items?.[h] || {};
   const build = Object.entries(pro).filter(([k, [rate]]) => rate >= 0.12 && itemByKey(k) && (itemByKey(k).cost || 0) >= 1000 && (itemByKey(k).components || k === 'blink')).sort((a, b) => a[1][1] - b[1][1]).slice(0, 9);
   const heroesWith = G ? Object.keys(S.heroes).map(Number).filter(x => x !== h && G.idx[x] != null && heroPick(G, x) >= 0.01) : [];
@@ -1666,16 +1672,48 @@ async function renderHeroGuide() {
   const list = (arr) => arr.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div class="name">${esc(heroName(c.x))}</div><div class="lift ${signCls(c.v)}">${pct(c.v)}</div></div>`).join('');
   $('heroGuide').innerHTML = `
     <div class="card pad hero-head">${heroCell(h)}${G ? `<span class="chip pos">${L('Сильнее всего', 'Strongest at')}: ${DUR_LABELS[peak]} ${L('мин', 'min')}</span><span class="note">${L('Винрейт', 'Win rate')} ${(heroWr(G, h) * 100).toFixed(1)}% · ${GROUPS[S.group || 3]}</span>` : ''}</div>
-    ${build.length ? `<div class="section"><h3 class="label">${L('Сборка про-игроков', 'Pro build')}</h3><div class="card build-line">${build.map(([k, [rate, t]]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b><span class="note">${Math.round(rate * 100)}%</span></div>`).join('')}</div></div>` : ''}
+    ${gp ? `<div class="section"><div class="row guide-pos"><h3 class="label">${L('Сборка про на позиции', 'Pro build by position')}</h3><div class="tabs" id="guidePosTabs">${posList.map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.guidePos}">${p} · ${POS_NAMES[p]}</button>`).join('')}</div></div>
+      <div class="card build-line">${gp.build.map(([k, t, r]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b><span class="note">${Math.round(r * 100)}%</span></div>`).join('')}</div>
+      <p class="note">${L(`${gp.n} про-игр на этой позиции · винрейт ${gp.wr}%`, `${gp.n} pro games in this role · ${gp.wr}% win rate`)}</p></div>
+    ${gp.top.length ? `<div class="section"><h3 class="label">${L('Лучшие игроки', 'Best players')}: ${esc(heroName(h))} · ${POS_NAMES[S.guidePos]}</h3><div class="card">${gp.top.map(t => `
+      <div class="pro-build"><div class="pro-name">${proAvatar(t.id)}<b>${esc(t.name)}</b><span class="note">${t.team ? esc(t.team) + ' · ' : ''}${t.games} ${L('игр', 'games')} · ${t.wr}%</span></div>
+      <div class="build-line">${t.build.map(([k, tm]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(tm)}</b></div>`).join('')}</div></div>`).join('')}</div></div>` : ''}`
+    : build.length ? `<div class="section"><h3 class="label">${L('Сборка про-игроков', 'Pro build')}</h3><div class="card build-line">${build.map(([k, [rate, t]]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b><span class="note">${Math.round(rate * 100)}%</span></div>`).join('')}</div></div>` : ''}
     <div class="two-col">
       <div class="section"><h3 class="label">${L('Его контрят', 'Countered by')}</h3><div class="card">${list(counters) || `<div class="empty">—</div>`}</div></div>
       <div class="section"><h3 class="label">${L('Он контрит', 'Counters')}</h3><div class="card">${list(victims) || `<div class="empty">—</div>`}</div></div>
-    </div>
-    ${proBuilds(h)}`;
+    </div>`;
+  $('heroGuide').querySelectorAll('#guidePosTabs .tab').forEach(b => b.addEventListener('click', () => { S.guidePos = +b.dataset.p; renderHeroGuide(); }));
+  markHeroGrid();
   revealList($('heroGuide').children);
 }
 
-$('learnHeroInput').addEventListener('change', e => { const id = heroByName(e.target.value); if (id) { S.learnHero = id; S.learnHeroPicked = true; e.target.value = ''; renderHeroGuide(); } });
+const ATTRS = [['str', L('Сила', 'Strength')], ['agi', L('Ловкость', 'Agility')], ['int', L('Интеллект', 'Intelligence')], ['all', L('Универсальные', 'Universal')]];
+function renderHeroGrid() {
+  const byName = (a, b) => a.localized_name.localeCompare(b.localized_name);
+  const btn = h => `<button class="hg" data-id="${h.id}" data-name="${esc(h.localized_name.toLowerCase())}" title="${esc(h.localized_name)}"><img src="${heroImg(h.id)}" alt="${esc(h.localized_name)}" loading="lazy" width="64" height="36"></button>`;
+  const mine = [...(S.playerHeroes || [])].sort((a, b) => b.games - a.games).slice(0, 10).map(x => S.heroes[x.hero_id]).filter(Boolean);
+  const groups = [...(mine.length ? [['mine', L('Твои герои', 'Your heroes'), mine]] : []), ...ATTRS.map(([a, label]) => [a, label, Object.values(S.heroes).filter(h => h.primary_attr === a).sort(byName)])];
+  $('heroGrid').innerHTML = groups.map(([a, label, hs]) => `<div class="hg-group" data-attr="${a}"><div class="hg-label"><i class="attr-${a}"></i>${label}</div><div class="hg-row">${hs.map(btn).join('')}</div></div>`).join('');
+  $('heroGrid').querySelectorAll('.hg').forEach(b => b.addEventListener('click', () => pickGuideHero(+b.dataset.id)));
+  markHeroGrid();
+}
+function markHeroGrid() { document.querySelectorAll('#heroGrid .hg').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.id === S.learnHero))); }
+function pickGuideHero(id) {
+  S.learnHero = id; S.learnHeroPicked = true; S.guidePos = null;
+  renderHeroGuide();
+  $('heroGuide').scrollIntoView({ behavior: motionOn() ? 'smooth' : 'auto', block: 'start' });
+}
+$('learnHeroInput').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('#heroGrid .hg').forEach(b => { b.hidden = !!q && !b.dataset.name.includes(q); });
+  document.querySelectorAll('#heroGrid .hg-group').forEach(g => { g.hidden = ![...g.querySelectorAll('.hg')].some(b => !b.hidden); });
+});
+$('learnHeroInput').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const first = document.querySelector('#heroGrid .hg:not([hidden])');
+  if (first) { e.preventDefault(); pickGuideHero(+first.dataset.id); }
+});
 
 /* ---------- router & boot ---------- */
 

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=21">
+<link rel="stylesheet" href="assets/style.css?v=22">
 </head>
 <body>
 <div class="wrap">
@@ -137,7 +137,10 @@
     </section>
     <section class="section">
       <h2 class="section-title" data-en="Hero">Герой</h2>
-      <div class="row"><input class="field" id="learnHeroInput" list="heroList" placeholder="Выбери героя" data-en-placeholder="Pick a hero" style="max-width: 320px"></div>
+      <div class="card pad hero-pick">
+        <label class="search-field" for="learnHeroInput"><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="text" id="learnHeroInput" placeholder="Найти героя" data-en-placeholder="Find a hero" autocomplete="off" aria-label="Найти героя" data-en-aria="Find a hero"></label>
+        <div id="heroGrid" class="hero-grid"></div>
+      </div>
       <div id="heroGuide" class="stack-sm"></div>
     </section>
     <section class="section">
@@ -181,6 +184,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=21"></script>
+<script src="assets/app.js?v=22"></script>
 </body>
 </html>

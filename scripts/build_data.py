@@ -251,6 +251,58 @@ def chunked_sql(ids, size, make_query):
     return rows
 
 
+def build_hero_pos(by_match, minfo, items):
+    """Per hero and position: what pros build there, and the best players on that hero in that role."""
+    big = lambda k: k in items and (items[k].get("cost") or 0) >= 1000 and (items[k].get("components") or k == "blink") and not k.startswith("recipe")
+    games = defaultdict(list)  # (hero, pos) -> [(account_id, won, {item: first purchase time})]
+    for mid, ps in by_match.items():
+        mi = minfo.get(mid)
+        if not mi:
+            continue
+        for p in ps:
+            if "_pos" not in p:
+                continue
+            first = {}
+            for e in p.get("purchase_log") or []:
+                if big(e["key"]) and e["key"] not in first:
+                    first[e["key"]] = e["time"]
+            games[(p["hero_id"], p["_pos"])].append((p.get("account_id"), (p["player_slot"] < 128) == mi["radiant_win"], first))
+
+    def build_of(gs, min_rate, limit):
+        times = defaultdict(list)
+        for _, _, first in gs:
+            for k, t in first.items():
+                times[k].append(t)
+        return sorted([[k, int(median(v)), round(len(v) / len(gs), 2)] for k, v in times.items() if len(v) / len(gs) >= min_rate], key=lambda x: x[1])[:limit]
+
+    wr = lambda gs: round(100 * sum(g[1] for g in gs) / len(gs))
+    out, cands = {}, {}
+    for (h, pos), gs in games.items():
+        if len(gs) < 15:
+            continue
+        by_p = defaultdict(list)
+        for g in gs:
+            if g[0]:
+                by_p[g[0]].append(g)
+        # rank by win rate shrunk toward 50% so 3-0 doesn't beat 12-4
+        cands[(h, pos)] = sorted([(a, pg) for a, pg in by_p.items() if len(pg) >= 3], key=lambda x: -(sum(g[1] for g in x[1]) + 1.5) / (len(x[1]) + 3))[:10]
+        out.setdefault(h, {})[pos] = {"n": len(gs), "wr": wr(gs), "build": build_of(gs, 0.25, 8), "top": []}
+    accs = sorted({a for c in cands.values() for a, _ in c})
+    names = {}
+    for s_ in range(0, len(accs), 300):
+        part = accs[s_:s_ + 300]
+        for r in sql(f"SELECT account_id, name, team_name FROM notable_players WHERE account_id IN ({','.join(map(str, part))})"):
+            if r.get("name"):
+                names[r["account_id"]] = (r["name"].strip(), (r.get("team_name") or "").strip())
+        time.sleep(1)
+    for (h, pos), c in cands.items():
+        out[h][pos]["top"] = [{"id": a, "name": names[a][0], "team": names[a][1], "games": len(pg), "wr": wr(pg), "build": build_of(pg, 0.4, 6)}
+                              for a, pg in c if a in names][:4]
+    with open(os.path.join(OUT, "heroes.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"  hero/position builds: {sum(len(v) for v in out.values())} pairs, {len(names)} named players")
+
+
 def build_pros(patch, ids, by_match, items):
     """Tier-1 players (top-rated active teams), 5 per position, with their hero, item, farm and situation patterns."""
     teams = sql("SELECT tr.team_id, t.name, tr.rating FROM team_rating tr JOIN teams t USING(team_id) "
@@ -259,6 +311,8 @@ def build_pros(patch, ids, by_match, items):
     in_list = lambda part: f"match_id >= {part[0]} AND match_id <= {part[-1]} AND match_id IN ({','.join(map(str, part))})"
     minfo = {r["match_id"]: r for r in chunked_sql(ids, 400, lambda part: (
         "SELECT match_id, radiant_team_id, dire_team_id, radiant_win, duration, radiant_gold_adv FROM matches WHERE " + in_list(part)))}
+
+    build_hero_pos(by_match, minfo, items)
 
     acc = defaultdict(lambda: {"games": 0, "teams": Counter(), "pos": Counter()})
     for mid, ps in by_match.items():
@@ -375,6 +429,10 @@ def build_pros(patch, ids, by_match, items):
             "spike": {"fast": [fast, round(100 * fast_w / fast) if fast else None], "slow": [slow, round(100 * slow_w / slow) if slow else None]},
             "heroes": heroes, "best_vs": vs_list[:3], "worst_vs": vs_list[-3:][::-1],
         })
+        try:  # current Steam avatar, refreshed with every build
+            players[-1]["avatar"] = (get(f"players/{aid}").get("profile") or {}).get("avatarfull")
+        except RuntimeError:
+            pass
         print(f"  pro {names.get(aid)} pos {pos} {rating[team][1]}: {n} games")
     with open(os.path.join(OUT, "pros.json"), "w", encoding="utf-8") as f:
         json.dump({"patch": patch, "generated_at": int(time.time()), "players": players}, f, ensure_ascii=False, separators=(",", ":"))
