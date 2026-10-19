@@ -166,16 +166,23 @@ def build_pro(item_consts):
                if (v.get("components") and (v.get("cost") or 0) >= 900 and not k.startswith("recipe")) or k in EXTRA_ITEMS}
 
     players = []
-    for s in range(0, len(ids), 150):
+    cache = os.environ.get("PRO_CACHE")  # local runs: reuse downloaded pro rows
+    if cache and os.path.exists(cache):
+        with open(cache, encoding="utf-8") as f:
+            players = json.load(f)
+    for s in range(0, len(ids) if not players else 0, 150):
         part = ids[s:s + 150]
         rows = sql(
-            "SELECT match_id, account_id, player_slot, hero_id, lane_role, is_roaming, net_worth, purchase_log FROM player_matches "
+            "SELECT match_id, account_id, player_slot, hero_id, lane_role, is_roaming, net_worth, purchase_log, lh_t[11] AS lh10, gold_t[11] AS g10, gold_t[16] AS g15, gold_t[21] AS g20, gold_t[26] AS g25 FROM player_matches "
             f"WHERE match_id >= {part[0]} AND match_id <= {part[-1]} AND match_id IN ({','.join(map(str, part))})"
         )
         players.extend(rows)
         print(f"  pro players: {len(players)}")
         time.sleep(1)
 
+    if cache and not os.path.exists(cache):
+        with open(cache, "w", encoding="utf-8") as f:
+            json.dump(players, f)
     by_match = defaultdict(list)
     for p in players:
         by_match[p["match_id"]].append(p)
@@ -251,10 +258,90 @@ def chunked_sql(ids, size, make_query):
     return rows
 
 
-def build_hero_pos(by_match, minfo, items):
+STRATZ = "https://api.stratz.com/graphql"
+
+
+def stratz(query, token, tries=4):
+    body = json.dumps({"query": query}).encode()
+    for i in range(tries):
+        try:
+            req = urllib.request.Request(STRATZ, data=body, headers={
+                "Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": "STRATZ_API"})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                d = json.loads(r.read())
+            if d.get("data"):
+                return d["data"]
+            raise RuntimeError(str(d.get("errors"))[:200])
+        except (urllib.error.URLError, http.client.HTTPException, OSError, json.JSONDecodeError, RuntimeError) as e:
+            print(f"  stratz retry {i + 1}: {e}", file=sys.stderr)
+            time.sleep(5 * (i + 1))
+    return None
+
+
+def build_pub_items(hero_ids, items):
+    """Divine/Immortal pubs from Stratz: item build, timing win rates and starting items per hero and position."""
+    token = os.environ.get("STRATZ_TOKEN")
+    if not token:
+        return None
+    key_of = {v["id"]: k for k, v in items.items() if v.get("id")}
+    big = lambda k: k in items and (items[k].get("cost") or 0) >= 1000 and (items[k].get("components") or k == "blink") and not k.startswith("recipe")
+    out = defaultdict(dict)
+    for n, h in enumerate(hero_ids):
+        q = " ".join(
+            f"f{p}: itemFullPurchase(heroId: {h}, bracketBasicIds: [DIVINE_IMMORTAL], positionIds: [POSITION_{p}]) {{ itemId time matchCount winCount }} "
+            f"s{p}: itemStartingPurchase(heroId: {h}, bracketBasicIds: [DIVINE_IMMORTAL], positionIds: [POSITION_{p}]) {{ itemId matchCount winCount }}"
+            for p in range(1, 6))
+        d = stratz(f"{{ heroStats {{ {q} }} }}", token)
+        time.sleep(0.5)
+        if not d:
+            continue
+        hs = d["heroStats"]
+        for p in range(1, 6):
+            start = hs.get(f"s{p}") or []
+            games = max((r["matchCount"] for r in start), default=0)  # every game starts with some tango/branch purchase
+            if games < 1000:
+                continue
+            per = defaultdict(list)
+            for r in hs.get(f"f{p}") or []:
+                k = key_of.get(r["itemId"])
+                if k and big(k) and r["time"] is not None:
+                    per[k].append((r["time"], r["matchCount"], r["winCount"]))
+            rows = []
+            for k, ts in per.items():
+                total = sum(c for _, c, _ in ts)
+                if total < games * 0.12:
+                    continue
+                ts.sort()
+                acc, med = 0, ts[-1][0]
+                for t, c, _ in ts:
+                    acc += c
+                    if acc >= total / 2:
+                        med = t
+                        break
+                fast = [(c, w) for t, c, w in ts if t <= med]
+                slow = [(c, w) for t, c, w in ts if t > med]
+                wr = lambda lst: round(100 * sum(w for _, w in lst) / max(1, sum(c for c, _ in lst)))
+                rows.append([k, med * 60, round(min(1, total / games), 2), round(100 * sum(w for _, _, w in ts) / total),
+                             wr(fast) if sum(c for c, _ in fast) >= 100 else None, wr(slow) if sum(c for c, _ in slow) >= 100 else None])
+            rows.sort(key=lambda r: r[1])
+            agg = defaultdict(lambda: [0, 0])
+            for r in start:
+                k = key_of.get(r["itemId"])
+                if k:
+                    agg[k][0] += r["matchCount"]
+                    agg[k][1] += r["winCount"]
+            if rows:
+                out[h][p] = {"games": games, "build": rows[:9],
+                             "start": sorted([[k, round(c / games, 2)] for k, (c, w) in agg.items() if c >= games * 0.2], key=lambda x: -x[1])[:6]}
+        if n % 20 == 0:
+            print(f"  stratz pubs: {n}/{len(hero_ids)} heroes")
+    return out
+
+
+def build_hero_pos(by_match, minfo, items, hero_ids=()):
     """Per hero and position: what pros build there, and the best players on that hero in that role."""
     big = lambda k: k in items and (items[k].get("cost") or 0) >= 1000 and (items[k].get("components") or k == "blink") and not k.startswith("recipe")
-    games = defaultdict(list)  # (hero, pos) -> [(account_id, won, {item: first purchase time})]
+    games = defaultdict(list)  # (hero, pos) -> [(account_id, won, {item: first purchase time}, match_id, duration, enemy heroes)]
     for mid, ps in by_match.items():
         mi = minfo.get(mid)
         if not mi:
@@ -266,12 +353,46 @@ def build_hero_pos(by_match, minfo, items):
             for e in p.get("purchase_log") or []:
                 if big(e["key"]) and e["key"] not in first:
                     first[e["key"]] = e["time"]
-            games[(p["hero_id"], p["_pos"])].append((p.get("account_id"), (p["player_slot"] < 128) == mi["radiant_win"], first))
+            rad = p["player_slot"] < 128
+            enemies = [q["hero_id"] for q in sorted(ps, key=lambda q: q.get("_pos", 9)) if (q["player_slot"] < 128) != rad]
+            farm = [p.get(k) for k in ("lh10", "g10", "g15", "g20", "g25")]
+            games[(p["hero_id"], p["_pos"])].append((p.get("account_id"), rad == mi["radiant_win"], first, mid, mi["duration"], enemies, farm))
+
+    def situational(gs, build):
+        """Items bought noticeably more often when a given enemy is in the game."""
+        core = {b[0] for b in build[:3]}
+        n = len(gs)
+        out = []
+        for k in {k for g in gs for k in g[2]} - core:
+            rate = sum(k in g[2] for g in gs) / n
+            if not 0.06 <= rate <= 0.6:
+                continue
+            seen, bought = defaultdict(int), defaultdict(int)
+            for g in gs:
+                for e in g[5]:
+                    seen[e] += 1
+                    bought[e] += k in g[2]
+            vs = sorted([[e, round((bought[e] + 1) / (rate * c + 1), 2)] for e, c in seen.items() if c >= 5 and bought[e] >= 3],
+                        key=lambda x: -x[1])
+            vs = [v for v in vs if v[1] >= 1.6][:3]
+            if vs:
+                out.append([k, round(rate, 2), vs])
+        return sorted(out, key=lambda x: -x[2][0][1])[:6]
+
+    def timing_cost(gs, build):
+        """Win rate when a core item came before vs after its median timing."""
+        out = []
+        for k, med, _ in build[:4]:
+            fast = [g[1] for g in gs if k in g[2] and g[2][k] <= med]
+            slow = [g[1] for g in gs if k in g[2] and g[2][k] > med]
+            if len(fast) >= 6 and len(slow) >= 6:
+                out.append([k, med, round(100 * sum(fast) / len(fast)), round(100 * sum(slow) / len(slow))])
+        return out
 
     def build_of(gs, min_rate, limit):
         times = defaultdict(list)
-        for _, _, first in gs:
-            for k, t in first.items():
+        for g in gs:
+            for k, t in g[2].items():
                 times[k].append(t)
         return sorted([[k, int(median(v)), round(len(v) / len(gs), 2)] for k, v in times.items() if len(v) / len(gs) >= min_rate], key=lambda x: x[1])[:limit]
 
@@ -286,8 +407,13 @@ def build_hero_pos(by_match, minfo, items):
                 by_p[g[0]].append(g)
         # rank by win rate shrunk toward 50% so 3-0 doesn't beat 12-4
         cands[(h, pos)] = sorted([(a, pg) for a, pg in by_p.items() if len(pg) >= 3], key=lambda x: -(sum(g[1] for g in x[1]) + 1.5) / (len(x[1]) + 3))[:10]
-        out.setdefault(h, {})[pos] = {"n": len(gs), "wr": wr(gs), "build": build_of(gs, 0.25, 8), "top": []}
-    accs = sorted({a for c in cands.values() for a, _ in c})
+        b = build_of(gs, 0.25, 8)
+        recent = sorted(gs, key=lambda g: -g[3])[:8]
+        farm = [int(median(v)) if len(v) >= 8 else None for v in ([g[6][i] for g in gs if g[6][i] is not None] for i in range(5))]
+        out.setdefault(h, {})[pos] = {"n": len(gs), "wr": wr(gs), "build": b, "top": [], "farm": farm,
+                                      "situational": situational(gs, b), "timing": timing_cost(gs, b),
+                                      "games": [[g[3], g[0], int(g[1]), g[4], g[5], sorted([[k, t] for k, t in g[2].items()], key=lambda x: x[1])[:6]] for g in recent]}
+    accs = sorted({a for c in cands.values() for a, _ in c} | {g[1] for h in out.values() for v in h.values() for g in v["games"] if g[1]})
     names = {}
     for s_ in range(0, len(accs), 300):
         part = accs[s_:s_ + 300]
@@ -295,15 +421,27 @@ def build_hero_pos(by_match, minfo, items):
             if r.get("name"):
                 names[r["account_id"]] = (r["name"].strip(), (r.get("team_name") or "").strip())
         time.sleep(1)
+    for h in out.values():
+        for v in h.values():
+            for g in v["games"]:
+                g[1] = names[g[1]][0] if g[1] in names else None
     for (h, pos), c in cands.items():
         out[h][pos]["top"] = [{"id": a, "name": names[a][0], "team": names[a][1], "games": len(pg), "wr": wr(pg), "build": build_of(pg, 0.4, 6)}
                               for a, pg in c if a in names][:4]
-    with open(os.path.join(OUT, "heroes.json"), "w", encoding="utf-8") as f:
+    pubs = build_pub_items(hero_ids, items)
+    path = os.path.join(OUT, "heroes.json")
+    if pubs is None and os.path.exists(path):  # no Stratz token here: keep the last pub data
+        with open(path, encoding="utf-8") as f:
+            pubs = {int(h): {int(p): v["pub"] for p, v in ps.items() if v.get("pub")} for h, ps in json.load(f).items()}
+    for h, ps in (pubs or {}).items():
+        for p, v in ps.items():
+            out.setdefault(h, {}).setdefault(p, {"n": 0, "wr": None, "build": [], "top": [], "situational": [], "timing": [], "games": []})["pub"] = v
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  hero/position builds: {sum(len(v) for v in out.values())} pairs, {len(names)} named players")
 
 
-def build_pros(patch, ids, by_match, items):
+def build_pros(patch, ids, by_match, items, hero_ids=()):
     """Tier-1 players (top-rated active teams), 5 per position, with their hero, item, farm and situation patterns."""
     teams = sql("SELECT tr.team_id, t.name, tr.rating FROM team_rating tr JOIN teams t USING(team_id) "
                 "WHERE tr.last_match_time > extract(epoch from now() - interval '60 days') ORDER BY tr.rating DESC LIMIT 24")
@@ -312,7 +450,7 @@ def build_pros(patch, ids, by_match, items):
     minfo = {r["match_id"]: r for r in chunked_sql(ids, 400, lambda part: (
         "SELECT match_id, radiant_team_id, dire_team_id, radiant_win, duration, radiant_gold_adv FROM matches WHERE " + in_list(part)))}
 
-    build_hero_pos(by_match, minfo, items)
+    build_hero_pos(by_match, minfo, items, hero_ids)
 
     acc = defaultdict(lambda: {"games": 0, "teams": Counter(), "pos": Counter()})
     for mid, ps in by_match.items():
@@ -447,7 +585,7 @@ def main():
     print("Pro matches...")
     patch, pro_matches, positions, counters, pro_items, seen, pro_ids, by_match = build_pro(items)
     print("Tier-1 players...")
-    build_pros(patch, pro_ids, by_match, items)
+    build_pros(patch, pro_ids, by_match, items, hero_ids)
     if os.environ.get("ONLY_PROS"):
         return
     meta = {

@@ -1547,16 +1547,10 @@ function renderPros() {
         ${sit(L('Отставали на 15 мин', 'Behind at 15 min'), p.situations.behind)}${sit(L('Вели на 15 мин', 'Ahead at 15 min'), p.situations.ahead)}
       </div></div>
     </div>
-    <div class="two-col">
-      <div class="section"><h3 class="label">${L('Пики силы', 'Power spikes')}</h3><div class="card pad sits">
-        ${p.kill_peak != null ? `<div class="sit"><span class="note">${L('Больше всего убивает', 'Most kills at')}</span><b>${p.kill_peak * 5}–${p.kill_peak * 5 + 5} ${L('мин', 'min')}</b></div>` : ''}
-        ${sit(L('Первый предмет раньше обычного', 'First item faster than usual'), p.spike.fast)}${sit(L('Первый предмет позже обычного', 'First item slower than usual'), p.spike.slow)}
-      </div></div>
-      <div class="section"><h3 class="label">${L('Матчапы', 'Matchups')}</h3><div class="card pad matchups">
-        <div><span class="note">${L('Лучше всего против', 'Best against')}</span><div class="row">${p.best_vs.map(([h, g, wr]) => `<span class="hchip" title="${esc(heroName(h))} · ${g} ${L('игр', 'games')}">${heroImg(h) ? `<img src="${heroImg(h)}" alt="">` : ''}<span class="pos">${wr}%</span><span class="dim">${g}</span></span>`).join('')}</div></div>
-        <div><span class="note">${L('Хуже всего против', 'Worst against')}</span><div class="row">${p.worst_vs.map(([h, g, wr]) => `<span class="hchip" title="${esc(heroName(h))} · ${g} ${L('игр', 'games')}">${heroImg(h) ? `<img src="${heroImg(h)}" alt="">` : ''}<span class="neg">${wr}%</span><span class="dim">${g}</span></span>`).join('')}</div></div>
-      </div></div>
-    </div>
+    <div class="section"><h3 class="label">${L('Матчапы', 'Matchups')}</h3><div class="card pad matchups two-col">
+      <div><span class="note">${L('Лучше всего против', 'Best against')}</span><div class="row">${p.best_vs.map(([h, g, wr]) => `<span class="hchip" title="${esc(heroName(h))} · ${g} ${L('игр', 'games')}">${heroImg(h) ? `<img src="${heroImg(h)}" alt="">` : ''}<span class="pos">${wr}%</span><span class="dim">${g}</span></span>`).join('')}</div></div>
+      <div><span class="note">${L('Хуже всего против', 'Worst against')}</span><div class="row">${p.worst_vs.map(([h, g, wr]) => `<span class="hchip" title="${esc(heroName(h))} · ${g} ${L('игр', 'games')}">${heroImg(h) ? `<img src="${heroImg(h)}" alt="">` : ''}<span class="neg">${wr}%</span><span class="dim">${g}</span></span>`).join('')}</div></div>
+    </div></div>
     <div class="section"><h3 class="label">${L('Герои и сборки', 'Heroes and builds')}</h3><div class="card">${p.heroes.map(h => `
       <div class="pro-build"><div class="pro-name">${heroCell(h.hero_id)}<span class="note">${h.games} ${L('игр', 'games')} · ${h.wr}% · ${h.gpm} GPM</span></div>
       <div class="build-line">${h.build.map(([k, t, r]) => `<div class="build-step" title="${Math.round(r * 100)}%">${itemIcon(k)}<b>${mmss(t)}</b></div>`).join('')}</div></div>`).join('')}</div></div>` : ''}`;
@@ -1659,33 +1653,126 @@ async function renderHeroGuide() {
   const G = await loadGroup(S.group || 3).catch(() => null);
   await loadItems().catch(() => {});
   if (!S.heroPos) S.heroPos = await getJSON('data/heroes.json').catch(() => ({}));
-  const hp = S.heroPos[h] || {}, posList = Object.keys(hp).map(Number).sort((a, b) => hp[b].n - hp[a].n);
-  if (!posList.includes(S.guidePos)) S.guidePos = posList.includes(myMainPos()) ? myMainPos() : posList[0];
-  const gp = hp[S.guidePos];
-  const pro = S.meta?.pro_items?.[h] || {};
-  const build = Object.entries(pro).filter(([k, [rate]]) => rate >= 0.12 && itemByKey(k) && (itemByKey(k).cost || 0) >= 1000 && (itemByKey(k).components || k === 'blink')).sort((a, b) => a[1][1] - b[1][1]).slice(0, 9);
+  const hp = S.heroPos[h] || {};
+  const posList = Object.keys(hp).map(Number).sort((a, b) => (hp[b].pub?.games || 0) + hp[b].n * 40 - (hp[a].pub?.games || 0) - hp[a].n * 40)
+    .filter((p, i, arr) => i === 0 || (hp[p].pub?.games || 0) + hp[p].n * 40 >= 0.08 * ((hp[arr[0]].pub?.games || 0) + hp[arr[0]].n * 40)); // drop rare off-roles
+  const weight = p => (hp[p]?.pub?.games || 0) + (hp[p]?.n || 0) * 40;
+  if (!posList.includes(S.guidePos)) S.guidePos = posList.includes(myMainPos()) && weight(myMainPos()) >= 0.3 * weight(posList[0]) ? myMainPos() : posList[0];
+  const gp = hp[S.guidePos] || null, pub = gp?.pub;
   const heroesWith = G ? Object.keys(S.heroes).map(Number).filter(x => x !== h && G.idx[x] != null && heroPick(G, x) >= 0.01) : [];
   const counters = G ? heroesWith.map(x => ({ x, v: adv(G, x, h) })).sort((a, b) => b.v - a.v).slice(0, 5) : [];
   const victims = G ? heroesWith.map(x => ({ x, v: adv(G, h, x) })).sort((a, b) => b.v - a.v).slice(0, 5) : [];
   const curve = G ? DUR_LABELS.map((_, b) => durWr(G, h, b)) : [];
-  const peak = curve.length ? curve.indexOf(Math.max(...curve)) : -1;
-  const list = (arr) => arr.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div class="name">${esc(heroName(c.x))}</div><div class="lift ${signCls(c.v)}">${pct(c.v)}</div></div>`).join('');
+  // every hero wins short stomps more often, so the spike is where this hero beats the average hero by the most
+  const avgCurve = G ? DUR_LABELS.map((_, b) => heroesWith.reduce((sum, x) => sum + durWr(G, x, b), 0) / Math.max(1, heroesWith.length)) : [];
+  const rel = curve.map((v, b) => v - avgCurve[b]);
+  const half = k => rel.slice(k ? 5 : 0, k ? 8 : 3).reduce((a, b) => a + b, 0) / 3;
+  const trend = rel.length ? half(1) - half(0) : 0; // > 0: scales into long games
+  const [from, to] = trend > 0.015 ? [4, 8] : trend < -0.015 ? [0, 4] : [0, 8];
+  const peak = rel.length ? rel.indexOf(Math.max(...rel.slice(from, to)), from) : -1;
+  const list = arr => arr.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div class="name">${esc(heroName(c.x))}</div><div class="lift ${signCls(c.v)}">${pct(c.v)}</div></div>`).join('');
+  const mini = id => heroImg(id) ? `<img class="mini-hero" src="${heroImg(id)}" alt="${esc(heroName(id))}" title="${esc(heroName(id))}" loading="lazy">` : '';
+  const wrCls = v => v >= 53 ? 'pos' : v <= 47 ? 'neg' : '';
+
+  // timings that decide games: biggest gap between "on time" and "late", pubs first, pro scene as fallback
+  const timings = [
+    ...(pub?.build || []).filter(r => r[2] >= 0.3 && r[4] != null && r[5] != null).map(([k, t, , , f, sl]) => ({ k, t, f, sl, src: 'pub' })),
+    ...(gp?.timing || []).map(([k, t, f, sl]) => ({ k, t, f, sl, src: 'pro' })),
+  ].filter((x, i, a) => x.f - x.sl >= 5 && a.findIndex(y => y.k === x.k) === i).sort((a, b) => (b.f - b.sl) - (a.f - a.sl)).slice(0, 4);
+
+  const spike = timings[0];
+  const plan = gamePlan(S.guidePos, gp?.farm, spike, trend, peak, pub, gp);
+
+  const buildLine = (rows, sub) => `<div class="card build-line">${rows.map(r => `<div class="build-step">${itemIcon(r[0])}<b>${mmss(r[1])}</b>${sub(r)}</div>`).join('')}</div>`;
+  const posTabs = posList.length > 1 ? `<div class="tabs" id="guidePosTabs">${posList.map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.guidePos}">${p} · ${POS_NAMES[p]}</button>`).join('')}</div>` : '';
+
   $('heroGuide').innerHTML = `
-    <div class="card pad hero-head">${heroCell(h)}${G ? `<span class="chip pos">${L('Сильнее всего', 'Strongest at')}: ${DUR_LABELS[peak]} ${L('мин', 'min')}</span><span class="note">${L('Винрейт', 'Win rate')} ${(heroWr(G, h) * 100).toFixed(1)}% · ${GROUPS[S.group || 3]}</span>` : ''}</div>
-    ${gp ? `<div class="section"><div class="row guide-pos"><h3 class="label">${L('Сборка про на позиции', 'Pro build by position')}</h3><div class="tabs" id="guidePosTabs">${posList.map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.guidePos}">${p} · ${POS_NAMES[p]}</button>`).join('')}</div></div>
-      <div class="card build-line">${gp.build.map(([k, t, r]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b><span class="note">${Math.round(r * 100)}%</span></div>`).join('')}</div>
-      <p class="note">${L(`${gp.n} про-игр на этой позиции · винрейт ${gp.wr}%`, `${gp.n} pro games in this role · ${gp.wr}% win rate`)}</p></div>
-    ${gp.top.length ? `<div class="section"><h3 class="label">${L('Лучшие игроки', 'Best players')}: ${esc(heroName(h))} · ${POS_NAMES[S.guidePos]}</h3><div class="card">${gp.top.map(t => `
+    <div class="card pad hero-head">${heroCell(h)}${G ? `<span class="chip pos">${L('Сильнее всего', 'Strongest at')}: ${DUR_LABELS[peak]} ${L('мин', 'min')}</span><span class="note">${L('Винрейт', 'Win rate')} ${(heroWr(G, h) * 100).toFixed(1)}% · ${GROUPS[S.group || 3]}</span>` : ''}${posTabs ? `<div class="hero-head-pos">${posTabs}</div>` : S.guidePos ? `<span class="chip">${S.guidePos} · ${POS_NAMES[S.guidePos]}</span>` : ''}</div>
+
+    ${spike ? `<div class="card spike-head">${itemIcon(spike.k)}<div><div class="label">${L('Главный пик силы', 'Main power spike')}</div><b>${esc(spikeName(spike.k))}</b>
+      <div class="note">${L(`Собран до ${mmss(spike.t)}: ${spike.f}% побед. Позже: ${spike.sl}%.`, `Built by ${mmss(spike.t)}: ${spike.f}% wins. Later: ${spike.sl}%.`)}</div></div></div>` : ''}
+
+    ${plan.length ? `<div class="section"><h3 class="label">${L('План на игру', 'Game plan')}</h3><div class="plan">${plan.map(([title, when, lines, target]) => `
+      <div class="card pad plan-step"><div class="plan-head"><b>${title}</b><span class="note">${when}</span></div>
+      <ul class="lesson-tips">${lines.map(t => `<li>${t}</li>`).join('')}</ul>${target ? `<div class="drill">${icon('target')}<span>${target}</span></div>` : ''}</div>`).join('')}</div></div>` : ''}
+
+    <div class="section"><h3 class="label">${L('Пики силы', 'Power spikes')}</h3><div class="two-col">
+      ${curve.length ? `<div class="card bench-list">${curve.map((v, b) => `<div class="bench"><span>${DUR_LABELS[b]} ${L('мин', 'min')}</span><div class="track"><div class="fill" style="width:${Math.max(4, Math.min(100, (v - 0.4) / 0.2 * 100)).toFixed(0)}%;background:${b === peak ? 'var(--accent)' : v >= 0.5 ? 'var(--good)' : 'var(--bad)'}"></div></div><span class="num ${b === peak ? 'peak' : ''}">${(v * 100).toFixed(1)}%</span></div>`).join('')}</div>` : ''}
+      <div class="card pad spikes">${timings.length ? timings.map(x => `<div class="spike">${itemIcon(x.k)}<div><b>${esc(itemName(x.k))}</b><div class="note">${L(`до ${mmss(x.t)}`, `by ${mmss(x.t)}`)}: <b class="pos">${x.f}%</b> · ${L('позже', 'later')}: <b class="neg">${x.sl}%</b>${x.src === 'pro' ? ` · ${L('про', 'pro')}` : ''}</div></div></div>`).join('') : `<div class="empty">${L('Мало данных по таймингам', 'Not enough timing data')}</div>`}</div>
+    </div></div>
+
+    ${pub?.build?.length ? `<div class="section"><h3 class="label">${L('Сборка в пабах Divine+', 'Divine+ pub build')} · ${fmt(pub.games)} ${L('игр', 'games')}</h3>${buildLine(pub.build, r => `<span class="note ${wrCls(r[3])}">${r[3]}%</span>`)}</div>` : ''}
+    ${gp?.build?.length ? `<div class="section"><h3 class="label">${L('Сборка на про-сцене', 'Pro scene build')} · ${gp.n} ${L('игр', 'games')} · ${gp.wr}%</h3>${buildLine(gp.build, r => `<span class="note">${Math.round(r[2] * 100)}%</span>`)}</div>` : ''}
+
+    ${pub?.start?.length || gp?.situational?.length ? `<div class="section"><h3 class="label">${L('Подсказки по предметам', 'Item tips')}</h3><div class="card">
+      ${pub?.start?.length ? `<div class="item-row tip"><span class="tip-ic">${icon('play')}</span><div><div class="name">${L('Старт', 'Starting items')}</div><div class="start-items">${pub.start.map(([k, q]) => `<span>${itemIcon(k)}${q >= 1.5 ? `<b>×${Math.round(q)}</b>` : ''}</span>`).join('')}</div></div><div></div></div>` : ''}
+      ${(gp?.situational || []).map(([k, rate, vs]) => `<div class="item-row tip">${itemIcon(k)}<div><div class="name">${esc(itemName(k))} <span class="note">${L(`в ${Math.round(rate * 100)}% игр`, `in ${Math.round(rate * 100)}% of games`)}</span></div><div class="why">${L('Чаще берут против', 'Bought more against')} ${vs.map(([e, l]) => `<span class="vs-chip">${mini(e)}×${l}</span>`).join('')}</div>${itemWhy(k) ? `<div class="why dim">${esc(itemWhy(k))}</div>` : ''}</div><div></div></div>`).join('')}
+    </div></div>` : ''}
+
+    ${gp?.top?.length ? `<div class="section"><h3 class="label">${L('Лучшие игроки', 'Best players')}: ${esc(heroName(h))} · ${POS_NAMES[S.guidePos]}</h3><div class="card">${gp.top.map(t => `
       <div class="pro-build"><div class="pro-name">${proAvatar(t.id)}<b>${esc(t.name)}</b><span class="note">${t.team ? esc(t.team) + ' · ' : ''}${t.games} ${L('игр', 'games')} · ${t.wr}%</span></div>
-      <div class="build-line">${t.build.map(([k, tm]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(tm)}</b></div>`).join('')}</div></div>`).join('')}</div></div>` : ''}`
-    : build.length ? `<div class="section"><h3 class="label">${L('Сборка про-игроков', 'Pro build')}</h3><div class="card build-line">${build.map(([k, [rate, t]]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b><span class="note">${Math.round(rate * 100)}%</span></div>`).join('')}</div></div>` : ''}
+      ${buildLine(t.build, () => '').replace('card build-line', 'build-line')}</div>`).join('')}</div></div>` : ''}
+
+    ${gp?.games?.length ? `<div class="section"><h3 class="label">${L('Игры про', 'Pro games')}</h3><div class="card pro-games">${gp.games.map(([id, name, win, dur, enemies, b]) => `
+      <button class="pg" data-id="${id}"><span class="chip ${win ? 'pos' : 'neg'}">${win ? L('Победа', 'Win') : L('Поражение', 'Loss')}</span>
+        <span class="pg-name"><b>${esc(name || L('Про-игрок', 'Pro player'))}</b><span class="note">${mmss(dur)}</span></span>
+        <span class="pg-vs"><span class="note">vs</span>${enemies.map(mini).join('')}</span>
+        <span class="pg-items">${b.map(([k]) => itemIcon(k)).join('')}</span></button>`).join('')}</div></div>` : ''}
+
     <div class="two-col">
       <div class="section"><h3 class="label">${L('Его контрят', 'Countered by')}</h3><div class="card">${list(counters) || `<div class="empty">—</div>`}</div></div>
       <div class="section"><h3 class="label">${L('Он контрит', 'Counters')}</h3><div class="card">${list(victims) || `<div class="empty">—</div>`}</div></div>
     </div>`;
   $('heroGuide').querySelectorAll('#guidePosTabs .tab').forEach(b => b.addEventListener('click', () => { S.guidePos = +b.dataset.p; renderHeroGuide(); }));
+  $('heroGuide').querySelectorAll('.pg').forEach(b => b.addEventListener('click', () => openMatch(+b.dataset.id)));
   markHeroGrid();
   revealList($('heroGuide').children);
+  fillIn($('heroGuide'));
+}
+
+const spikeName = k => itemName(k) + (k === 'ultimate_scepter' ? L(' (улучшение ульта)', ' (ultimate upgrade)') : k === 'aghanims_shard' ? L(' (улучшение способности)', ' (ability upgrade)') : '');
+
+// Phase-by-phase plan for a hero in a role: role habits + this hero's numbers (pro farm medians, spike item, best game length)
+function gamePlan(pos, farm, spike, trend, peak, pub, gp) {
+  if (!pos) return [];
+  const [lh10, g10, g15, g20, g25] = farm || [];
+  const core = pos <= 3;
+  const st = spike ? `<b>${esc(spikeName(spike.k))}</b>` : L('ключевого предмета', 'your key item');
+  const spikeT = spike ? mmss(spike.t) : null;
+  const early = trend < -0.015, late = trend > 0.015;
+  const first = (pub?.build || gp?.build || [])[0];
+  const lane = {
+    1: [L('Безопасная линия: добивай каждую крипу, денай свои.', 'Safe lane: last-hit every creep and deny yours.'), L('Не отходи от волны ради драк, пока нет первого предмета.', 'Don\'t leave the wave to fight until your first item.'), L('Когда саппорт уходит — тяни волну к своей башне.', 'When your support leaves, pull the wave to your tower.')],
+    2: [L('Мид: выигрывай ластхиты один на один и держи волну у своей башни.', 'Mid: win the 1v1 last-hits and keep the wave near your tower.'), L('Забирай руны силы и с руной иди на соседние линии.', 'Take power runes and gank side lanes with them.'), L('Не умирай до шестого уровня: мид проигрывается смертями, а не ластхитами.', 'Don\'t die before level 6: mid is lost by deaths, not by last hits.')],
+    3: [L('Оффлейн: мешай вражескому керри фармить и забирай опыт.', 'Offlane: deny the enemy carry farm and soak XP.'), L('Стой в зоне опыта даже без ластхитов, умирать нельзя.', 'Stay in XP range even without last hits, never feed.'), L('Когда враги уходят — добивай волну и стакай ближний лагерь.', 'When enemies leave, clear the wave and stack the nearby camp.')],
+    4: [L('Помоги выиграть линию в первые 3 минуты, потом ищи убийства на миде и других линиях.', 'Help win the lane for 3 minutes, then look for kills mid and on other lanes.'), L('Стакай лагеря для своих коров на :53–:55.', 'Stack camps for your cores at :53–:55.'), L('Ставь варды на подходах к линии своего кора.', 'Ward the approaches to your core\'s lane.')],
+    5: [L('Держи керри в безопасности: харась врагов, пулл в нужный момент.', 'Keep your carry safe: harass enemies, pull at the right time.'), L('Варды на руне и на подходах к линии, сентри против вражеских вардов.', 'Ward the rune and lane approaches, sentry enemy wards.'), L('Купи дым на 6–8 минуте, если линия стоит.', 'Buy a smoke at 6–8 minutes if the lane is stable.')],
+  }[pos];
+  const target10 = core && lh10 ? L(`К 10:00: ${lh10} ластхитов и ${fmt(g10)} золота, как у про на этой позиции`, `By 10:00: ${lh10} last hits and ${fmt(g10)} gold, like pros in this role`)
+    : g10 ? L(`К 10:00: ${fmt(g10)} золота, как у про на этой позиции`, `By 10:00: ${fmt(g10)} gold, like pros in this role`) : '';
+  const mid = core ? [
+    spike ? L(`Всё до ${spikeT} подчинено одной цели: собрать ${st}. С ним этот герой выигрывает заметно чаще.`, `Everything until ${spikeT} serves one goal: ${st}. With it this hero wins far more often.`) : L('Фарми до первого крупного предмета.', 'Farm until your first big item.'),
+    pos === 2 ? L('Чередуй линию, лес и ганги: после каждого убийства — снова на волну.', 'Alternate lane, jungle and ganks: after every kill go back to a wave.') : L('Бери волну, потом ближние лагеря леса, потом следующую волну. На вражескую половину без вижна не ходи.', 'Take the wave, then nearby jungle camps, then the next wave. Don\'t go to the enemy side without vision.'),
+    L('Если команда дерётся рядом — помоги и сразу возвращайся к фарму.', 'If your team fights nearby, join and go straight back to farming.'),
+  ] : [
+    L('Ставь варды вокруг зоны, где фармит твой кор, и вокруг Рошана перед его респавном.', 'Ward the area where your core farms and around Roshan before he respawns.'),
+    L('Ходи в дым на вражескую половину вместе с мидом или оффлейнером.', 'Smoke into the enemy side with your mid or offlaner.'),
+    first ? L(`Твой первый важный предмет: <b>${esc(itemName(first[0]))}</b>, обычно к ${mmss(first[1])}.`, `Your first key item: <b>${esc(itemName(first[0]))}</b>, usually by ${mmss(first[1])}.`) : L('Не трать золото на лишнее: варды, дым, ботинки и предмет на сейв.', 'Spend only on wards, smoke, boots and a save item.'),
+  ];
+  const targetMid = g15 || g20 ? L(`Золото: ${g15 ? fmt(g15) + ' к 15:00' : ''}${g15 && g20 ? ', ' : ''}${g20 ? fmt(g20) + ' к 20:00' : ''}`, `Gold: ${g15 ? fmt(g15) + ' by 15:00' : ''}${g15 && g20 ? ', ' : ''}${g20 ? fmt(g20) + ' by 20:00' : ''}`) : '';
+  const after = [
+    early ? L(`Герой сильнее среднего в коротких играх, лучше всего в играх ${DUR_LABELS[peak]} мин: дерись, бери башни и Рошана, заканчивай, пока враги не собрались.`, `This hero beats the average in short games, best at ${DUR_LABELS[peak]} min: fight, take towers and Roshan, end before the enemy scales.`)
+      : late ? L(`Герой сильнее среднего в долгих играх, лучше всего в играх ${DUR_LABELS[peak]} мин: не форсируй, фарми безопасно и дерись только за важные цели.`, `This hero beats the average in long games, best at ${DUR_LABELS[peak]} min: don't force, farm safely and fight only for key objectives.`)
+      : L(`Герой ровный по длине игры, лучше всего в играх ${DUR_LABELS[peak] || '30–35'} мин: дерись после пика силы, не раньше.`, `This hero is even across game lengths, best at ${DUR_LABELS[peak] || '30–35'} min: fight after your spike, not before.`),
+    core ? L('Фарми опасные зоны только вместе с командой или после того, как увидел врагов на другой стороне карты.', 'Farm dangerous areas only with your team or after you see enemies on the other side of the map.')
+      : L('Держись рядом с корами, носи дасты и сентри против невидимых, сейв важнее урона.', 'Stay near your cores, carry dust and sentries, saving matters more than damage.'),
+    L('После выигранной драки — сразу башня или Рошан, не возвращайся в лес.', 'After a won fight, take a tower or Roshan right away instead of going back to the jungle.'),
+  ];
+  return [
+    [L('Линия', 'Laning'), '0–10 ' + L('мин', 'min'), lane, target10],
+    [core ? L('До пика силы', 'Before your spike') : L('Середина игры', 'Mid game'), `10–${spike ? spikeT : '20:00'}`, mid, targetMid],
+    [L('После пика', 'After the spike'), `${spike ? spikeT : '20:00'}+`, after, g25 ? L(`К 25:00 у про на этой позиции ${fmt(g25)} золота`, `By 25:00 pros in this role have ${fmt(g25)} gold`) : ''],
+  ];
 }
 
 const ATTRS = [['str', L('Сила', 'Strength')], ['agi', L('Ловкость', 'Agility')], ['int', L('Интеллект', 'Intelligence')], ['all', L('Универсальные', 'Universal')]];
