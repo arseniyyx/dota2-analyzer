@@ -1,46 +1,54 @@
 'use strict';
 
+const LANG = (() => {
+  try { const s = localStorage.getItem('lang'); if (s) return JSON.parse(s); } catch { /* storage unavailable */ }
+  return (navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+})();
+const EN = LANG === 'en';
+const L = (ru, en) => EN ? en : ru;
+const LOC = EN ? 'en' : 'ru';
+
 const API = 'https://api.opendota.com/api';
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
 const RANKS = ['', 'Herald', 'Guardian', 'Crusader', 'Archon', 'Legend', 'Ancient', 'Divine', 'Immortal'];
 const GROUPS = { 1: 'Herald–Guardian', 2: 'Crusader–Archon', 3: 'Legend–Ancient', 4: 'Divine–Immortal' };
-const POS_NAMES = ['', 'Керри', 'Мид', 'Оффлейн', 'Четвёрка', 'Пятёрка'];
-const DUR_LABELS = ['до 20', '20–25', '25–30', '30–35', '35–40', '40–45', '45–50', '50+'];
+const POS_NAMES = EN ? ['', 'Carry', 'Mid', 'Offlane', 'Soft support', 'Hard support'] : ['', 'Керри', 'Мид', 'Оффлейн', 'Четвёрка', 'Пятёрка'];
+const DUR_LABELS = [L('до 20', '<20'), '20–25', '25–30', '30–35', '35–40', '40–45', '45–50', '50+'];
 const UNIVERSAL_ITEMS = new Set(['black_king_bar', 'gem', 'dust', 'ward_sentry', 'lotus_orb', 'sphere', 'force_staff', 'glimmer_cape', 'ghost', 'aeon_disk', 'spirit_vessel', 'blade_mail', 'pipe', 'crimson_guard', 'heavens_halberd', 'nullifier', 'monkey_king_bar', 'silver_edge', 'sheepstick', 'orchid', 'bloodthorn', 'cyclone', 'wind_waker', 'solar_crest', 'manta', 'mage_slayer']);
 const ITEM_WHY = {
-  black_king_bar: 'Иммунитет к магии и большей части контроля',
-  spirit_vessel: 'Режет лечение и регенерацию цели',
-  silver_edge: 'Break: отключает пассивные способности',
-  nullifier: 'Снимает защитные эффекты вроде Ghost, Eul, Glimmer, Aeon Disk',
-  monkey_king_bar: 'Пробивает уклонение',
-  lotus_orb: 'Отражает направленные заклинания, снимает дебаффы',
-  sphere: 'Блокирует одно направленное заклинание',
-  gem: 'Видит невидимых героев и варды',
-  dust: 'Раскрывает невидимых рядом',
-  ward_sentry: 'Видит невидимых и варды в радиусе',
-  heavens_halberd: 'Обезоруживает: керри не может бить',
-  blade_mail: 'Возвращает урон атакующим',
-  pipe: 'Барьер от магического урона для команды',
-  crimson_guard: 'Блок физического урона для команды',
-  abyssal_blade: 'Оглушение сквозь BKB',
-  sheepstick: 'Хекс: цель без способностей и атак',
-  orchid: 'Немота: цель не может кастовать',
-  bloodthorn: 'Немота и критические удары по цели',
-  diffusal_blade: 'Сжигает ману и замедляет',
-  force_staff: 'Отталкивание: выход из ловушек и погонь',
-  glimmer_cape: 'Невидимость и защита от магии союзнику',
-  ghost: 'Эфирная форма: защита от физических атак',
-  aeon_disk: 'Спасает от мгновенного бурста',
-  manta: 'Снимает многие дебаффы',
-  mjollnir: 'Цепные молнии по иллюзиям и призывам',
-  maelstrom: 'Цепные молнии по иллюзиям и призывам',
-  bfury: 'Сплэш: чистит иллюзии и призывов',
-  radiance: 'Аура урона против иллюзий и призывов',
-  cyclone: 'Развеивает с себя, подбрасывает цель',
-  wind_waker: 'Спасает себя или союзника',
-  solar_crest: 'Броня союзнику, минус броня врагу',
-  mage_slayer: 'Снижает урон заклинаний атакованной цели',
-  satanic: 'Сильный вампиризм и развеивание с себя',
+  black_king_bar: L('Иммунитет к магии и большей части контроля', 'Magic and most disable immunity'),
+  spirit_vessel: L('Режет лечение и регенерацию цели', 'Cuts the target\'s healing and regen'),
+  silver_edge: L('Break: отключает пассивные способности', 'Break: disables passive abilities'),
+  nullifier: L('Снимает защитные эффекты вроде Ghost, Eul, Glimmer, Aeon Disk', 'Removes saves like Ghost, Eul, Glimmer, Aeon Disk'),
+  monkey_king_bar: L('Пробивает уклонение', 'Pierces evasion'),
+  lotus_orb: L('Отражает направленные заклинания, снимает дебаффы', 'Reflects targeted spells, dispels'),
+  sphere: L('Блокирует одно направленное заклинание', 'Blocks one targeted spell'),
+  gem: L('Видит невидимых героев и варды', 'Reveals invisible heroes and wards'),
+  dust: L('Раскрывает невидимых рядом', 'Reveals nearby invisible units'),
+  ward_sentry: L('Видит невидимых и варды в радиусе', 'True sight on invisible units and wards'),
+  heavens_halberd: L('Обезоруживает: керри не может бить', 'Disarm: the carry can\'t attack'),
+  blade_mail: L('Возвращает урон атакующим', 'Returns damage to attackers'),
+  pipe: L('Барьер от магического урона для команды', 'Team magic damage barrier'),
+  crimson_guard: L('Блок физического урона для команды', 'Team physical damage block'),
+  abyssal_blade: L('Оглушение сквозь BKB', 'Stun through BKB'),
+  sheepstick: L('Хекс: цель без способностей и атак', 'Hex: no spells, no attacks'),
+  orchid: L('Немота: цель не может кастовать', 'Silence: the target can\'t cast'),
+  bloodthorn: L('Немота и критические удары по цели', 'Silence and crits on the target'),
+  diffusal_blade: L('Сжигает ману и замедляет', 'Burns mana and slows'),
+  force_staff: L('Отталкивание: выход из ловушек и погонь', 'Push: escape traps and chases'),
+  glimmer_cape: L('Невидимость и защита от магии союзнику', 'Invisibility and magic resist for an ally'),
+  ghost: L('Эфирная форма: защита от физических атак', 'Ethereal: immune to physical attacks'),
+  aeon_disk: L('Спасает от мгновенного бурста', 'Saves you from instant burst'),
+  manta: L('Снимает многие дебаффы', 'Dispels many debuffs'),
+  mjollnir: L('Цепные молнии по иллюзиям и призывам', 'Chain lightning vs illusions and summons'),
+  maelstrom: L('Цепные молнии по иллюзиям и призывам', 'Chain lightning vs illusions and summons'),
+  bfury: L('Сплэш: чистит иллюзии и призывов', 'Cleave: clears illusions and summons'),
+  radiance: L('Аура урона против иллюзий и призывов', 'Burn aura vs illusions and summons'),
+  cyclone: L('Развеивает с себя, подбрасывает цель', 'Self-dispel, lifts the target'),
+  wind_waker: L('Спасает себя или союзника', 'Saves you or an ally'),
+  solar_crest: L('Броня союзнику, минус броня врагу', 'Armor for an ally, armor loss for an enemy'),
+  mage_slayer: L('Снижает урон заклинаний атакованной цели', 'Lowers the attacked target\'s spell damage'),
+  satanic: L('Сильный вампиризм и развеивание с себя', 'Big lifesteal and self-dispel'),
 };
 
 const S = {
@@ -60,7 +68,7 @@ const heroImg = id => S.heroes[id] ? CDN + S.heroes[id].img : '';
 const heroIcon = id => heroImg(id) ? `<img class="hero-icon" src="${heroImg(id)}" alt="${esc(heroName(id))}" title="${esc(heroName(id))}">` : '';
 const heroCell = id => `<div class="hero-cell">${heroImg(id) ? `<img src="${heroImg(id)}" alt="">` : ''}<span>${esc(heroName(id))}</span></div>`;
 const groupOfTier = t => t ? Math.min(4, Math.max(1, Math.floor((Math.floor(t / 10) + 1) / 2))) : 3;
-const rankName = t => !t ? 'Без ранга' : (RANKS[Math.floor(t / 10)] || 'Rank') + (Math.floor(t / 10) < 8 && t % 10 ? ' ' + (t % 10) : '');
+const rankName = t => !t ? L('Без ранга', 'Unranked') : (RANKS[Math.floor(t / 10)] || 'Rank') + (Math.floor(t / 10) < 8 && t % 10 ? ' ' + (t % 10) : '');
 const isWin = p => (p.player_slot < 128) === p.radiant_win;
 
 const ICONS = {
@@ -92,11 +100,11 @@ const SEV_ICON = { bad: 'alert', warn: 'down', good: 'check', info: 'info' };
 const sevIcon = sev => `<span class="sev">${icon(SEV_ICON[sev] || 'info')}</span>`;
 function ago(ts) {
   const m = Math.max(0, Math.round((Date.now() / 1000 - ts) / 60));
-  if (m < 60) return `${m} мин назад`;
+  if (m < 60) return L(`${m} мин назад`, `${m} min ago`);
   const h = Math.round(m / 60);
-  if (h < 24) return `${h} ч назад`;
+  if (h < 24) return L(`${h} ч назад`, `${h} h ago`);
   const d = Math.round(h / 24);
-  return d === 1 ? 'вчера' : `${d} дн назад`;
+  return d === 1 ? L('вчера', 'yesterday') : L(`${d} дн назад`, `${d} days ago`);
 }
 
 const store = {
@@ -110,8 +118,8 @@ const store = {
 
 async function getJSON(url, opts) {
   const r = await fetch(url, opts);
-  if (r.status === 429) throw new Error('OpenDota пускает не больше 60 запросов в минуту с одного устройства. Подожди минуту и попробуй снова.');
-  if (!r.ok) throw new Error(`Сервер ответил ошибкой ${r.status}`);
+  if (r.status === 429) throw new Error(L('OpenDota пускает не больше 60 запросов в минуту с одного устройства. Подожди минуту и попробуй снова.', 'OpenDota allows 60 requests per minute per device. Wait a minute and try again.'));
+  if (!r.ok) throw new Error(L(`Сервер ответил ошибкой ${r.status}`, `Server error ${r.status}`));
   return r.json();
 }
 
@@ -148,7 +156,7 @@ async function loadBase() {
   $('heroList').innerHTML = Object.values(S.heroes).sort((a, b) => a.localized_name.localeCompare(b.localized_name)).map(h => `<option value="${esc(h.localized_name)}">`).join('');
   if (meta) {
     const d = new Date(meta.generated_at * 1000);
-    $('updated').textContent = `Патч ${meta.patch} · данные от ${d.toLocaleDateString('ru')} ${d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}`;
+    $('updated').textContent = `${L('Патч', 'Patch')} ${meta.patch} · ${L('данные от', 'data from')} ${d.toLocaleDateString(LOC)} ${d.toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' })}`;
   }
 }
 
@@ -246,14 +254,14 @@ function assignPositions(team) {
 /* ---------- player performance score ---------- */
 
 const METRICS = {
-  gold_per_min: { name: 'Золото в минуту', tip: 'Фармишь меньше, чем большинство на этом герое. Бери лес между волнами, не простаивай.' },
-  xp_per_min: { name: 'Опыт в минуту', tip: 'Отстаёшь по уровню. Меньше умирай и дольше стой в зоне опыта.' },
-  last_hits_per_min: { name: 'Ластхиты в минуту', tip: 'Мало добиваешь. Держи линию и лес, не пропускай волны.' },
-  kills_per_min: { name: 'Убийства в минуту', tip: 'Мало убийств для этого героя. Ищи пики и драки в свои тайминги.' },
-  assists_per_min: { name: 'Помощь в минуту', tip: 'Мало участия в драках. Держись ближе к команде.' },
-  deaths_per_min: { name: 'Выживаемость', tip: 'Умираешь чаще, чем большинство на этом герое. Носи ТП, смотри на карту, не фарми без вижна.' },
-  hero_damage_per_min: { name: 'Урон по героям', tip: 'Мало урона в драках. Ищи позицию, откуда бьёшь дольше.' },
-  tower_damage: { name: 'Урон по башням', tip: 'Мало урона по строениям. Превращай выигранные драки в башни.' },
+  gold_per_min: { name: L('Золото в минуту', 'Gold per minute'), tip: L('Фармишь меньше, чем большинство на этом герое. Бери лес между волнами, не простаивай.', 'You farm less than most players on this hero. Take jungle camps between waves and don\'t idle.') },
+  xp_per_min: { name: L('Опыт в минуту', 'XP per minute'), tip: L('Отстаёшь по уровню. Меньше умирай и дольше стой в зоне опыта.', 'You fall behind in levels. Die less and stay in XP range longer.') },
+  last_hits_per_min: { name: L('Ластхиты в минуту', 'Last hits per minute'), tip: L('Мало добиваешь. Держи линию и лес, не пропускай волны.', 'Too few last hits. Hold your lane and jungle, don\'t miss waves.') },
+  kills_per_min: { name: L('Убийства в минуту', 'Kills per minute'), tip: L('Мало убийств для этого героя. Ищи пики и драки в свои тайминги.', 'Few kills for this hero. Look for pickoffs and fights at your timings.') },
+  assists_per_min: { name: L('Помощь в минуту', 'Assists per minute'), tip: L('Мало участия в драках. Держись ближе к команде.', 'Low fight participation. Stay closer to your team.') },
+  deaths_per_min: { name: L('Выживаемость', 'Survival'), tip: L('Умираешь чаще, чем большинство на этом герое. Носи ТП, смотри на карту, не фарми без вижна.', 'You die more than most players on this hero. Carry a TP, watch the map, don\'t farm without vision.') },
+  hero_damage_per_min: { name: L('Урон по героям', 'Hero damage'), tip: L('Мало урона в драках. Ищи позицию, откуда бьёшь дольше.', 'Low damage in fights. Find positions where you can hit for longer.') },
+  tower_damage: { name: L('Урон по башням', 'Tower damage'), tip: L('Мало урона по строениям. Превращай выигранные драки в башни.', 'Low building damage. Turn won fights into towers.') },
 };
 const WEIGHTS = {
   core: { gold_per_min: .22, last_hits_per_min: .18, hero_damage_per_min: .2, tower_damage: .1, kills_per_min: .12, deaths_per_min: .18 },
@@ -344,10 +352,10 @@ function saveHistory(entry) { store.set('history', [entry, ...getHistory().filte
 function renderHistory() {
   const list = getHistory();
   $('history').hidden = !list.length;
-  $('history').innerHTML = '<div class="label history-head">Недавние</div>' + list.map(h => `
+  $('history').innerHTML = `<div class="label history-head">${L('Недавние', 'Recent')}</div>` + list.map(h => `
     <div class="history-item">
       <button type="button" class="history-pick" data-id="${esc(h.id)}"><img src="${esc(h.avatar)}" alt="" width="32" height="32"><span class="history-name">${esc(h.name)}</span><span class="dim">${esc(h.id)}</span>${rankEmblem(h.tier, 26)}</button>
-      <button type="button" class="history-del" data-id="${esc(h.id)}" aria-label="Убрать ${esc(h.name)} из истории">×</button>
+      <button type="button" class="history-del" data-id="${esc(h.id)}" aria-label="${L('Убрать из истории', 'Remove from history')}: ${esc(h.name)}">×</button>
     </div>`).join('');
 }
 $('steamId').addEventListener('focus', renderHistory);
@@ -362,26 +370,27 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') $('history')
 
 async function analyze() {
   const raw = $('steamId').value;
-  if (/steamcommunity\.com\/id\//.test(raw)) return showError('Ссылка с ником не подходит. Нужна ссылка вида steamcommunity.com/profiles/7656… или Friend ID из Dota.');
+  if (/steamcommunity\.com\/id\//.test(raw)) return showError(L('Ссылка с ником не подходит. Нужна ссылка вида steamcommunity.com/profiles/7656… или Friend ID из Dota.', 'Vanity links don\'t work. Use a steamcommunity.com/profiles/7656… link or your Dota Friend ID.'));
   const id = parseId(raw);
-  if (!id) return showError('Введи Steam ID, Friend ID или ссылку на профиль.');
+  if (!id) return showError(L('Введи Steam ID, Friend ID или ссылку на профиль.', 'Enter a Steam ID, Friend ID, or profile link.'));
   store.set('lastId', id);
   $('searchBtn').disabled = true; $('results').hidden = true; $('error').hidden = true; $('loading').hidden = false;
-  $('loadingText').textContent = 'Загружаю профиль…';
+  $('loadingText').textContent = L('Загружаю профиль…', 'Loading profile…');
   try {
     const [profile, recent, poolHeroes, period, history] = await Promise.all([
       getJSONCached(`${API}/players/${id}`, 5), getJSONCached(`${API}/players/${id}/recentMatches`, 5),
       getJSONCached(`${API}/players/${id}/heroes`, 5), fetchPeriod(id),
       getJSONCached(`${API}/players/${id}/matches?limit=100&project=kills&project=deaths&project=assists&project=gold_per_min&project=hero_id`, 5).catch(() => []),
     ]);
-    if (!profile.profile) throw new Error('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».');
+    if (!profile.profile) throw new Error(L('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».', 'Profile not found. Check the ID or turn on "Expose Public Match Data" in Dota.'));
+    if (!recent.length && !(period.wl.win + period.wl.lose)) throw new Error(L(`У игрока ${profile.profile.personaname} нет открытых матчей: скорее всего, в Dota выключена «Открытая история матчей».`, `${profile.profile.personaname} has no public matches. "Expose Public Match Data" is probably off in Dota.`));
     saveHistory({ id, name: profile.profile.personaname, avatar: profile.profile.avatarmedium, tier: profile.rank_tier });
     S.playerId = Number(id); S.profile = profile; S.poolHeroes = poolHeroes; S.recent = recent; S.period = period; S.posFilter = 0; S.history = history;
     S.group = groupOfTier(profile.rank_tier);
     await loadGroup(S.group).catch(() => null);
 
-    $('loadingText').textContent = 'Загружаю матчи 0/' + recent.length;
-    const ms = await pool(recent.map(r => () => loadMatch(r.match_id)), 3, d => { $('loadingText').textContent = `Загружаю матчи ${d}/${recent.length}`; });
+    $('loadingText').textContent = `${L('Загружаю матчи', 'Loading matches')} 0/${recent.length}`;
+    const ms = await pool(recent.map(r => () => loadMatch(r.match_id)), 3, d => { $('loadingText').textContent = `${L('Загружаю матчи', 'Loading matches')} ${d}/${recent.length}`; });
     S.matches = {};
     ms.forEach(m => { if (m) S.matches[m.match_id] = prepareMatch(m); });
 
@@ -391,17 +400,17 @@ async function analyze() {
     renderMatches();
     $('results').hidden = false;
   } catch (e) {
-    showError(e.message || 'Не удалось загрузить данные.');
+    showError(e.message || L('Не удалось загрузить данные.', 'Couldn\'t load data.'));
   } finally {
     $('searchBtn').disabled = false; $('loading').hidden = true;
   }
 }
 
-const PERIODS = [[20, '20 игр'], [100, '100 игр'], [0, 'Вся история']];
+const PERIODS = [[20, L('20 игр', '20 games')], [100, L('100 игр', '100 games')], [0, L('Вся история', 'All time')]];
 S.limit = store.get('period') ?? 20;
 const minGames = () => ({ 20: 2, 100: 4 })[S.limit] ?? 5;
 const losingGames = () => ({ 20: 4, 100: 7 })[S.limit] ?? 10;
-const periodLabel = () => S.limit ? `за последние ${S.limit} игр` : 'за всю историю';
+const periodLabel = () => S.limit ? L(`за последние ${S.limit} игр`, `in the last ${S.limit} games`) : L('за всю историю', 'all time');
 
 function renderFlags() {
   const games = Object.values(S.matches).filter(m => m._me);
@@ -419,13 +428,13 @@ function renderFlags() {
   const dominant = games.length >= 10 && (mvp / games.length >= 0.35 || avgScore >= 7);
   const flags = [];
   if (dominant && total <= 300 && now.wr >= 0.6) {
-    flags.push({ title: 'Похоже на смурфа', reasons: [`всего ${total} игр на аккаунте`, `MVP матча в ${mvp} из ${games.length} последних игр`, `средняя оценка ${avgScore.toFixed(1)} из 10`, `винрейт ${p0(now.wr)} за последние 20`] });
+    flags.push({ title: L('Похоже на смурфа', 'Looks like a smurf'), reasons: [L(`всего ${total} игр на аккаунте`, `only ${total} games on the account`), L(`MVP матча в ${mvp} из ${games.length} последних игр`, `match MVP in ${mvp} of the last ${games.length} games`), L(`средняя оценка ${avgScore.toFixed(1)} из 10`, `average score ${avgScore.toFixed(1)} of 10`), L(`винрейт ${p0(now.wr)} за последние 20`, `${p0(now.wr)} win rate in the last 20`)] });
   }
   if (dominant && before.n >= 40 && now.wr - before.wr >= 0.2 && (now.kda / before.kda >= 1.4 || now.gpm / before.gpm >= 1.2)) {
-    flags.push({ title: 'Похоже, что на аккаунте играет бустер', reasons: [`винрейт ${p0(before.wr)} → ${p0(now.wr)}`, `KDA ${before.kda.toFixed(1)} → ${now.kda.toFixed(1)}`, `GPM ${Math.round(before.gpm)} → ${Math.round(now.gpm)}`, `MVP матча в ${mvp} из ${games.length} последних игр`, newHeroShare >= 0.4 ? `${p0(newHeroShare)} последних игр на героях, которых не было в играх 21–100` : ''].filter(Boolean) });
+    flags.push({ title: L('Похоже, что на аккаунте играет бустер', 'Looks like a booster is playing this account'), reasons: [`${L('винрейт', 'win rate')} ${p0(before.wr)} → ${p0(now.wr)}`, `KDA ${before.kda.toFixed(1)} → ${now.kda.toFixed(1)}`, `GPM ${Math.round(before.gpm)} → ${Math.round(now.gpm)}`, L(`MVP матча в ${mvp} из ${games.length} последних игр`, `match MVP in ${mvp} of the last ${games.length} games`), newHeroShare >= 0.4 ? L(`${p0(newHeroShare)} последних игр на героях, которых не было в играх 21–100`, `${p0(newHeroShare)} of recent games on heroes not played in games 21–100`) : ''].filter(Boolean) });
   }
-  $('flags').innerHTML = flags.map(f => `<div class="card issue warn">${sevIcon('bad')}<div class="body"><div class="title">${f.title}</div><div class="detail">${f.reasons.join(' · ')}. Это признаки по статистике, а не доказательство.</div></div></div>`).join('')
-    + `<p class="note">MVP матча (лучшая оценка из 10 игроков) в ${mvp} из ${games.length} последних игр, средняя оценка ${avgScore.toFixed(1)} из 10.</p>`;
+  $('flags').innerHTML = flags.map(f => `<div class="card issue warn">${sevIcon('bad')}<div class="body"><div class="title">${f.title}</div><div class="detail">${f.reasons.join(' · ')}. ${L('Это признаки по статистике, а не доказательство.', 'These are statistical signs, not proof.')}</div></div></div>`).join('')
+    + `<p class="note">${L(`MVP матча (лучшая оценка из 10 игроков) в ${mvp} из ${games.length} последних игр, средняя оценка ${avgScore.toFixed(1)} из 10.`, `Match MVP (best score of 10 players) in ${mvp} of the last ${games.length} games, average score ${avgScore.toFixed(1)} of 10.`)}</p>`;
 }
 
 async function fetchPeriod(id) {
@@ -454,7 +463,7 @@ async function changePeriod(n) {
     S.period = await fetchPeriod(S.playerId);
     renderPeriod();
   } catch (e) {
-    showError(e.message || 'Не удалось загрузить статистику.');
+    showError(e.message || L('Не удалось загрузить статистику.', 'Couldn\'t load stats.'));
     $('periodTabs').querySelectorAll('.tab').forEach(b => { b.disabled = false; });
   }
 }
@@ -467,9 +476,9 @@ function renderProfile(profile, wl) {
   $('profile').innerHTML = `
     <img src="${esc(p.avatarfull)}" alt="">
     ${rankEmblem(profile.rank_tier, 76)}
-    <div><h2>${esc(p.personaname)}</h2><div class="meta"><span class="rank-pill">${icon('shield')}${rankName(profile.rank_tier)}</span><span>${S.limit ? `винрейт за последние ${total} игр` : `${total.toLocaleString('ru')} матчей всего`}</span><span>мета по ${GROUPS[S.group]}</span></div></div>
+    <div><h2>${esc(p.personaname)}</h2><div class="meta"><span class="rank-pill">${icon('shield')}${rankName(profile.rank_tier)}</span><span>${S.limit ? L(`винрейт за последние ${total} игр`, `win rate over the last ${total} games`) : L(`${total.toLocaleString(LOC)} матчей всего`, `${total.toLocaleString(LOC)} matches total`)}</span><span>${L('мета по', 'meta for')} ${GROUPS[S.group]}</span></div></div>
     <div class="wl"><div class="big" style="color:${wr >= 52 ? 'var(--good)' : wr >= 48 ? 'var(--fg)' : 'var(--bad)'}">${wr.toFixed(1)}%</div>
-    <div class="note"><span class="pos">${wl.win} побед</span> · <span class="neg">${wl.lose} поражений</span></div></div>`;
+    <div class="note"><span class="pos">${wl.win} ${L('побед', 'wins')}</span> · <span class="neg">${wl.lose} ${L('поражений', 'losses')}</span></div></div>`;
 }
 
 function renderStats(t) {
@@ -477,17 +486,17 @@ function renderStats(t) {
   const card = (ic, l, v, s) => `<div class="card stat"><div class="label">${icon(ic)}${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`;
   $('stats').innerHTML =
     card('swords', 'KDA', (d ? (k + a) / d : k + a).toFixed(2), `${k.toFixed(1)} / ${d.toFixed(1)} / ${a.toFixed(1)}`) +
-    card('coins', 'GPM', Math.round(avgOf(t, 'gold_per_min')), 'золото в минуту') +
-    card('trending', 'XPM', Math.round(avgOf(t, 'xp_per_min')), 'опыт в минуту') +
-    card('target', 'Ластхиты', Math.round(avgOf(t, 'last_hits')), 'за матч') +
-    card('zap', 'Урон по героям', fmt(avgOf(t, 'hero_damage')), 'за матч') +
-    card('castle', 'Урон по башням', fmt(avgOf(t, 'tower_damage')), 'за матч');
+    card('coins', 'GPM', Math.round(avgOf(t, 'gold_per_min')), L('золото в минуту', 'gold per minute')) +
+    card('trending', 'XPM', Math.round(avgOf(t, 'xp_per_min')), L('опыт в минуту', 'XP per minute')) +
+    card('target', L('Ластхиты', 'Last hits'), Math.round(avgOf(t, 'last_hits')), L('за матч', 'per match')) +
+    card('zap', L('Урон по героям', 'Hero damage'), fmt(avgOf(t, 'hero_damage')), L('за матч', 'per match')) +
+    card('castle', L('Урон по башням', 'Tower damage'), fmt(avgOf(t, 'tower_damage')), L('за матч', 'per match'));
 }
 
 function renderPositions() {
   const mine = Object.values(S.matches).map(m => m._me).filter(Boolean);
   const exact = mine.filter(p => p._posExact).length;
-  $('posNote').textContent = `По последним ${mine.length} матчам. Позиция определена по реплею в ${exact}, в остальных примерно (по героям и золоту в команде). Разбери реплеи внизу, чтобы было точнее.`;
+  $('posNote').textContent = L(`По последним ${mine.length} матчам. Позиция определена по реплею в ${exact}, в остальных примерно (по героям и золоту в команде). Разбери реплеи внизу, чтобы было точнее.`, `Based on the last ${mine.length} matches. Position comes from the replay in ${exact}, the rest are estimated from heroes and team gold. Parse replays below for more accuracy.`);
   const by = [1, 2, 3, 4, 5].map(pos => {
     const ps = mine.filter(p => p._pos === pos);
     const w = ps.filter(isWin).length;
@@ -497,13 +506,13 @@ function renderPositions() {
   const best = by.filter(b => b.n >= 3).sort((a, b) => adjWr(b) - adjWr(a) || b.score - a.score)[0];
   $('positions').innerHTML = by.map(b => {
     const c = !b.n ? 'var(--fg-dim)' : b.wr >= 55 ? 'var(--good)' : b.wr >= 45 ? 'var(--accent)' : 'var(--bad)';
-    return `<button class="card pos-card ${best && b.pos === best.pos ? 'best' : ''}" data-pos="${b.pos}" ${b.n ? '' : 'disabled'} title="Показать матчи на этой позиции">
+    return `<button class="card pos-card ${best && b.pos === best.pos ? 'best' : ''}" data-pos="${b.pos}" ${b.n ? '' : 'disabled'} title="${L('Показать матчи на этой позиции', 'Show matches at this position')}">
       <span class="pos-top">
         <span class="ring" style="--p:${b.n ? b.wr.toFixed(0) : 0};--c:${c}"><span>${b.n ? b.wr.toFixed(0) + '%' : '—'}</span></span>
-        <span class="pos-name"><span class="label">Pos ${b.pos}</span><b>${POS_NAMES[b.pos]}</b><span class="note">${b.n} игр${b.n ? ` · оценка ${b.score.toFixed(1)}` : ''}</span></span>
+        <span class="pos-name"><span class="label">Pos ${b.pos}</span><b>${POS_NAMES[b.pos]}</b><span class="note">${b.n} ${L('игр', 'games')}${b.n ? ` · ${L('оценка', 'score')} ${b.score.toFixed(1)}` : ''}</span></span>
       </span>
       <span class="pos-heroes">${b.heroes.map(heroIcon).join('')}</span>
-      ${best && b.pos === best.pos ? `<span class="best-tag">${icon('crown')}Лучше всего получается</span>` : ''}
+      ${best && b.pos === best.pos ? `<span class="best-tag">${icon('crown')}${L('Лучше всего получается', 'Your best position')}</span>` : ''}
     </button>`;
   }).join('');
   $('positions').querySelectorAll('.pos-card').forEach(b => b.addEventListener('click', () => {
@@ -520,29 +529,29 @@ function renderIssues(t, recent, heroes) {
   const kda = deaths ? (avgOf(t, 'kills') + avgOf(t, 'assists')) / deaths : 99;
   const lhm = dur ? avgOf(t, 'last_hits') / (dur / 60) : 0;
 
-  if (deaths > 8) add('bad', 'Много смертей', `${deaths.toFixed(1)} за игру. Следи за картой, носи ТП, не фарми без вижна.`, deaths.toFixed(1));
-  else if (deaths > 6) add('warn', 'Частые смерти', `${deaths.toFixed(1)} за игру.`, deaths.toFixed(1));
-  else add('good', 'Хорошо выживаешь', `${deaths.toFixed(1)} смертей за игру.`, deaths.toFixed(1));
-  if (kda < 2) add('bad', 'Низкий KDA', 'Мало участия в убийствах или частые смерти.', kda.toFixed(2));
-  else if (kda < 3) add('warn', 'KDA ниже среднего', 'Нормально, но можно лучше.', kda.toFixed(2));
-  else add('good', 'Хороший KDA', 'Влияешь на драки и не отдаёшь лишнего.', kda.toFixed(2));
-  if (gpm < 350) add('bad', 'Слабый фарм', 'Если играешь кор, фарми лес между волнами.', Math.round(gpm));
-  else if (gpm < 420) add('warn', 'Средний фарм', 'Для кора можно выжимать больше золота.', Math.round(gpm));
-  if (lhm < 4) add('bad', 'Мало ластхитов', `${lhm.toFixed(1)} в минуту. Потренируй добивание в демо.`, lhm.toFixed(1));
-  else if (lhm < 6) add('warn', 'Ластхиты средние', `${lhm.toFixed(1)} в минуту.`, lhm.toFixed(1));
+  if (deaths > 8) add('bad', L('Много смертей', 'Too many deaths'), L(`${deaths.toFixed(1)} за игру. Следи за картой, носи ТП, не фарми без вижна.`, `${deaths.toFixed(1)} per game. Watch the map, carry a TP, don't farm without vision.`), deaths.toFixed(1));
+  else if (deaths > 6) add('warn', L('Частые смерти', 'Frequent deaths'), L(`${deaths.toFixed(1)} за игру.`, `${deaths.toFixed(1)} per game.`), deaths.toFixed(1));
+  else add('good', L('Хорошо выживаешь', 'Good survival'), L(`${deaths.toFixed(1)} смертей за игру.`, `${deaths.toFixed(1)} deaths per game.`), deaths.toFixed(1));
+  if (kda < 2) add('bad', L('Низкий KDA', 'Low KDA'), L('Мало участия в убийствах или частые смерти.', 'Low kill participation or frequent deaths.'), kda.toFixed(2));
+  else if (kda < 3) add('warn', L('KDA ниже среднего', 'Below-average KDA'), L('Нормально, но можно лучше.', 'Okay, but there\'s room to improve.'), kda.toFixed(2));
+  else add('good', L('Хороший KDA', 'Good KDA'), L('Влияешь на драки и не отдаёшь лишнего.', 'You impact fights without feeding.'), kda.toFixed(2));
+  if (gpm < 350) add('bad', L('Слабый фарм', 'Weak farm'), L('Если играешь кор, фарми лес между волнами.', 'If you play core, farm the jungle between waves.'), Math.round(gpm));
+  else if (gpm < 420) add('warn', L('Средний фарм', 'Average farm'), L('Для кора можно выжимать больше золота.', 'As a core you can squeeze out more gold.'), Math.round(gpm));
+  if (lhm < 4) add('bad', L('Мало ластхитов', 'Few last hits'), L(`${lhm.toFixed(1)} в минуту. Потренируй добивание в демо.`, `${lhm.toFixed(1)} per minute. Practice last hitting in demo mode.`), lhm.toFixed(1));
+  else if (lhm < 6) add('warn', L('Ластхиты средние', 'Average last hits'), L(`${lhm.toFixed(1)} в минуту.`, `${lhm.toFixed(1)} per minute.`), lhm.toFixed(1));
 
   const losing = heroes.filter(h => h.games >= losingGames() && h.win / h.games < 0.45).sort((a, b) => b.games - a.games)[0];
-  if (losing) add('bad', `Сливаешь на ${heroName(losing.hero_id)}`, `${losing.games} игр ${periodLabel()}, винрейт ${(losing.win / losing.games * 100).toFixed(0)}%. Отложи героя или разбери свои игры на нём.`, (losing.win / losing.games * 100).toFixed(0) + '%');
+  if (losing) add('bad', L(`Сливаешь на ${heroName(losing.hero_id)}`, `Losing on ${heroName(losing.hero_id)}`), L(`${losing.games} игр ${periodLabel()}, винрейт ${(losing.win / losing.games * 100).toFixed(0)}%. Отложи героя или разбери свои игры на нём.`, `${losing.games} games ${periodLabel()}, ${(losing.win / losing.games * 100).toFixed(0)}% win rate. Shelve the hero or review your games on it.`), (losing.win / losing.games * 100).toFixed(0) + '%');
 
   const mine = Object.values(S.matches).map(m => m._me).filter(Boolean);
   const byPos = [1, 2, 3, 4, 5].map(pos => { const ps = mine.filter(p => p._pos === pos); return { pos, n: ps.length, wr: ps.length ? ps.filter(isWin).length / ps.length : 0 }; });
   const worstPos = byPos.filter(b => b.n >= 4).sort((a, b) => a.wr - b.wr)[0];
-  if (worstPos && worstPos.wr < 0.4) add('warn', `Слабая позиция: ${POS_NAMES[worstPos.pos]}`, `${worstPos.n} игр за последнее время, побед ${(worstPos.wr * 100).toFixed(0)}%. В подборе ролей лучше ставить другие позиции.`, (worstPos.wr * 100).toFixed(0) + '%');
+  if (worstPos && worstPos.wr < 0.4) add('warn', L(`Слабая позиция: ${POS_NAMES[worstPos.pos]}`, `Weak position: ${POS_NAMES[worstPos.pos]}`), L(`${worstPos.n} игр за последнее время, побед ${(worstPos.wr * 100).toFixed(0)}%. В подборе ролей лучше ставить другие позиции.`, `${worstPos.n} recent games, ${(worstPos.wr * 100).toFixed(0)}% wins. Queue for other roles.`), (worstPos.wr * 100).toFixed(0) + '%');
 
   if (recent.length >= 10) {
     const w = recent.slice(0, 10).filter(isWin).length;
-    if (w <= 3) add('bad', 'Похоже на тильт', `${w} побед в последних 10 играх. Сделай перерыв.`, `${w}/10`);
-    else if (w >= 7) add('good', 'Хорошая серия', `${w} побед в последних 10 играх.`, `${w}/10`);
+    if (w <= 3) add('bad', L('Похоже на тильт', 'Looks like tilt'), L(`${w} побед в последних 10 играх. Сделай перерыв.`, `${w} wins in the last 10 games. Take a break.`), `${w}/10`);
+    else if (w >= 7) add('good', L('Хорошая серия', 'Good streak'), L(`${w} побед в последних 10 играх.`, `${w} wins in the last 10 games.`), `${w}/10`);
   }
   const order = { bad: 0, warn: 1, good: 2 };
   items.sort((a, b) => order[a.sev] - order[b.sev]);
@@ -555,27 +564,27 @@ function setMetaTab(tab, G) {
   S.metaTab = tab;
   document.querySelectorAll('#mineTabs .tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   const g = GROUPS[S.group];
-  if (!G) { $('metaNote').textContent = 'Данные меты ещё не собраны.'; $('metaTable').innerHTML = ''; return; }
+  if (!G) { $('metaNote').textContent = L('Данные меты ещё не собраны.', 'Meta data isn\'t ready yet.'); $('metaTable').innerHTML = ''; return; }
   const mine = Object.fromEntries(S.playerHeroes.map(h => [h.hero_id, h]));
   const myWr = h => h && h.games ? h.win / h.games * 100 : null;
   const mwr = id => heroWr(G, id) * 100;
   if (tab === 'mine') {
-    $('metaNote').textContent = `Твой винрейт ${periodLabel()} против общего винрейта героя в ${g}. Плюс значит, что ты играешь его лучше среднего.${S.limit === 20 ? ' На 2–3 играх разница сильно зависит от случая.' : ''}`;
+    $('metaNote').textContent = L(`Твой винрейт ${periodLabel()} против общего винрейта героя в ${g}. Плюс значит, что ты играешь его лучше среднего.${S.limit === 20 ? ' На 2–3 играх разница сильно зависит от случая.' : ''}`, `Your win rate ${periodLabel()} vs the hero's overall win rate in ${g}. Plus means you play it better than average.${S.limit === 20 ? ' With 2–3 games the difference is mostly luck.' : ''}`);
     const rows = S.playerHeroes.filter(h => h.games >= minGames()).sort((a, b) => b.games - a.games).slice(0, 15);
-    $('metaTable').innerHTML = `<thead><tr><th>Герой</th><th class="num">Игр</th><th class="num">Твой WR</th><th class="num">WR в ${g}</th><th class="num">Разница</th></tr></thead><tbody>` +
+    $('metaTable').innerHTML = `<thead><tr><th>${L('Герой', 'Hero')}</th><th class="num">${L('Игр', 'Games')}</th><th class="num">${L('Твой WR', 'Your WR')}</th><th class="num">${L('WR в', 'WR in')} ${g}</th><th class="num">${L('Разница', 'Diff')}</th></tr></thead><tbody>` +
       rows.map(h => `<tr><td>${heroCell(h.hero_id)}</td><td class="num">${h.games}</td><td class="num">${myWr(h).toFixed(1)}%</td><td class="num muted">${mwr(h.hero_id).toFixed(1)}%</td><td class="num ${signCls(myWr(h) - mwr(h.hero_id))}">${pct(myWr(h) - mwr(h.hero_id))}</td></tr>`).join('') + '</tbody>';
   } else if (tab === 'meta') {
-    $('metaNote').textContent = `Самые сильные популярные герои в ${g}. Справа твой опыт на них ${periodLabel()}.`;
+    $('metaNote').textContent = L(`Самые сильные популярные герои в ${g}. Справа твой опыт на них ${periodLabel()}.`, `The strongest popular heroes in ${g}. On the right, your games on them ${periodLabel()}.`);
     const rows = Object.keys(S.heroes).map(Number).filter(h => heroPick(G, h) >= 0.04).sort((a, b) => heroWr(G, b) - heroWr(G, a)).slice(0, 15);
-    $('metaTable').innerHTML = `<thead><tr><th>Герой</th><th class="num">WR в ${g}</th><th class="num">Пик</th><th class="num">Твоих игр</th><th class="num">Твой WR</th></tr></thead><tbody>` +
+    $('metaTable').innerHTML = `<thead><tr><th>${L('Герой', 'Hero')}</th><th class="num">${L('WR в', 'WR in')} ${g}</th><th class="num">${L('Пик', 'Pick')}</th><th class="num">${L('Твоих игр', 'Your games')}</th><th class="num">${L('Твой WR', 'Your WR')}</th></tr></thead><tbody>` +
       rows.map(h => { const m = mine[h]; return `<tr><td>${heroCell(h)}</td><td class="num pos">${mwr(h).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${m ? m.games : 0}</td><td class="num">${m && m.games >= minGames() ? myWr(m).toFixed(1) + '%' : '<span class="dim">—</span>'}</td></tr>`; }).join('') + '</tbody>';
   } else {
-    $('metaNote').textContent = `Герои, которые сильны в ${g} и у тебя уже получаются (${periodLabel()}). Их стоит спамить ради рейтинга.`;
+    $('metaNote').textContent = L(`Герои, которые сильны в ${g} и у тебя уже получаются (${periodLabel()}). Их стоит спамить ради рейтинга.`, `Heroes that are strong in ${g} and already work for you (${periodLabel()}). Spam them to climb.`);
     const rows = S.playerHeroes.filter(h => h.games >= minGames() && mwr(h.hero_id) >= 50 && myWr(h) >= 52)
       .map(h => ({ ...h, s: (myWr(h) - 50) * Math.log(h.games) + (mwr(h.hero_id) - 50) * 2 })).sort((a, b) => b.s - a.s).slice(0, 10);
     $('metaTable').innerHTML = rows.length
-      ? `<thead><tr><th>Герой</th><th class="num">Твой WR</th><th class="num">Игр</th><th class="num">WR в ${g}</th></tr></thead><tbody>` + rows.map(h => `<tr><td>${heroCell(h.hero_id)}</td><td class="num pos">${myWr(h).toFixed(1)}%</td><td class="num">${h.games}</td><td class="num">${mwr(h.hero_id).toFixed(1)}%</td></tr>`).join('') + '</tbody>'
-      : '<tbody><tr><td class="muted">Пока нет героев, где и мета, и твой винрейт выше среднего. Попробуй героев из вкладки «Топ меты».</td></tr></tbody>';
+      ? `<thead><tr><th>${L('Герой', 'Hero')}</th><th class="num">${L('Твой WR', 'Your WR')}</th><th class="num">${L('Игр', 'Games')}</th><th class="num">${L('WR в', 'WR in')} ${g}</th></tr></thead><tbody>` + rows.map(h => `<tr><td>${heroCell(h.hero_id)}</td><td class="num pos">${myWr(h).toFixed(1)}%</td><td class="num">${h.games}</td><td class="num">${mwr(h.hero_id).toFixed(1)}%</td></tr>`).join('') + '</tbody>'
+      : `<tbody><tr><td class="muted">${L('Пока нет героев, где и мета, и твой винрейт выше среднего. Попробуй героев из вкладки «Топ меты».', 'No heroes yet where both the meta and your win rate are above average. Try heroes from the "Top meta" tab.')}</td></tr></tbody>`;
   }
 }
 
@@ -584,18 +593,18 @@ function renderMatches() {
   const ready = unparsed.filter(r => !parsePendingSince(r.match_id));
   $('parseAll').hidden = unparsed.length === 0;
   $('parseAll').disabled = ready.length === 0;
-  $('parseAll').textContent = ready.length ? `Разобрать реплеи (${ready.length})` : `Разбор запрошен (${unparsed.length})`;
+  $('parseAll').textContent = ready.length ? `${L('Разобрать реплеи', 'Parse replays')} (${ready.length})` : `${L('Разбор запрошен', 'Parse requested')} (${unparsed.length})`;
   const posOf = r => S.matches[r.match_id]?._me?._pos;
   const count = p => S.recent.filter(r => !p || posOf(r) === p).length;
-  $('posFilter').innerHTML = [0, 1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.posFilter}" ${p && !count(p) ? 'disabled' : ''}>${p ? `${p} · ${POS_NAMES[p]}` : 'Все'} <span class="dim">${count(p)}</span></button>`).join('');
+  $('posFilter').innerHTML = [0, 1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.posFilter}" ${p && !count(p) ? 'disabled' : ''}>${p ? `${p} · ${POS_NAMES[p]}` : L('Все', 'All')} <span class="dim">${count(p)}</span></button>`).join('');
   $('posFilter').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.posFilter = +b.dataset.p; renderMatches(); }));
   $('matches').innerHTML = S.recent.filter(r => !S.posFilter || posOf(r) === S.posFilter).map(r => {
     const m = S.matches[r.match_id], me = m?._me;
     const won = isWin(r);
-    const posb = me ? `<span class="posb ${me._posExact ? '' : 'approx'}" title="${POS_NAMES[me._pos]}${me._posExact ? '' : ' (примерно)'}">${me._pos}</span>` : '<span></span>';
-    return `<button class="card match ${won ? '' : 'loss'}" data-id="${r.match_id}" aria-label="${won ? 'Победа' : 'Поражение'} на ${esc(heroName(r.hero_id))}, открыть разбор">
-      ${m?.version ? '<span class="parsed-dot" title="Реплей разобран"></span>' : ''}
-      <span class="res ${won ? 'win' : 'loss'}"><b>${won ? 'Победа' : 'Поражение'}</b><small>${ago(r.start_time + r.duration)}</small></span>${posb}
+    const posb = me ? posBadge(me) : '<span></span>';
+    return `<button class="card match ${won ? '' : 'loss'}" data-id="${r.match_id}" aria-label="${won ? L('Победа', 'Win') : L('Поражение', 'Loss')}: ${esc(heroName(r.hero_id))}">
+      ${m?.version ? `<span class="parsed-dot" title="${L('Реплей разобран', 'Replay parsed')}"></span>` : ''}
+      <span class="res ${won ? 'win' : 'loss'}"><b>${won ? L('Победа', 'Win') : L('Поражение', 'Loss')}</b><small>${ago(r.start_time + r.duration)}</small></span>${posb}
       ${heroCell(r.hero_id)}
       <span class="kda">${r.kills} / <span class="d">${r.deaths}</span> / ${r.assists}</span>
       <span class="gpm">${r.gold_per_min} GPM</span>
@@ -610,10 +619,10 @@ $('parseAll').addEventListener('click', async () => {
   let sent = 0;
   for (const id of ids) {
     if (await requestParse(id)) sent++;
-    $('parseStatus').textContent = `Отправлено на разбор: ${sent}/${ids.length}. Старые реплеи (старше ~2 недель) Valve уже удалила, их не разобрать.`;
+    $('parseStatus').textContent = L(`Отправлено на разбор: ${sent}/${ids.length}. Старые реплеи (старше ~2 недель) Valve уже удалила, их не разобрать.`, `Sent for parsing: ${sent}/${ids.length}. Valve deletes replays older than ~2 weeks, those can't be parsed.`);
     await new Promise(r => setTimeout(r, 1100));
   }
-  $('parseStatus').textContent = `Отправлено на разбор: ${sent}. Обычно это занимает 1–5 минут. Потом нажми «Анализ» ещё раз.`;
+  $('parseStatus').textContent = L(`Отправлено на разбор: ${sent}. Обычно это занимает 1–5 минут. Потом нажми «Анализ» ещё раз.`, `Sent for parsing: ${sent}. It usually takes 1–5 minutes. Then press "Analyze" again.`);
   renderMatches();
 });
 
@@ -626,14 +635,14 @@ $('matchDlg').addEventListener('click', e => { if (e.target === $('matchDlg')) $
 document.querySelectorAll('#dlgTabs .tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
 async function openMatch(id) {
-  $('dlgTitle').textContent = `Матч ${id}`;
-  $('dlgBody').innerHTML = '<div class="loading"><div class="spinner"></div><p>Загружаю матч…</p></div>';
+  $('dlgTitle').textContent = `${L('Матч', 'Match')} ${id}`;
+  $('dlgBody').innerHTML = `<div class="loading"><div class="spinner"></div><p>${L('Загружаю матч…', 'Loading match…')}</p></div>`;
   $('matchDlg').showModal();
   try {
     const [m] = await Promise.all([S.matches[id] ? Promise.resolve(S.matches[id]) : loadMatch(id).then(prepareMatch), loadItems().catch(() => {}), loadGroup(S.group).catch(() => null)]);
     S.matches[id] = m;
     current = m;
-    $('dlgTitle').textContent = `${m.radiant_win ? 'Победа Radiant' : 'Победа Dire'} · ${m.radiant_score}:${m.dire_score} · ${mmss(m.duration)}`;
+    $('dlgTitle').textContent = `${m.radiant_win ? L('Победа Radiant', 'Radiant victory') : L('Победа Dire', 'Dire victory')} · ${m.radiant_score}:${m.dire_score} · ${mmss(m.duration)}`;
     showTab('overview');
   } catch (e) {
     $('dlgBody').innerHTML = `<div class="error-msg">${esc(e.message)}</div>`;
@@ -659,7 +668,7 @@ function teams(m) {
   return { me, mine, theirs, myRad, sign: myRad ? 1 : -1, won: me ? isWin(me) : m.radiant_win };
 }
 
-const posBadge = p => `<span class="posb ${p._posExact ? '' : 'approx'}" title="${POS_NAMES[p._pos]}${p._posExact ? '' : ' (примерно)'}">${p._pos}</span>`;
+const posBadge = p => `<span class="posb ${p._posExact ? '' : 'approx'}" title="${POS_NAMES[p._pos]}${p._posExact ? '' : L(' (примерно)', ' (estimated)')}">${p._pos}</span>`;
 const scoreCol = s => s >= 6.5 ? 'var(--good)' : s >= 4 ? 'var(--warn)' : 'var(--bad)';
 const finalItems = p => [0, 1, 2, 3, 4, 5].map(i => S.itemIds?.[p['item_' + i]]).filter(Boolean);
 
@@ -668,10 +677,10 @@ function parseBlock(m) {
   const since = parsePendingSince(m.match_id);
   if (since) {
     const min = Math.floor((Date.now() - since) / 60000);
-    return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">Разбор запрошен ${min < 1 ? 'только что' : `${min} мин назад`}</div><div class="detail">Обычно это 1–5 минут. Окно обновится само, нажимать ничего не нужно.</div></div><div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
+    return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">${L('Разбор запрошен', 'Parse requested')} ${min < 1 ? L('только что', 'just now') : L(`${min} мин назад`, `${min} min ago`)}</div><div class="detail">${L('Обычно это 1–5 минут. Окно обновится само, нажимать ничего не нужно.', 'It usually takes 1–5 minutes. This view updates by itself.')}</div></div><div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
   }
   const failed = store.get('pr:' + m.match_id);
-  return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">Реплей не разобран</div><div class="detail">${failed ? 'Прошлый запрос за 30 минут так и не дал разбора: скорее всего, Valve уже удалила реплей (они хранятся около двух недель). Можно попробовать ещё раз.' : 'Без разбора нет позиций по линиям, графика золота, драк и таймингов предметов. Разбор занимает 1–5 минут.'}</div></div><button class="btn small" id="parseOne">Разобрать</button></div>`;
+  return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">${L('Реплей не разобран', 'Replay not parsed')}</div><div class="detail">${failed ? L('Прошлый запрос за 30 минут так и не дал разбора: скорее всего, Valve уже удалила реплей (они хранятся около двух недель). Можно попробовать ещё раз.', 'The last request didn\'t produce a parse in 30 minutes. Valve has probably deleted the replay (they keep them about two weeks). You can try again.') : L('Без разбора нет позиций по линиям, графика золота, драк и таймингов предметов. Разбор занимает 1–5 минут.', 'Without a parse there are no lane positions, gold graph, fights, or item timings. Parsing takes 1–5 minutes.')}</div></div><button class="btn small" id="parseOne">${L('Разобрать', 'Parse')}</button></div>`;
 }
 
 const pollers = new Set();
@@ -702,8 +711,8 @@ function wireParse(m) {
   if (parsePendingSince(m.match_id)) { pollParse(m.match_id); return; }
   const b = $('parseOne'); if (!b) return;
   b.addEventListener('click', async () => {
-    b.disabled = true; b.textContent = 'Отправляю…';
-    if (!(await requestParse(m.match_id))) { b.disabled = false; b.textContent = 'Не отправилось, ещё раз'; return; }
+    b.disabled = true; b.textContent = L('Отправляю…', 'Sending…');
+    if (!(await requestParse(m.match_id))) { b.disabled = false; b.textContent = L('Не отправилось, ещё раз', 'Failed, try again'); return; }
     if (S.playerId) renderMatches();
     showTab(S.dlgTab);
   });
@@ -715,12 +724,12 @@ function renderOverview(m) {
   const best = all.reduce((a, b) => b._score > a._score ? b : a);
   const worst = all.reduce((a, b) => b._score < a._score ? b : a);
   const table = (team, title, win) => `
-    <div class="section"><h3 class="label">${title} ${win ? '· победа' : '· поражение'}</h3>
+    <div class="section"><h3 class="label">${title} · ${win ? L('победа', 'win') : L('поражение', 'loss')}</h3>
     <div class="card table-wrap"><table>
-      <thead><tr><th>Поз.</th><th>Игрок</th><th>Герой</th><th class="num">K/D/A</th><th class="num">GPM</th><th class="num">LH</th><th class="num">Урон</th><th>Предметы</th><th class="num">Оценка</th></tr></thead>
+      <thead><tr><th>${L('Поз.', 'Pos')}</th><th>${L('Игрок', 'Player')}</th><th>${L('Герой', 'Hero')}</th><th class="num">K/D/A</th><th class="num">GPM</th><th class="num">LH</th><th class="num">${L('Урон', 'Damage')}</th><th>${L('Предметы', 'Items')}</th><th class="num">${L('Оценка', 'Score')}</th></tr></thead>
       <tbody>${team.map(p => `<tr class="${p === me ? 'me' : ''}">
         <td>${posBadge(p)}</td>
-        <td>${p.account_id && p !== me ? `<button class="player-link" data-id="${p.account_id}" title="Открыть анализ этого игрока">${esc(p.personaname || 'Без ника')}</button>` : esc(p.personaname || 'Аноним')} ${p === best ? '<span class="chip pos">MVP</span>' : ''}${p === worst ? '<span class="chip neg">Худший</span>' : ''}<div class="dim rank-line">${p.rank_tier ? rankEmblem(p.rank_tier, 22) + rankName(p.rank_tier) : ''}</div></td>
+        <td>${p.account_id && p !== me ? `<button class="player-link" data-id="${p.account_id}" title="${L('Открыть анализ этого игрока', 'Analyze this player')}">${esc(p.personaname || L('Без ника', 'No name'))}</button>` : esc(p.personaname || L('Аноним', 'Anonymous'))} ${p === best ? '<span class="chip pos">MVP</span>' : ''}${p === worst ? `<span class="chip neg">${L('Худший', 'Worst')}</span>` : ''}<div class="dim rank-line">${p.rank_tier ? rankEmblem(p.rank_tier, 22) + rankName(p.rank_tier) : ''}</div></td>
         <td>${heroCell(p.hero_id)}</td><td class="num">${p.kills}/${p.deaths}/${p.assists}</td>
         <td class="num">${p.gold_per_min}</td><td class="num">${p.last_hits}</td><td class="num">${fmt(p.hero_damage)}</td>
         <td><div class="items">${finalItems(p).map(itemIcon).join('')}</div></td>
@@ -735,22 +744,22 @@ function renderOverview(m) {
     const strong = rows.filter(r => r.v >= 0.7);
     const rank = [...all].sort((a, b) => b._score - a._score).indexOf(me) + 1;
     const extra = [];
-    if (me.lane_efficiency_pct != null) extra.push(`эффективность на линии ${me.lane_efficiency_pct}%`);
-    if (me.teamfight_participation != null) extra.push(`участие в драках ${(me.teamfight_participation * 100).toFixed(0)}%`);
-    if (me._role === 'support' && me.obs_placed != null) extra.push(`вардов ${me.obs_placed} обс / ${me.sen_placed} сентри`);
-    if (me.camps_stacked) extra.push(`стаков ${me.camps_stacked}`);
+    if (me.lane_efficiency_pct != null) extra.push(L(`эффективность на линии ${me.lane_efficiency_pct}%`, `lane efficiency ${me.lane_efficiency_pct}%`));
+    if (me.teamfight_participation != null) extra.push(L(`участие в драках ${(me.teamfight_participation * 100).toFixed(0)}%`, `fight participation ${(me.teamfight_participation * 100).toFixed(0)}%`));
+    if (me._role === 'support' && me.obs_placed != null) extra.push(L(`вардов ${me.obs_placed} обс / ${me.sen_placed} сентри`, `wards ${me.obs_placed} obs / ${me.sen_placed} sentry`));
+    if (me.camps_stacked) extra.push(L(`стаков ${me.camps_stacked}`, `stacks ${me.camps_stacked}`));
     mineBlock = `
-      <div class="section"><h3 class="section-title">Где можно было лучше</h3>
-        <p class="note">Ты на ${esc(heroName(me.hero_id))}, позиция ${me._pos} (${POS_NAMES[me._pos]}${me._posExact ? '' : ', примерно'}), ${rank}-е место из 10 по оценке. Полоса показывает, какую долю игроков на этом герое ты обошёл.${extra.length ? ' Ещё: ' + extra.join(', ') + '.' : ''}</p>
+      <div class="section"><h3 class="section-title">${L('Где можно было лучше', 'Where you could do better')}</h3>
+        <p class="note">${L(`Ты на ${esc(heroName(me.hero_id))}, позиция ${me._pos} (${POS_NAMES[me._pos]}${me._posExact ? '' : ', примерно'}), ${rank}-е место из 10 по оценке. Полоса показывает, какую долю игроков на этом герое ты обошёл.`, `You on ${esc(heroName(me.hero_id))}, position ${me._pos} (${POS_NAMES[me._pos]}${me._posExact ? '' : ', estimated'}), rank ${rank} of 10 by score. Each bar shows the share of players on this hero you beat.`)}${extra.length ? ' ' + L('Ещё', 'Also') + ': ' + extra.join(', ') + '.' : ''}</p>
         <div class="card bench-list">${rows.map(r => `<div class="bench"><span>${METRICS[r.k].name}</span><div class="track"><div class="fill" style="width:${(r.v * 100).toFixed(0)}%;background:${r.v >= .6 ? 'var(--good)' : r.v >= .4 ? 'var(--warn)' : 'var(--bad)'}"></div></div><span class="num">${(r.v * 100).toFixed(0)}%</span></div>`).join('')}</div>
         <div class="issue-list">
-          ${weak.map(r => `<div class="card issue">${sevIcon('bad')}<div class="body"><div class="title">${METRICS[r.k].name}: хуже ${(100 - r.v * 100).toFixed(0)}% игроков</div><div class="detail">${METRICS[r.k].tip}</div></div></div>`).join('')}
-          ${strong.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">Получилось хорошо</div><div class="detail">${strong.map(r => METRICS[r.k].name.toLowerCase()).join(', ')}: лучше 70%+ игроков на этом герое.</div></div></div>` : ''}
-          ${!weak.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">Серьёзных провалов нет</div><div class="detail">По ключевым показателям роли ты не хуже большинства.</div></div></div>` : ''}
+          ${weak.map(r => `<div class="card issue">${sevIcon('bad')}<div class="body"><div class="title">${METRICS[r.k].name}: ${L(`хуже ${(100 - r.v * 100).toFixed(0)}% игроков`, `worse than ${(100 - r.v * 100).toFixed(0)}% of players`)}</div><div class="detail">${METRICS[r.k].tip}</div></div></div>`).join('')}
+          ${strong.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">${L('Получилось хорошо', 'Went well')}</div><div class="detail">${strong.map(r => METRICS[r.k].name.toLowerCase()).join(', ')}: ${L('лучше 70%+ игроков на этом герое.', 'better than 70%+ of players on this hero.')}</div></div></div>` : ''}
+          ${!weak.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">${L('Серьёзных провалов нет', 'No major weak spots')}</div><div class="detail">${L('По ключевым показателям роли ты не хуже большинства.', 'On your role\'s key stats you\'re no worse than most players.')}</div></div></div>` : ''}
         </div></div>`;
   }
-  $('dlgBody').innerHTML = parseBlock(m) + mineBlock + table(mine, me ? 'Твоя команда' : 'Radiant', me ? won : m.radiant_win) + table(theirs, me ? 'Враги' : 'Dire', me ? !won : !m.radiant_win) + `
-    <p class="note">Оценка 0–10: сравнение с другими игроками на том же герое по метрикам роли (позиции 1–3 считаются корами, 4–5 саппортами).</p>
+  $('dlgBody').innerHTML = parseBlock(m) + mineBlock + table(mine, me ? L('Твоя команда', 'Your team') : 'Radiant', me ? won : m.radiant_win) + table(theirs, me ? L('Враги', 'Enemies') : 'Dire', me ? !won : !m.radiant_win) + `
+    <p class="note">${L('Оценка 0–10: сравнение с другими игроками на том же герое по метрикам роли (позиции 1–3 считаются корами, 4–5 саппортами).', 'Score 0–10: compared with other players on the same hero by role metrics (positions 1–3 count as cores, 4–5 as supports).')}</p>
     <div class="row note"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a><a href="https://stratz.com/matches/${m.match_id}" target="_blank" rel="noopener">Stratz</a></div>`;
   wireParse(m);
   $('dlgBody').querySelectorAll('.player-link').forEach(b => b.addEventListener('click', () => {
@@ -781,13 +790,13 @@ function candidates(G, pos, enemies, allies, exclude) {
 }
 
 function candRow(c, mineCls) {
-  const parts = c.vs.map(([e, v]) => `<span title="против ${esc(heroName(e))}">${heroImg(e) ? `<img src="${heroImg(e)}" alt="">` : ''}<b class="${signCls(v)}">${pct(v)}</b></span>`)
-    .concat(c.wi.map(([a, v]) => `<span title="вместе с ${esc(heroName(a))}">+${heroImg(a) ? `<img src="${heroImg(a)}" alt="">` : ''}<b class="${signCls(v)}">${pct(v)}</b></span>`));
-  return `<div class="cand ${mineCls || ''}">${heroCell(c.h)}<span class="score ${signCls(c.score)}">${pct(c.score)}</span><div class="breakdown">${parts.join('')}<span class="dim">мета ${pct(c.base)}</span></div></div>`;
+  const parts = c.vs.map(([e, v]) => `<span title="${L('против', 'vs')} ${esc(heroName(e))}">${heroImg(e) ? `<img src="${heroImg(e)}" alt="">` : ''}<b class="${signCls(v)}">${pct(v)}</b></span>`)
+    .concat(c.wi.map(([a, v]) => `<span title="${L('вместе с', 'with')} ${esc(heroName(a))}">+${heroImg(a) ? `<img src="${heroImg(a)}" alt="">` : ''}<b class="${signCls(v)}">${pct(v)}</b></span>`));
+  return `<div class="cand ${mineCls || ''}">${heroCell(c.h)}<span class="score ${signCls(c.score)}">${pct(c.score)}</span><div class="breakdown">${parts.join('')}<span class="dim">${L('мета', 'meta')} ${pct(c.base)}</span></div></div>`;
 }
 
 function renderDraft(m, G) {
-  if (!G) { $('dlgBody').innerHTML = '<div class="empty">Данные по матчапам ещё не собраны.</div>'; return; }
+  if (!G) { $('dlgBody').innerHTML = `<div class="empty">${L('Данные по матчапам ещё не собраны.', 'Matchup data isn\'t ready yet.')}</div>`; return; }
   const { me, mine, theirs } = teams(m);
   const myH = mine.map(p => p.hero_id), thH = theirs.map(p => p.hero_id);
   const matrix = mine.map(p => thH.map(e => adv(G, p.hero_id, e)));
@@ -797,16 +806,16 @@ function renderDraft(m, G) {
   const metaMine = myH.reduce((s, h) => s + (heroWr(G, h) - .5) * 100, 0), metaTheirs = thH.reduce((s, h) => s + (heroWr(G, h) - .5) * 100, 0);
 
   let html = `
-    <div class="section"><h3 class="section-title">Кто кого контрпикает</h3>
-      <p class="note">Строки — ваши герои, столбцы — враги. Число показывает, насколько герой слева выигрывает чаще ожидаемого против героя сверху в ${GROUPS[S.group]} (${(G.matches / 1000).toFixed(0)}k матчей за ${G.days} дней).</p>
-      <div class="card table-wrap"><table class="matrix"><thead><tr><th></th>${theirs.map(p => `<th class="hcol">${posBadge(p)} ${heroIcon(p.hero_id)}</th>`).join('')}<th class="num">Итого</th></tr></thead>
+    <div class="section"><h3 class="section-title">${L('Кто кого контрпикает', 'Who counters whom')}</h3>
+      <p class="note">${L(`Строки — ваши герои, столбцы — враги. Число показывает, насколько герой слева выигрывает чаще ожидаемого против героя сверху в ${GROUPS[S.group]} (${(G.matches / 1000).toFixed(0)}k матчей за ${G.days} дней).`, `Rows are your heroes, columns are enemies. Each number shows how much more often the hero on the left wins than expected against the hero on top in ${GROUPS[S.group]} (${(G.matches / 1000).toFixed(0)}k matches over ${G.days} days).`)}</p>
+      <div class="card table-wrap"><table class="matrix"><thead><tr><th></th>${theirs.map(p => `<th class="hcol">${posBadge(p)} ${heroIcon(p.hero_id)}</th>`).join('')}<th class="num">${L('Итого', 'Total')}</th></tr></thead>
       <tbody>${mine.map((p, i) => `<tr class="${p === me ? 'me' : ''}"><td><div class="row">${posBadge(p)}${heroCell(p.hero_id)}</div></td>${matrix[i].map(advCell).join('')}<td class="num ${signCls(matrix[i].reduce((s, v) => s + v, 0))}"><b>${pct(matrix[i].reduce((s, v) => s + v, 0))}</b></td></tr>`).join('')}
-      <tr><td class="muted">Итого против врага</td>${thH.map((_, j) => { const s = matrix.reduce((a, r) => a + r[j], 0); return `<td class="num ${signCls(s)}">${pct(s)}</td>`; }).join('')}<td class="num ${signCls(total)}"><b>${pct(total)}</b></td></tr></tbody></table></div>
+      <tr><td class="muted">${L('Итого против врага', 'Total vs enemy')}</td>${thH.map((_, j) => { const s = matrix.reduce((a, r) => a + r[j], 0); return `<td class="num ${signCls(s)}">${pct(s)}</td>`; }).join('')}<td class="num ${signCls(total)}"><b>${pct(total)}</b></td></tr></tbody></table></div>
     </div>
     <div class="stats-grid">
-      <div class="card stat"><div class="label">Матчапы</div><div class="value ${signCls(total)}">${pct(total)}</div><div class="sub">${total >= 2 ? 'вы законтрили врага' : total <= -2 ? 'враг законтрил вас' : 'примерно поровну'}</div></div>
-      <div class="card stat"><div class="label">Сочетание у вас</div><div class="value ${signCls(synMine)}">${pct(synMine)}</div><div class="sub">у врага ${pct(synTheirs)}</div></div>
-      <div class="card stat"><div class="label">Сила героев в мете</div><div class="value ${signCls(metaMine - metaTheirs)}">${pct(metaMine - metaTheirs)}</div><div class="sub">ваши ${pct(metaMine)} / их ${pct(metaTheirs)}</div></div>
+      <div class="card stat"><div class="label">${L('Матчапы', 'Matchups')}</div><div class="value ${signCls(total)}">${pct(total)}</div><div class="sub">${total >= 2 ? L('вы законтрили врага', 'you countered them') : total <= -2 ? L('враг законтрил вас', 'they countered you') : L('примерно поровну', 'roughly even')}</div></div>
+      <div class="card stat"><div class="label">${L('Сочетание у вас', 'Your synergy')}</div><div class="value ${signCls(synMine)}">${pct(synMine)}</div><div class="sub">${L('у врага', 'theirs')} ${pct(synTheirs)}</div></div>
+      <div class="card stat"><div class="label">${L('Сила героев в мете', 'Meta strength')}</div><div class="value ${signCls(metaMine - metaTheirs)}">${pct(metaMine - metaTheirs)}</div><div class="sub">${L('ваши', 'yours')} ${pct(metaMine)} / ${L('их', 'theirs')} ${pct(metaTheirs)}</div></div>
     </div>`;
 
   if (me) {
@@ -821,15 +830,15 @@ function renderDraft(m, G) {
     const fromPool = list.filter(c => c.h !== me.hero_id && poolIds.has(c.h)).slice(0, 3);
     const myHero = (S.poolHeroes || []).find(h => h.hero_id === me.hero_id);
     html += `
-      <div class="section"><h3 class="section-title">Твой пик: ${esc(heroName(me.hero_id))}</h3>
-        <p class="note">Позиция ${me._pos} (${POS_NAMES[me._pos]}). ${myIdx >= 0 ? `${myIdx + 1}-е место из ${list.length} подходящих героев против этого состава.` : ''} Счёт = сумма матчапов против 5 врагов + сочетание с союзниками + сила героя в мете.</p>
+      <div class="section"><h3 class="section-title">${L('Твой пик', 'Your pick')}: ${esc(heroName(me.hero_id))}</h3>
+        <p class="note">${L('Позиция', 'Position')} ${me._pos} (${POS_NAMES[me._pos]}). ${myIdx >= 0 ? L(`${myIdx + 1}-е место из ${list.length} подходящих героев против этого состава.`, `Rank ${myIdx + 1} of ${list.length} fitting heroes against this lineup.`) : ''} ${L('Счёт = сумма матчапов против 5 врагов + сочетание с союзниками + сила героя в мете.', 'Score = matchups vs 5 enemies + synergy with allies + hero meta strength.')}</p>
         <div class="card">${candRow(myC, 'mine')}</div>
       </div>
-      <div class="section"><h3 class="section-title">Кого лучше было бы взять</h3>
-        <p class="note">Лучшие герои на позицию ${me._pos} против этих врагов и с этими союзниками. Учти, что в драфте не все враги известны заранее: если ты пикал рано, смотри на матчапы против первых пиков.</p>
+      <div class="section"><h3 class="section-title">${L('Кого лучше было бы взять', 'Better picks')}</h3>
+        <p class="note">${L(`Лучшие герои на позицию ${me._pos} против этих врагов и с этими союзниками. Учти, что в драфте не все враги известны заранее: если ты пикал рано, смотри на матчапы против первых пиков.`, `Best heroes for position ${me._pos} against these enemies and with these allies. Not every enemy is known during the draft: if you picked early, look at matchups vs the first picks.`)}</p>
         <div class="card">${top.map(c => candRow(c)).join('')}</div>
-        ${fromPool.length ? `<h3 class="label">Из твоих героев (10+ игр)</h3><div class="card">${fromPool.map(c => candRow(c)).join('')}</div>` : ''}
-        ${myHero ? `<p class="note">Твой винрейт на ${esc(heroName(me.hero_id))}: ${(myHero.win / myHero.games * 100).toFixed(0)}% за ${myHero.games} игр. Комфортный герой часто важнее пары процентов матчапа.</p>` : ''}
+        ${fromPool.length ? `<h3 class="label">${L('Из твоих героев (10+ игр)', 'From your heroes (10+ games)')}</h3><div class="card">${fromPool.map(c => candRow(c)).join('')}</div>` : ''}
+        ${myHero ? `<p class="note">${L(`Твой винрейт на ${esc(heroName(me.hero_id))}: ${(myHero.win / myHero.games * 100).toFixed(0)}% за ${myHero.games} игр. Комфортный герой часто важнее пары процентов матчапа.`, `Your win rate on ${esc(heroName(me.hero_id))}: ${(myHero.win / myHero.games * 100).toFixed(0)}% over ${myHero.games} games. A comfort hero often matters more than a couple of matchup percent.`)}</p>` : ''}
       </div>`;
   }
   $('dlgBody').innerHTML = html;
@@ -849,14 +858,14 @@ function goldChart(adv, fights, roshans) {
   const yt = [-ym, -ym / 2, 0, ym / 2, ym];
   const xt = []; for (let t = 0; t < n; t += 10) xt.push(t);
   const at = t => { const i = Math.min(n - 1, Math.max(0, t / 60)); const a = Math.floor(i), b = Math.min(n - 1, a + 1); return adv[a] + (adv[b] - adv[a]) * (i - a); };
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Преимущество по золоту по минутам">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L('Преимущество по золоту по минутам', 'Gold lead by minute')}">
     <defs><clipPath id="cpUp"><rect x="0" y="0" width="${W}" height="${y(0)}"/></clipPath><clipPath id="cpDn"><rect x="0" y="${y(0)}" width="${W}" height="${H}"/></clipPath></defs>
     ${yt.map(v => `<line class="${v === 0 ? 'zero' : 'grid'}" x1="${PL}" x2="${W - PR}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${PL - 6}" y="${y(v) + 4}" text-anchor="end">${v > 0 ? '+' : ''}${fmt(v)}</text>`).join('')}
     ${xt.map(t => `<text class="axis" x="${x(t)}" y="${H - 8}" text-anchor="middle">${t}′</text>`).join('')}
     <path d="${area}" fill="var(--good)" fill-opacity=".22" clip-path="url(#cpUp)"/>
     <path d="${area}" fill="var(--bad)" fill-opacity=".22" clip-path="url(#cpDn)"/>
     <polyline points="${pts}" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linejoin="round"/>
-    ${roshans.map(r => `<g><line x1="${x(r.time / 60)}" x2="${x(r.time / 60)}" y1="${PT}" y2="${H - PB}" stroke="${r.ours ? 'var(--good)' : 'var(--bad)'}" stroke-dasharray="3 3" stroke-opacity=".6"/><text class="axis" x="${x(r.time / 60) + 3}" y="${PT + 10}">Рошан</text></g>`).join('')}
+    ${roshans.map(r => `<g><line x1="${x(r.time / 60)}" x2="${x(r.time / 60)}" y1="${PT}" y2="${H - PB}" stroke="${r.ours ? 'var(--good)' : 'var(--bad)'}" stroke-dasharray="3 3" stroke-opacity=".6"/><text class="axis" x="${x(r.time / 60) + 3}" y="${PT + 10}">${L('Рошан', 'Roshan')}</text></g>`).join('')}
     ${fights.map(f => `<circle cx="${x(f.mid / 60)}" cy="${y(at(f.mid))}" r="${4 + Math.min(4, f.deaths / 2)}" fill="${f.swing >= 0 ? 'var(--good)' : 'var(--bad)'}" stroke="var(--surface)" stroke-width="2"/>`).join('')}
     <line id="gcCross" x1="0" x2="0" y1="${PT}" y2="${H - PB}" stroke="var(--fg-muted)" stroke-width="1" visibility="hidden"/>
     <rect id="gcHit" x="${PL}" y="${PT}" width="${W - PL - PR}" height="${H - PT - PB}" fill="transparent"/>
@@ -874,7 +883,7 @@ function wireGoldChart(wrap, adv, fights) {
     cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
     const f = fights.find(f => Math.abs(f.mid / 60 - i) < 0.8);
     tip.hidden = false;
-    tip.innerHTML = `<b>${i}′</b> · ${adv[i] >= 0 ? 'вы впереди на' : 'враг впереди на'} <b class="${signCls(adv[i])}">${fmt(Math.abs(adv[i]))}</b>${f ? `<br>Драка: ${f.ourDeaths}:${f.theirDeaths} по смертям, ${f.swing >= 0 ? '+' : ''}${fmt(f.swing)} золота` : ''}`;
+    tip.innerHTML = `<b>${i}′</b> · ${adv[i] >= 0 ? L('вы впереди на', 'you lead by') : L('враг впереди на', 'enemy leads by')} <b class="${signCls(adv[i])}">${fmt(Math.abs(adv[i]))}</b>${f ? `<br>${L('Драка', 'Fight')}: ${f.ourDeaths}:${f.theirDeaths} ${L('по смертям', 'deaths')}, ${f.swing >= 0 ? '+' : ''}${fmt(f.swing)} ${L('золота', 'gold')}` : ''}`;
     const left = (cx / W) * r.width + 12;
     tip.style.left = Math.min(left, r.width - tip.offsetWidth) + 'px';
     tip.style.top = '8px';
@@ -888,10 +897,10 @@ function draftBars(curve, upto) {
   const ym = Math.max(4, Math.ceil(Math.max(...curve.map(Math.abs)) / 2) * 2);
   const bw = (W - PL - PR) / curve.length;
   const y = v => PT + (1 - (v + ym) / (2 * ym)) * (H - PT - PB);
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Перевес драфта по времени игры">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L('Перевес драфта по времени игры', 'Draft advantage by game time')}">
     ${[-ym, 0, ym].map(v => `<line class="${v === 0 ? 'zero' : 'grid'}" x1="${PL}" x2="${W - PR}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${PL - 6}" y="${y(v) + 4}" text-anchor="end">${v > 0 ? '+' : ''}${v}%</text>`).join('')}
     ${curve.map((v, i) => { const x0 = PL + i * bw + 6, top = Math.min(y(v), y(0)), h = Math.max(1, Math.abs(y(v) - y(0))); const past = upto != null && i > upto;
-      return `<g><title>${DUR_LABELS[i]} мин: ${pct(v)}</title><rect x="${x0}" y="${top}" width="${bw - 12}" height="${h}" rx="3" fill="${v >= 0 ? 'var(--good)' : 'var(--bad)'}" fill-opacity="${past ? .3 : .85}"/>
+      return `<g><title>${DUR_LABELS[i]} ${L('мин', 'min')}: ${pct(v)}</title><rect x="${x0}" y="${top}" width="${bw - 12}" height="${h}" rx="3" fill="${v >= 0 ? 'var(--good)' : 'var(--bad)'}" fill-opacity="${past ? .3 : .85}"/>
       <text class="axis" x="${x0 + (bw - 12) / 2}" y="${v >= 0 ? top - 4 : top + h + 12}" text-anchor="middle">${pct(v, 0)}</text>
       <text class="axis" x="${x0 + (bw - 12) / 2}" y="${H - 8}" text-anchor="middle">${DUR_LABELS[i]}</text></g>`; }).join('')}
   </svg>`;
@@ -906,23 +915,23 @@ function windowsText(curve) {
     const groups = []; let s = idx[0], p = idx[0];
     for (const i of idx.slice(1)) { if (i === p + 1) { p = i; continue; } groups.push([s, p]); s = p = i; }
     groups.push([s, p]);
-    return groups.map(([a, b]) => END[b] == null ? `после ${START[a]} мин` : START[a] === 0 ? `до ${END[b]} мин` : `${START[a]}–${END[b]} мин`).join(', ');
+    return groups.map(([a, b]) => END[b] == null ? L(`после ${START[a]} мин`, `after ${START[a]} min`) : START[a] === 0 ? L(`до ${END[b]} мин`, `before ${END[b]} min`) : `${START[a]}–${END[b]} ${L('мин', 'min')}`).join(', ');
   };
   return { strong: span(strong), weak: span(weak) };
 }
 
 function renderFlow(m, G) {
   const { me, mine, theirs, sign, won } = teams(m);
-  if (!G) { $('dlgBody').innerHTML = '<div class="empty">Данные меты ещё не собраны.</div>'; return; }
+  if (!G) { $('dlgBody').innerHTML = `<div class="empty">${L('Данные меты ещё не собраны.', 'Meta data isn\'t ready yet.')}</div>`; return; }
   const curve = draftCurve(G, mine.map(p => p.hero_id), theirs.map(p => p.hero_id));
   const w = windowsText(curve);
   const endBin = durBinOf(m.duration);
   let html = parseBlock(m);
   const insights = [];
   const peak = curve.indexOf(Math.max(...curve)), dip = curve.indexOf(Math.min(...curve));
-  insights.push({ sev: 'info', title: 'Окна по драфту', detail: `${w.strong ? `Ваш драфт сильнее: ${w.strong}. В эти минуты надо искать драки, смоки и объекты.` : 'Явных окон силы у вашего драфта нет.'} ${w.weak ? `Слабее: ${w.weak}. Тут лучше фармить, защищаться и не принимать драки без преимущества.` : ''} Пик силы: ${DUR_LABELS[peak]} мин, спад: ${DUR_LABELS[dip]} мин.` });
-  if (curve[endBin] <= -2 && !won) insights.push({ sev: 'bad', title: 'Игра ушла в окно врага', detail: `Матч закончился на ${mmss(m.duration)}, когда драфт врага сильнее. Надо было закрывать игру раньше.` });
-  if (curve[endBin] >= 2 && won) insights.push({ sev: 'good', title: 'Игра закончилась в ваше окно', detail: 'Вы закрыли матч там, где ваш драфт сильнее.' });
+  insights.push({ sev: 'info', title: L('Окна по драфту', 'Draft windows'), detail: `${w.strong ? L(`Ваш драфт сильнее: ${w.strong}. В эти минуты надо искать драки, смоки и объекты.`, `Your draft is stronger: ${w.strong}. Look for fights, smokes, and objectives then.`) : L('Явных окон силы у вашего драфта нет.', 'Your draft has no clear power window.')} ${w.weak ? L(`Слабее: ${w.weak}. Тут лучше фармить, защищаться и не принимать драки без преимущества.`, `Weaker: ${w.weak}. Farm, defend, and avoid even fights then.`) : ''} ${L('Пик силы', 'Peak')}: ${DUR_LABELS[peak]} ${L('мин', 'min')}, ${L('спад', 'low')}: ${DUR_LABELS[dip]} ${L('мин', 'min')}.` });
+  if (curve[endBin] <= -2 && !won) insights.push({ sev: 'bad', title: L('Игра ушла в окно врага', 'The game drifted into their window'), detail: L(`Матч закончился на ${mmss(m.duration)}, когда драфт врага сильнее. Надо было закрывать игру раньше.`, `The match ended at ${mmss(m.duration)}, when the enemy draft is stronger. You needed to close earlier.`) });
+  if (curve[endBin] >= 2 && won) insights.push({ sev: 'good', title: L('Игра закончилась в ваше окно', 'The game ended in your window'), detail: L('Вы закрыли матч там, где ваш драфт сильнее.', 'You closed the match while your draft was stronger.') });
 
   if (m.version && m.radiant_gold_adv?.length) {
     const adv = m.radiant_gold_adv.map(v => v * sign);
@@ -933,29 +942,29 @@ function renderFlow(m, G) {
       return { start: t.start, end: t.end, mid: (t.start + t.end) / 2, swing: our - their, ourDeaths, theirDeaths, deaths: t.deaths };
     });
     const roshans = (m.objectives || []).map(o => ({ time: o.time, ours: (o.team === 2) === (sign === 1) }));
-    html += `<div class="section"><h3 class="section-title">Преимущество по золоту</h3>
+    html += `<div class="section"><h3 class="section-title">${L('Преимущество по золоту', 'Gold lead')}</h3>
       <div class="card chart-wrap">${goldChart(adv, fights, roshans)}<div class="tip" hidden></div></div>
-      <div class="legend"><span><i style="background:var(--good)"></i>выигранная драка</span><span><i style="background:var(--bad)"></i>проигранная драка</span><span>размер точки = число смертей</span><span>пунктир = Рошан</span></div></div>`;
+      <div class="legend"><span><i style="background:var(--good)"></i>${L('выигранная драка', 'fight won')}</span><span><i style="background:var(--bad)"></i>${L('проигранная драка', 'fight lost')}</span><span>${L('размер точки = число смертей', 'dot size = deaths')}</span><span>${L('пунктир = Рошан', 'dashed line = Roshan')}</span></div></div>`;
 
     const maxLead = Math.max(...adv), maxDef = Math.min(...adv);
     const tLead = adv.indexOf(maxLead), tDef = adv.indexOf(maxDef);
-    if (!won && maxLead >= 8000) insights.push({ sev: 'bad', title: 'Выброшенная игра', detail: `На ${tLead}′ вы вели на ${fmt(maxLead)} золота и проиграли. Смотри драки после этой минуты: скорее всего, бой без вижна или без ключевых кнопок.` });
-    if (won && maxDef <= -8000) insights.push({ sev: 'good', title: 'Камбэк', detail: `На ${tDef}′ отставали на ${fmt(-maxDef)} золота и вытащили.` });
-    if (won && maxDef > -2000) insights.push({ sev: 'good', title: 'Контролируемая победа', detail: 'Враг ни разу не вёл заметно по золоту.' });
+    if (!won && maxLead >= 8000) insights.push({ sev: 'bad', title: L('Выброшенная игра', 'Thrown game'), detail: L(`На ${tLead}′ вы вели на ${fmt(maxLead)} золота и проиграли. Смотри драки после этой минуты: скорее всего, бой без вижна или без ключевых кнопок.`, `At ${tLead}′ you led by ${fmt(maxLead)} gold and lost. Check the fights after that minute: likely a fight without vision or key spells.`) });
+    if (won && maxDef <= -8000) insights.push({ sev: 'good', title: L('Камбэк', 'Comeback'), detail: L(`На ${tDef}′ отставали на ${fmt(-maxDef)} золота и вытащили.`, `At ${tDef}′ you were down ${fmt(-maxDef)} gold and won anyway.`) });
+    if (won && maxDef > -2000) insights.push({ sev: 'good', title: L('Контролируемая победа', 'Controlled win'), detail: L('Враг ни разу не вёл заметно по золоту.', 'The enemy never had a real gold lead.') });
 
     const big = [...fights].sort((a, b) => Math.abs(b.swing) - Math.abs(a.swing)).slice(0, 5).sort((a, b) => a.start - b.start);
     const fightRows = big.map(f => {
       const bin = durBinOf(f.mid), win = f.swing >= 0, inStrong = curve[bin] >= 2, inWeak = curve[bin] <= -2;
       let advice = '';
-      if (!win && inWeak) advice = 'Драка в окне врага: лучше было не принимать её, а фармить или отступить.';
-      else if (!win && inStrong) advice = 'Окно было ваше, но драка проиграна. Дело в исполнении: позиция, кнопки, вход по одному.';
-      else if (!win) advice = 'Проигранная драка. Проверь, был ли вижн и все ли пришли.';
-      else if (win && inWeak) advice = 'Отличная драка против более сильного по времени драфта.';
-      else advice = 'Хорошая драка. Важно, что было после: взяли ли башню или Рошана.';
-      return `<div class="card issue ${win ? 'good' : 'bad'}">${sevIcon(win ? 'good' : 'bad')}<div class="body"><div class="title">${mmss(f.start)} · ${win ? 'выиграна' : 'проиграна'} · смерти ${f.theirDeaths}:${f.ourDeaths}</div><div class="detail">${advice}</div></div><div class="val ${signCls(f.swing)}">${f.swing >= 0 ? '+' : ''}${fmt(f.swing)}</div></div>`;
+      if (!win && inWeak) advice = L('Драка в окне врага: лучше было не принимать её, а фармить или отступить.', 'A fight in their window: better to skip it, farm, or back off.');
+      else if (!win && inStrong) advice = L('Окно было ваше, но драка проиграна. Дело в исполнении: позиция, кнопки, вход по одному.', 'It was your window, but you lost. Execution issue: positioning, spells, going in one by one.');
+      else if (!win) advice = L('Проигранная драка. Проверь, был ли вижн и все ли пришли.', 'Lost fight. Check whether you had vision and everyone showed up.');
+      else if (win && inWeak) advice = L('Отличная драка против более сильного по времени драфта.', 'Great fight against a draft that was stronger at that time.');
+      else advice = L('Хорошая драка. Важно, что было после: взяли ли башню или Рошана.', 'Good fight. What matters is what came next: did you take a tower or Roshan?');
+      return `<div class="card issue ${win ? 'good' : 'bad'}">${sevIcon(win ? 'good' : 'bad')}<div class="body"><div class="title">${mmss(f.start)} · ${win ? L('выиграна', 'won') : L('проиграна', 'lost')} · ${L('смерти', 'deaths')} ${f.theirDeaths}:${f.ourDeaths}</div><div class="detail">${advice}</div></div><div class="val ${signCls(f.swing)}">${f.swing >= 0 ? '+' : ''}${fmt(f.swing)}</div></div>`;
     }).join('');
     const ourW = fights.filter(f => f.swing >= 0).length;
-    if (fights.length) insights.push({ sev: ourW >= fights.length / 2 ? 'good' : 'warn', title: `Драки: ${ourW} из ${fights.length} выиграно`, detail: 'Ниже самые крупные драки по изменению золота.' });
+    if (fights.length) insights.push({ sev: ourW >= fights.length / 2 ? 'good' : 'warn', title: L(`Драки: ${ourW} из ${fights.length} выиграно`, `Fights: ${ourW} of ${fights.length} won`), detail: L('Ниже самые крупные драки по изменению золота.', 'The biggest fights by gold swing are below.') });
 
     const timings = [];
     for (const p of [...mine, ...theirs]) {
@@ -967,13 +976,13 @@ function renderFlow(m, G) {
       }
     }
     timings.sort((a, b) => a.t - b.t);
-    html += `<div class="section"><h3 class="section-title">Ключевые тайминги коров</h3><p class="note">Первые три крупных предмета (от 2500 золота) у позиций 1–3. Это моменты, когда герой резко усиливается.</p>
-      <div class="card table-wrap"><table><thead><tr><th>Время</th><th>Команда</th><th>Герой</th><th>Предмет</th></tr></thead><tbody>${timings.slice(0, 15).map(r => `<tr><td class="num">${mmss(r.t)}</td><td class="${r.ours ? 'pos' : 'neg'}">${r.ours ? 'вы' : 'враг'}</td><td>${heroCell(r.p.hero_id)}</td><td><div class="row">${itemIcon(r.k)}${esc(itemName(r.k))}</div></td></tr>`).join('')}</tbody></table></div></div>`;
-    html += `<div class="section"><h3 class="section-title">Крупные драки</h3><div class="issue-list">${fightRows || '<div class="empty">Драк не найдено.</div>'}</div></div>`;
+    html += `<div class="section"><h3 class="section-title">${L('Ключевые тайминги коров', 'Core item timings')}</h3><p class="note">${L('Первые три крупных предмета (от 2500 золота) у позиций 1–3. Это моменты, когда герой резко усиливается.', 'First three big items (2500+ gold) for positions 1–3. These are the moments a hero spikes.')}</p>
+      <div class="card table-wrap"><table><thead><tr><th>${L('Время', 'Time')}</th><th>${L('Команда', 'Team')}</th><th>${L('Герой', 'Hero')}</th><th>${L('Предмет', 'Item')}</th></tr></thead><tbody>${timings.slice(0, 15).map(r => `<tr><td class="num">${mmss(r.t)}</td><td class="${r.ours ? 'pos' : 'neg'}">${r.ours ? L('вы', 'you') : L('враг', 'enemy')}</td><td>${heroCell(r.p.hero_id)}</td><td><div class="row">${itemIcon(r.k)}${esc(itemName(r.k))}</div></td></tr>`).join('')}</tbody></table></div></div>`;
+    html += `<div class="section"><h3 class="section-title">${L('Крупные драки', 'Biggest fights')}</h3><div class="issue-list">${fightRows || `<div class="empty">${L('Драк не найдено.', 'No fights found.')}</div>`}</div></div>`;
   }
 
-  html = `<div class="section"><h3 class="section-title">Когда вы были сильнее</h3>
-    <p class="note">Перевес вашего драфта по длительности игры: как герои обеих команд выигрывают в зависимости от минуты окончания матча в ${GROUPS[S.group]}. Бледные столбики — время после конца этой игры.</p>
+  html = `<div class="section"><h3 class="section-title">${L('Когда вы были сильнее', 'When you were stronger')}</h3>
+    <p class="note">${L(`Перевес вашего драфта по длительности игры: как герои обеих команд выигрывают в зависимости от минуты окончания матча в ${GROUPS[S.group]}. Бледные столбики — время после конца этой игры.`, `Your draft advantage by game length: how both teams' heroes win depending on when the match ends in ${GROUPS[S.group]}. Faded bars are after this game ended.`)}</p>
     <div class="card chart-wrap">${draftBars(curve, endBin)}</div></div>
     <div class="issue-list">${insights.map(i => `<div class="card issue ${i.sev}">${sevIcon(i.sev)}<div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div></div>`).join('')}</div>` + html;
   $('dlgBody').innerHTML = html;
@@ -998,9 +1007,9 @@ const heroByNpc = npc => Object.values(S.heroes).find(h => h.name === npc);
 
 function buildingName(k) {
   const side = k.includes('goodguys') ? 'Radiant' : 'Dire';
-  const lane = /_top/.test(k) ? ' верх' : /_mid/.test(k) ? ' мид' : /_bot/.test(k) ? ' низ' : '';
+  const lane = /_top/.test(k) ? L(' верх', ' top') : /_mid/.test(k) ? L(' мид', ' mid') : /_bot/.test(k) ? L(' низ', ' bot') : '';
   const t = k.match(/tower(\d)/);
-  const what = t ? `T${t[1]}` : /melee_rax/.test(k) ? 'бараки ближнего боя' : /range_rax/.test(k) ? 'бараки дальнего боя' : /fort/.test(k) ? 'трон' : 'здание';
+  const what = t ? `T${t[1]}` : /melee_rax/.test(k) ? L('бараки ближнего боя', 'melee barracks') : /range_rax/.test(k) ? L('бараки дальнего боя', 'ranged barracks') : /fort/.test(k) ? L('трон', 'Ancient') : L('здание', 'building');
   return `${what}${lane} ${side}`;
 }
 
@@ -1041,20 +1050,20 @@ function mapData(m) {
 
 function renderMap(m) {
   if (!m.version) {
-    $('dlgBody').innerHTML = parseBlock(m) + '<p class="note">Карта с вардами и драками появится после разбора реплея.</p>';
+    $('dlgBody').innerHTML = parseBlock(m) + `<p class="note">${L('Карта с вардами и драками появится после разбора реплея.', 'The map with wards and fights appears after the replay is parsed.')}</p>`;
     wireParse(m);
     return;
   }
   const d = mapData(m), dur = m.duration, pctT = t => Math.min(100, Math.max(0, t / dur * 100));
   S.map = { m, d };
   const marks = [
-    ...d.fights.map((f, i) => `<button class="tl-fight ${f.swing >= 0 ? 'win' : 'loss'}" data-t="${f.start}" style="left:${pctT(f.start)}%;width:${Math.max(0.6, pctT(f.end) - pctT(f.start))}%" title="Драка ${mmss(f.start)}: ${f.swing >= 0 ? 'выиграна' : 'проиграна'}" aria-label="Перейти к драке на ${mmss(f.start)}"></button>`),
-    ...d.roshans.map(r => `<i class="tl-rosh ${r.ours ? 'win' : 'loss'}" style="left:${pctT(r.t)}%" title="Рошан ${mmss(r.t)}: ${r.ours ? 'ваш' : 'вражеский'}">R</i>`),
+    ...d.fights.map(f => `<button class="tl-fight ${f.swing >= 0 ? 'win' : 'loss'}" data-t="${f.start}" style="left:${pctT(f.start)}%;width:${Math.max(0.6, pctT(f.end) - pctT(f.start))}%" title="${L('Драка', 'Fight')} ${mmss(f.start)}: ${f.swing >= 0 ? L('выиграна', 'won') : L('проиграна', 'lost')}" aria-label="${L('Перейти к драке на', 'Jump to fight at')} ${mmss(f.start)}"></button>`),
+    ...d.roshans.map(r => `<i class="tl-rosh ${r.ours ? 'win' : 'loss'}" style="left:${pctT(r.t)}%" title="${L('Рошан', 'Roshan')} ${mmss(r.t)}: ${r.ours ? L('ваш', 'yours') : L('вражеский', 'enemy')}">R</i>`),
     ...d.wards.map(w => `<i class="tl-ward ${w.ours ? 'win' : 'loss'}" style="left:${pctT(w.t)}%"></i>`),
   ].join('');
   $('dlgBody').innerHTML = `
-    <div class="section"><h3 class="section-title">Карта матча</h3>
-      <p class="note">Двигай ползунок или нажми ▶. Видно варды (с зоной обзора), где герои стояли на линии в первые 10 минут и где умирали в драках. Непрерывного движения героев OpenDota не хранит.</p>
+    <div class="section"><h3 class="section-title">${L('Карта матча', 'Match map')}</h3>
+      <p class="note">${L('Двигай ползунок или нажми ▶. Видно варды (с зоной обзора), где герои стояли на линии в первые 10 минут и где умирали в драках. Непрерывного движения героев OpenDota не хранит.', 'Drag the slider or press ▶. You can see wards (with vision range), where heroes laned in the first 10 minutes, and where they died in fights. OpenDota doesn\'t store continuous hero movement.')}</p>
       <div class="map-wrap">
         <div class="map-col">
           <div class="tb card">
@@ -1062,23 +1071,23 @@ function renderMap(m) {
             <div class="tb-center"><div class="tb-score"><span class="tb-k" id="tbR">0</span><span id="tbClock">0:00</span><span class="tb-k" id="tbD">0</span></div><div class="tb-adv" id="tbAdv"></div></div>
             <div class="tb-team">${m.players.filter(p => !p.isRadiant).map(tbHero).join('')}</div>
           </div>
-          <div class="map card"><img src="${MAP_IMG}" alt="Карта Dota 2" width="900" height="900"><svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Варды, позиции на линии и смерти на выбранную минуту"></svg></div>
+          <div class="map card"><img src="${MAP_IMG}" alt="${L('Карта Dota 2', 'Dota 2 map')}" width="900" height="900"><svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${L('Варды, позиции на линии и смерти на выбранную минуту', 'Wards, lane positions, and deaths at the selected minute')}"></svg></div>
           <div class="timeline card">
-            <button class="btn small" id="mapPlay" aria-label="Проиграть матч">${icon('play')}</button>
-            <div class="tl-track"><div class="tl-marks">${marks}</div><input type="range" id="mapTime" min="0" max="${dur}" value="0" step="1" aria-label="Время матча"></div>
-            <select id="mapSpeed" class="field tl-speed" aria-label="Скорость"><option value="15">×15</option><option value="30" selected>×30</option><option value="60">×60</option></select>
+            <button class="btn small" id="mapPlay" aria-label="${L('Проиграть матч', 'Play the match')}">${icon('play')}</button>
+            <div class="tl-track"><div class="tl-marks">${marks}</div><input type="range" id="mapTime" min="0" max="${dur}" value="0" step="1" aria-label="${L('Время матча', 'Match time')}"></div>
+            <select id="mapSpeed" class="field tl-speed" aria-label="${L('Скорость', 'Speed')}"><option value="15">×15</option><option value="30" selected>×30</option><option value="60">×60</option></select>
           </div>
         </div>
         <div class="map-side card">
           <div class="map-clock" id="mapClock">0:00</div>
           <div id="mapStats" class="map-stats"></div>
-          <div class="label">События рядом</div>
+          <div class="label">${L('События рядом', 'Nearby events')}</div>
           <div id="mapEvents" class="map-events"></div>
         </div>
       </div>
       <div class="legend">
-        <span><i style="background:var(--good)"></i>ваши</span><span><i style="background:var(--bad)"></i>враги</span>
-        <span>● обс-вард и зона обзора</span><span>◆ сентри</span><span>✕ смерть в драке</span><span>полосы сверху — драки, засечки снизу — варды, R — Рошан</span>
+        <span><i style="background:var(--good)"></i>${L('ваши', 'yours')}</span><span><i style="background:var(--bad)"></i>${L('враги', 'enemies')}</span>
+        <span>${L('● обс-вард и зона обзора', '● observer ward and vision')}</span><span>${L('◆ сентри', '◆ sentry')}</span><span>${L('✕ смерть в драке', '✕ death in a fight')}</span><span>${L('полосы сверху — драки, засечки снизу — варды, R — Рошан', 'top bars: fights, bottom ticks: wards, R: Roshan')}</span>
       </div>
     </div>`;
   $('mapTime').addEventListener('input', e => { stopMap(); drawMap(+e.target.value); });
@@ -1101,7 +1110,7 @@ function drawTopbar(m, t) {
     const bought = death && (p.buyback_t || []).some(b => b >= death[0] && b <= t);
     const dead = death && !bought;
     el.classList.toggle('dead', !!dead);
-    el.querySelector('.tb-timer').textContent = dead ? Math.ceil(death[0] + death[1] - t) : bought ? 'выкуп' : '';
+    el.querySelector('.tb-timer').textContent = dead ? Math.ceil(death[0] + death[1] - t) : bought ? L('выкуп', 'buyback') : '';
     const g = p.gold_t?.[Math.min(p.gold_t.length - 1, min)];
     el.querySelector('.tb-gold').textContent = g != null ? fmt(g) : '';
   }
@@ -1109,7 +1118,7 @@ function drawTopbar(m, t) {
   $('tbClock').textContent = mmss(Math.floor(t));
   const adv = m.radiant_gold_adv?.[Math.min(m.radiant_gold_adv.length - 1, min)];
   const myRad = teams(m).myRad;
-  $('tbAdv').innerHTML = adv == null ? '' : adv === 0 ? 'Золото поровну' : `<span class="${(adv > 0) === myRad ? 'pos' : 'neg'}">${adv > 0 ? '◀' : ''} +${fmt(Math.abs(adv))} ${adv > 0 ? '' : '▶'}</span>`;
+  $('tbAdv').innerHTML = adv == null ? '' : adv === 0 ? L('Золото поровну', 'Gold even') : `<span class="${(adv > 0) === myRad ? 'pos' : 'neg'}">${adv > 0 ? '◀' : ''} +${fmt(Math.abs(adv))} ${adv > 0 ? '' : '▶'}</span>`;
 }
 
 function setMapTime(t) { $('mapTime').value = t; drawMap(t); }
@@ -1133,14 +1142,14 @@ function drawMap(t) {
   const out = [];
   for (const w of d.wards) {
     if (w.t > t || t >= w.end) continue;
-    const c = col(w.ours), tip = `<title>${w.type === 'obs' ? 'Обс' : 'Сентри'}: ${esc(heroName(w.p.hero_id))}, ${mmss(w.t)}${w.killer ? `, сломал ${esc(w.killer.localized_name)} на ${mmss(w.end)}` : ''}</title>`;
+    const c = col(w.ours), tip = `<title>${w.type === 'obs' ? L('Обс', 'Observer') : L('Сентри', 'Sentry')}: ${esc(heroName(w.p.hero_id))}, ${mmss(w.t)}${w.killer ? L(`, сломал ${esc(w.killer.localized_name)} на ${mmss(w.end)}`, `, destroyed by ${esc(w.killer.localized_name)} at ${mmss(w.end)}`) : ''}</title>`;
     if (w.type === 'obs') out.push(`<g>${tip}<circle cx="${w.x}" cy="${w.y}" r="9.8" fill="${c}" fill-opacity=".07" stroke="${c}" stroke-opacity=".35" stroke-width=".2"/><circle cx="${w.x}" cy="${w.y}" r="1.1" fill="${c}" stroke="#0a0c10" stroke-width=".35"/></g>`);
     else out.push(`<g>${tip}<rect x="${w.x - .8}" y="${w.y - .8}" width="1.6" height="1.6" transform="rotate(45 ${w.x} ${w.y})" fill="${c}" stroke="#0a0c10" stroke-width=".3"/></g>`);
   }
-  if (t <= 600) for (const l of d.lanes) out.push(`<g opacity=".9"><title>${esc(heroName(l.p.hero_id))}: примерно где стоял на линии</title>${heroImgTag(l.p, l.spot.x, l.spot.y, l.ours, 3.6)}</g>`);
+  if (t <= 600) for (const l of d.lanes) out.push(`<g opacity=".9"><title>${esc(heroName(l.p.hero_id))}: ${L('примерно где стоял на линии', 'approximate laning spot')}</title>${heroImgTag(l.p, l.spot.x, l.spot.y, l.ours, 3.6)}</g>`);
   for (const f of d.fights) {
     if (t < f.start - 3 || t > f.end + 12) continue;
-    for (const dd of f.deaths) out.push(`<g><title>${esc(heroName(dd.p.hero_id))} погиб в драке на ${mmss(f.start)}</title>${heroImgTag(dd.p, dd.x, dd.y, dd.ours, 4.2)}<path d="M${dd.x - 1.4} ${dd.y - 1.4}l2.8 2.8m0 -2.8l-2.8 2.8" stroke="#fff" stroke-width=".6" stroke-linecap="round"/></g>`);
+    for (const dd of f.deaths) out.push(`<g><title>${esc(heroName(dd.p.hero_id))} ${L('погиб в драке на', 'died in the fight at')} ${mmss(f.start)}</title>${heroImgTag(dd.p, dd.x, dd.y, dd.ours, 4.2)}<path d="M${dd.x - 1.4} ${dd.y - 1.4}l2.8 2.8m0 -2.8l-2.8 2.8" stroke="#fff" stroke-width=".6" stroke-linecap="round"/></g>`);
   }
   $('mapSvg').innerHTML = out.join('');
   $('mapClock').textContent = mmss(Math.floor(t));
@@ -1150,18 +1159,18 @@ function drawMap(t) {
   const cnt = (ours, type) => active.filter(w => w.ours === ours && w.type === type).length;
   const adv = m.radiant_gold_adv?.[Math.min(m.radiant_gold_adv.length - 1, Math.floor(t / 60))];
   $('mapStats').innerHTML = `
-    <div><span class="pos">Ваши варды</span> ${cnt(true, 'obs')} обс · ${cnt(true, 'sen')} сентри</div>
-    <div><span class="neg">Вражеские</span> ${cnt(false, 'obs')} обс · ${cnt(false, 'sen')} сентри</div>
-    ${adv != null ? `<div>Золото: <b class="${signCls(adv * d.sign)}">${adv * d.sign >= 0 ? '+' : '−'}${fmt(Math.abs(adv))}</b></div>` : ''}`;
+    <div><span class="pos">${L('Ваши варды', 'Your wards')}</span> ${cnt(true, 'obs')} ${L('обс', 'obs')} · ${cnt(true, 'sen')} ${L('сентри', 'sentry')}</div>
+    <div><span class="neg">${L('Вражеские', 'Enemy wards')}</span> ${cnt(false, 'obs')} ${L('обс', 'obs')} · ${cnt(false, 'sen')} ${L('сентри', 'sentry')}</div>
+    ${adv != null ? `<div>${L('Золото', 'Gold')}: <b class="${signCls(adv * d.sign)}">${adv * d.sign >= 0 ? '+' : '−'}${fmt(Math.abs(adv))}</b></div>` : ''}`;
 
   const ev = [
-    ...d.wards.map(w => ({ t: w.t, ours: w.ours, html: `${heroIcon(w.p.hero_id)} ставит ${w.type === 'obs' ? 'обс' : 'сентри'}` })),
-    ...d.wards.filter(w => w.killer).map(w => ({ t: w.end, ours: !w.ours, html: `${heroIcon(w.killer.id)} ломает ${w.type === 'obs' ? 'обс' : 'сентри'}` })),
-    ...d.fights.map(f => ({ t: f.start, ours: f.swing >= 0, html: `Драка: ${f.swing >= 0 ? 'выиграна' : 'проиграна'}, ${f.deaths.map(x => heroIcon(x.p.hero_id)).join('') || 'без смертей'}` })),
-    ...d.roshans.map(r => ({ t: r.t, ours: r.ours, html: `Рошан ${r.ours ? 'ваш' : 'вражеский'}` })),
-    ...d.buildings.map(b => ({ t: b.t, ours: b.ours, html: `Разрушено: ${b.name}` })),
+    ...d.wards.map(w => ({ t: w.t, ours: w.ours, html: `${heroIcon(w.p.hero_id)} ${L('ставит', 'places')} ${w.type === 'obs' ? L('обс', 'obs') : L('сентри', 'sentry')}` })),
+    ...d.wards.filter(w => w.killer).map(w => ({ t: w.end, ours: !w.ours, html: `${heroIcon(w.killer.id)} ${L('ломает', 'destroys')} ${w.type === 'obs' ? L('обс', 'obs') : L('сентри', 'sentry')}` })),
+    ...d.fights.map(f => ({ t: f.start, ours: f.swing >= 0, html: `${L('Драка', 'Fight')}: ${f.swing >= 0 ? L('выиграна', 'won') : L('проиграна', 'lost')}, ${f.deaths.map(x => heroIcon(x.p.hero_id)).join('') || L('без смертей', 'no deaths')}` })),
+    ...d.roshans.map(r => ({ t: r.t, ours: r.ours, html: `${L('Рошан', 'Roshan')} ${r.ours ? L('ваш', 'yours') : L('вражеский', 'enemy')}` })),
+    ...d.buildings.map(b => ({ t: b.t, ours: b.ours, html: `${L('Разрушено', 'Destroyed')}: ${b.name}` })),
   ].filter(e => Math.abs(e.t - t) <= 90).sort((a, b) => a.t - b.t).slice(0, 14);
-  $('mapEvents').innerHTML = ev.length ? ev.map(e => `<button class="map-ev ${e.ours ? 'win' : 'loss'}" data-t="${e.t}"><span class="num">${mmss(e.t)}</span><span class="map-ev-body">${e.html}</span></button>`).join('') : '<div class="dim">В этот момент ничего не происходит.</div>';
+  $('mapEvents').innerHTML = ev.length ? ev.map(e => `<button class="map-ev ${e.ours ? 'win' : 'loss'}" data-t="${e.t}"><span class="num">${mmss(e.t)}</span><span class="map-ev-body">${e.html}</span></button>`).join('') : `<div class="dim">${L('В этот момент ничего не происходит.', 'Nothing happens at this moment.')}</div>`;
   $('mapEvents').querySelectorAll('.map-ev').forEach(b => b.addEventListener('click', () => { stopMap(); setMapTime(+b.dataset.t); }));
 }
 
@@ -1194,31 +1203,31 @@ const itemWhy = k => ITEM_WHY[k] || (itemByKey(k)?.abilities || []).map(a => a.t
 
 async function renderItemsTab(m) {
   const { me, theirs } = teams(m);
-  if (!me) { $('dlgBody').innerHTML = '<div class="empty">Тебя нет в этом матче.</div>'; return; }
+  if (!me) { $('dlgBody').innerHTML = `<div class="empty">${L('Тебя нет в этом матче.', 'You\'re not in this match.')}</div>`; return; }
   const h = me.hero_id;
   const bought = new Set([...(me.purchase_log || []).map(e => e[1]), ...finalItems(me)]);
   const pro = S.meta?.pro_items?.[h] || {};
   let html = parseBlock(m);
 
-  html += `<div class="section"><h3 class="section-title">Твой билд на ${esc(heroName(h))}</h3>
-    <div class="card pad"><div class="row">${finalItems(me).map(k => `<span class="row">${itemIcon(k)}<span class="note">${esc(itemName(k))}</span></span>`).join('')}${me.item_neutral && S.itemIds?.[me.item_neutral] ? `<span class="row">${itemIcon(S.itemIds[me.item_neutral])}<span class="note">нейтралка</span></span>` : ''}</div></div></div>`;
+  html += `<div class="section"><h3 class="section-title">${L('Твой билд на', 'Your build on')} ${esc(heroName(h))}</h3>
+    <div class="card pad"><div class="row">${finalItems(me).map(k => `<span class="row">${itemIcon(k)}<span class="note">${esc(itemName(k))}</span></span>`).join('')}${me.item_neutral && S.itemIds?.[me.item_neutral] ? `<span class="row">${itemIcon(S.itemIds[me.item_neutral])}<span class="note">${L('нейтралка', 'neutral item')}</span></span>` : ''}</div></div></div>`;
 
   const bigs = [];
   if (m.version) {
     const seen = new Set();
     for (const [t, k] of me.purchase_log || []) if (isBigItem(k) && !seen.has(k)) { seen.add(k); bigs.push({ t, k }); }
   }
-  html += `<div class="section"><h3 class="section-title">Тайминги</h3>${m.version ? `<p class="note">Когда ты собрал крупные предметы, по сравнению с медианой про-игроков на этом герое в патче ${S.meta?.patch || ''} и с винрейтом в пабах при таком тайминге.</p><div class="card" id="timingRows"><div class="loading"><div class="spinner"></div></div></div>` : '<p class="note">Тайминги видны только после разбора реплея.</p>'}</div>`;
+  html += `<div class="section"><h3 class="section-title">${L('Тайминги', 'Timings')}</h3>${m.version ? `<p class="note">${L(`Когда ты собрал крупные предметы, по сравнению с медианой про-игроков на этом герое в патче ${S.meta?.patch || ''} и с винрейтом в пабах при таком тайминге.`, `When you finished big items, compared with the pro median on this hero in patch ${S.meta?.patch || ''} and with pub win rate at that timing.`)}</p><div class="card" id="timingRows"><div class="loading"><div class="spinner"></div></div></div>` : `<p class="note">${L('Тайминги видны только после разбора реплея.', 'Timings show up only after the replay is parsed.')}</p>`}</div>`;
 
   const missing = Object.entries(pro).filter(([k, [rate]]) => rate >= 0.3 && isBigItem(k) && !bought.has(k)).sort((a, b) => b[1][0] - a[1][0]).slice(0, 5);
-  html += `<div class="section"><h3 class="section-title">Что обычно собирают про-игроки</h3>
-    ${Object.keys(pro).length ? `<div class="card">${Object.entries(pro).filter(([k]) => isBigItem(k)).sort((a, b) => b[1][0] - a[1][0]).slice(0, 10).map(([k, [rate, t]]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))} ${bought.has(k) ? '<span class="chip pos">есть</span>' : ''}</div><div class="why">в ${(rate * 100).toFixed(0)}% игр, медиана ${mmss(t)}</div></div><div></div></div>`).join('')}</div>
-    ${missing.length ? `<p class="note">Ты не собрал: ${missing.map(([k]) => esc(itemName(k))).join(', ')}. Не обязательно ошибка, но стоит понимать, почему.</p>` : ''}` : '<p class="note">На этом герое мало про-игр в текущем патче.</p>'}</div>`;
+  html += `<div class="section"><h3 class="section-title">${L('Что обычно собирают про-игроки', 'What pros usually build')}</h3>
+    ${Object.keys(pro).length ? `<div class="card">${Object.entries(pro).filter(([k]) => isBigItem(k)).sort((a, b) => b[1][0] - a[1][0]).slice(0, 10).map(([k, [rate, t]]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))} ${bought.has(k) ? `<span class="chip pos">${L('есть', 'built')}</span>` : ''}</div><div class="why">${L(`в ${(rate * 100).toFixed(0)}% игр, медиана ${mmss(t)}`, `in ${(rate * 100).toFixed(0)}% of games, median ${mmss(t)}`)}</div></div><div></div></div>`).join('')}</div>
+    ${missing.length ? `<p class="note">${L('Ты не собрал', 'You didn\'t build')}: ${missing.map(([k]) => esc(itemName(k))).join(', ')}. ${L('Не обязательно ошибка, но стоит понимать, почему.', 'Not necessarily a mistake, but know why.')}</p>` : ''}` : `<p class="note">${L('На этом герое мало про-игр в текущем патче.', 'Few pro games on this hero in the current patch.')}</p>`}</div>`;
 
   const ci = counterItemsFor(theirs.map(p => p.hero_id), h).slice(0, 8);
-  html += `<div class="section"><h3 class="section-title">Предметы против этих врагов</h3>
-    <p class="note">Что про-игроки собирают против героев из этого матча чаще обычного, с учётом того, что подходит твоему герою.</p>
-    <div class="card">${ci.length ? ci.map(c => `<div class="item-row">${itemIcon(c.k)}<div><div class="name">${esc(itemName(c.k))} ${bought.has(c.k) ? '<span class="chip pos">куплено</span>' : ''}</div><div class="why">${esc(itemWhy(c.k))}</div><div class="breakdown" style="margin-top:4px">${c.vs.map(([e, l]) => `<span>${heroImg(e) ? `<img src="${heroImg(e)}" alt="${esc(heroName(e))}" title="${esc(heroName(e))}">` : ''}×${l.toFixed(1)}</span>`).join('')}</div></div><div></div></div>`).join('') : '<div class="empty">Нет данных по этим героям.</div>'}</div></div>`;
+  html += `<div class="section"><h3 class="section-title">${L('Предметы против этих врагов', 'Items against these enemies')}</h3>
+    <p class="note">${L('Что про-игроки собирают против героев из этого матча чаще обычного, с учётом того, что подходит твоему герою.', 'What pros build more often than usual against the heroes in this match, filtered to what fits your hero.')}</p>
+    <div class="card">${ci.length ? ci.map(c => `<div class="item-row">${itemIcon(c.k)}<div><div class="name">${esc(itemName(c.k))} ${bought.has(c.k) ? `<span class="chip pos">${L('куплено', 'bought')}</span>` : ''}</div><div class="why">${esc(itemWhy(c.k))}</div><div class="breakdown" style="margin-top:4px">${c.vs.map(([e, l]) => `<span>${heroImg(e) ? `<img src="${heroImg(e)}" alt="${esc(heroName(e))}" title="${esc(heroName(e))}">` : ''}×${l.toFixed(1)}</span>`).join('')}</div></div><div></div></div>`).join('') : `<div class="empty">${L('Нет данных по этим героям.', 'No data for these heroes.')}</div>`}</div></div>`;
 
   $('dlgBody').innerHTML = html;
   wireParse(m);
@@ -1230,15 +1239,15 @@ async function renderItemsTab(m) {
         const rows = (await itemTimings(h, k)).filter(r => r.games >= 20);
         const mine = rows.find(r => r.time >= t);
         const bestR = rows.reduce((a, r) => (r.wins / r.games > (a ? a.wins / a.games : -1) ? r : a), null);
-        if (mine) pub = `в пабах к ${mmss(mine.time)}: WR ${(mine.wins / mine.games * 100).toFixed(0)}%` + (bestR && bestR !== mine ? `, лучший тайминг к ${mmss(bestR.time)}: ${(bestR.wins / bestR.games * 100).toFixed(0)}%` : '');
+        if (mine) pub = L(`в пабах к ${mmss(mine.time)}: WR ${(mine.wins / mine.games * 100).toFixed(0)}%`, `pubs by ${mmss(mine.time)}: ${(mine.wins / mine.games * 100).toFixed(0)}% WR`) + (bestR && bestR !== mine ? L(`, лучший тайминг к ${mmss(bestR.time)}: ${(bestR.wins / bestR.games * 100).toFixed(0)}%`, `, best timing by ${mmss(bestR.time)}: ${(bestR.wins / bestR.games * 100).toFixed(0)}%`) : '');
       } catch { /* timing data optional */ }
       const pm = pro[k]?.[1];
       const diff = pm != null ? t - pm : null;
       const cls = diff == null ? '' : diff <= 60 ? 'pos' : diff <= 240 ? '' : 'neg';
-      return `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))} · ${mmss(t)}</div><div class="why">${pm != null ? `у про медиана ${mmss(pm)}` : 'у про редко'}${pub ? ' · ' + pub : ''}</div></div><div class="lift ${cls}">${diff == null ? '' : (diff > 0 ? '+' : '−') + mmss(Math.abs(diff))}</div></div>`;
+      return `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))} · ${mmss(t)}</div><div class="why">${pm != null ? L(`у про медиана ${mmss(pm)}`, `pro median ${mmss(pm)}`) : L('у про редко', 'rare among pros')}${pub ? ' · ' + pub : ''}</div></div><div class="lift ${cls}">${diff == null ? '' : (diff > 0 ? '+' : '−') + mmss(Math.abs(diff))}</div></div>`;
     }));
     const el = $('timingRows');
-    if (el) el.innerHTML = rowsHtml.join('') || '<div class="empty">Крупных предметов не было.</div>';
+    if (el) el.innerHTML = rowsHtml.join('') || `<div class="empty">${L('Крупных предметов не было.', 'No big items.')}</div>`;
   }
 }
 
@@ -1246,26 +1255,26 @@ async function renderItemsTab(m) {
 
 function renderGroupTabs() {
   $('groupTabs').innerHTML = [1, 2, 3, 4].map(g => `<button class="tab" data-g="${g}" aria-selected="${g === S.metaGroup}">${GROUPS[g]}</button>`).join('');
-  $('posTabs').innerHTML = [0, 1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.metaPos}">${p ? `${p} · ${POS_NAMES[p]}` : 'Все позиции'}</button>`).join('');
+  $('posTabs').innerHTML = [0, 1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.metaPos}">${p ? `${p} · ${POS_NAMES[p]}` : L('Все позиции', 'All positions')}</button>`).join('');
   $('groupTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.metaGroup = +b.dataset.g; store.set('metaGroup', S.metaGroup); renderMeta(); }));
   $('posTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.metaPos = +b.dataset.p; renderMeta(); }));
 }
 
 async function renderMeta() {
   renderGroupTabs();
-  if (!S.meta) { $('metaInfo').textContent = 'Данные меты ещё не собраны.'; return; }
+  if (!S.meta) { $('metaInfo').textContent = L('Данные меты ещё не собраны.', 'Meta data isn\'t ready yet.'); return; }
   let G;
-  try { G = await loadGroup(S.metaGroup); } catch { $('metaInfo').textContent = 'Не удалось загрузить данные ранга.'; return; }
-  $('metaInfo').textContent = `Патч ${S.meta.patch}. ${GROUPS[S.metaGroup]}: ${G.matches.toLocaleString('ru')} рейтинговых матчей за ${G.days} дней. Предметы: ${S.meta.pro_matches.toLocaleString('ru')} про-матчей патча.`;
+  try { G = await loadGroup(S.metaGroup); } catch { $('metaInfo').textContent = L('Не удалось загрузить данные ранга.', 'Couldn\'t load data for this rank.'); return; }
+  $('metaInfo').textContent = L(`Патч ${S.meta.patch}. ${GROUPS[S.metaGroup]}: ${G.matches.toLocaleString(LOC)} рейтинговых матчей за ${G.days} дней. Предметы: ${S.meta.pro_matches.toLocaleString(LOC)} про-матчей патча.`, `Patch ${S.meta.patch}. ${GROUPS[S.metaGroup]}: ${G.matches.toLocaleString(LOC)} ranked matches over ${G.days} days. Items: ${S.meta.pro_matches.toLocaleString(LOC)} pro matches this patch.`);
   const pos = S.metaPos;
   const list = Object.keys(S.heroes).map(Number).filter(h => G.idx[h] != null && heroPick(G, h) >= 0.02 && (!pos || posPrior(h)[pos - 1] >= 0.18))
     .sort((a, b) => heroWr(G, b) - heroWr(G, a)).slice(0, 20);
-  $('tierNote').textContent = pos ? `Герои, которых часто играют на позиции ${pos}, по винрейту.` : 'Все популярные герои по винрейту.';
-  $('tierTable').innerHTML = `<thead><tr><th>#</th><th>Герой</th><th class="num">Винрейт</th><th class="num">Пик</th><th class="num">Позиции</th><th class="num">Лучше всего в</th></tr></thead><tbody>` +
+  $('tierNote').textContent = pos ? L(`Герои, которых часто играют на позиции ${pos}, по винрейту.`, `Heroes often played at position ${pos}, by win rate.`) : L('Все популярные герои по винрейту.', 'All popular heroes by win rate.');
+  $('tierTable').innerHTML = `<thead><tr><th>#</th><th>${L('Герой', 'Hero')}</th><th class="num">${L('Винрейт', 'Win rate')}</th><th class="num">${L('Пик', 'Pick')}</th><th class="num">${L('Позиции', 'Positions')}</th><th class="num">${L('Лучше всего в', 'Best at')}</th></tr></thead><tbody>` +
     list.map((h, i) => {
       const pr = posPrior(h); const top = pr.map((v, j) => [j + 1, v]).filter(x => x[1] >= 0.18).sort((a, b) => b[1] - a[1]);
       const curve = DUR_LABELS.map((_, b) => durWr(G, h, b)); const bb = curve.indexOf(Math.max(...curve));
-      return `<tr><td class="dim">${i + 1}</td><td>${heroCell(h)}</td><td class="num ${signCls(heroWr(G, h) - .5)}">${(heroWr(G, h) * 100).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${top.map(([p]) => `<span class="posb">${p}</span>`).join(' ')}</td><td class="num muted">${DUR_LABELS[bb]} мин</td></tr>`;
+      return `<tr><td class="dim">${i + 1}</td><td>${heroCell(h)}</td><td class="num ${signCls(heroWr(G, h) - .5)}">${(heroWr(G, h) * 100).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${top.map(([p]) => `<span class="posb">${p}</span>`).join(' ')}</td><td class="num muted">${DUR_LABELS[bb]} ${L('мин', 'min')}</td></tr>`;
     }).join('') + '</tbody>';
   renderCounterTool(G);
   renderItemHero(G);
@@ -1273,7 +1282,7 @@ async function renderMeta() {
 
 function heroByName(name) { const n = name.trim().toLowerCase(); return Object.values(S.heroes).find(h => h.localized_name.toLowerCase() === n)?.id; }
 function chips(ids, el, onRemove) {
-  el.innerHTML = ids.map(id => `<span class="hchip">${heroImg(id) ? `<img src="${heroImg(id)}" alt="">` : ''}${esc(heroName(id))}<button aria-label="Убрать ${esc(heroName(id))}" data-id="${id}">×</button></span>`).join('');
+  el.innerHTML = ids.map(id => `<span class="hchip">${heroImg(id) ? `<img src="${heroImg(id)}" alt="">` : ''}${esc(heroName(id))}<button aria-label="${L('Убрать', 'Remove')} ${esc(heroName(id))}" data-id="${id}">×</button></span>`).join('');
   el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => onRemove(+b.dataset.id)));
 }
 
@@ -1281,8 +1290,8 @@ function renderCounterTool(G) {
   const exampleFlag = S.enemies.length && S.enemiesExample;
   chips(S.enemies, $('enemyChips'), id => { S.enemies = S.enemies.filter(x => x !== id); S.enemiesExample = false; renderCounterTool(G); });
   chips(S.allies, $('allyChips'), id => { S.allies = S.allies.filter(x => x !== id); renderCounterTool(G); });
-  if (exampleFlag) $('enemyChips').insertAdjacentHTML('beforeend', '<span class="example">пример</span>');
-  if (!S.enemies.length) { $('counterBest').innerHTML = '<div class="empty">Добавь хотя бы одного врага.</div>'; $('counterWorst').innerHTML = ''; return; }
+  if (exampleFlag) $('enemyChips').insertAdjacentHTML('beforeend', `<span class="example">${L('пример', 'example')}</span>`);
+  if (!S.enemies.length) { $('counterBest').innerHTML = `<div class="empty">${L('Добавь хотя бы одного врага.', 'Add at least one enemy.')}</div>`; $('counterWorst').innerHTML = ''; return; }
   const list = candidates(G, S.metaPos, S.enemies, S.allies, [...S.enemies, ...S.allies]);
   $('counterBest').innerHTML = list.slice(0, 8).map(c => candRow(c)).join('');
   $('counterWorst').innerHTML = list.slice(-5).reverse().map(c => candRow(c)).join('');
@@ -1291,13 +1300,13 @@ function renderCounterTool(G) {
 function renderItemHero(G) {
   const h = S.itemHero;
   if (!h) return;
-  $('itemHeroTitle').textContent = `Предметы против ${heroName(h)}`;
+  $('itemHeroTitle').textContent = `${L('Предметы против', 'Items against')} ${heroName(h)}`;
   const rows = (S.meta?.counter_items?.[h] || []).filter(([k, , obs]) => itemByKey(k) && obs >= 10).slice(0, 10);
   const n = S.meta?.counter_samples?.[h] || 0;
-  $('itemCounters').innerHTML = rows.length ? rows.map(([k, lift, obs]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))}</div><div class="why">${esc(itemWhy(k))}${itemWhy(k) ? ' · ' : ''}${obs} раз в ${Math.round(n / 5)} про-играх</div></div><div class="lift pos">×${lift.toFixed(1)}</div></div>`).join('')
-    : '<div class="empty">Мало про-игр против этого героя в патче.</div>';
+  $('itemCounters').innerHTML = rows.length ? rows.map(([k, lift, obs]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))}</div><div class="why">${esc(itemWhy(k))}${itemWhy(k) ? ' · ' : ''}${L(`${obs} раз в ${Math.round(n / 5)} про-играх`, `${obs} times in ${Math.round(n / 5)} pro games`)}</div></div><div class="lift pos">×${lift.toFixed(1)}</div></div>`).join('')
+    : `<div class="empty">${L('Мало про-игр против этого героя в патче.', 'Too few pro games against this hero this patch.')}</div>`;
   const counters = Object.keys(S.heroes).map(Number).filter(x => x !== h && G.idx[x] != null && heroPick(G, x) >= 0.01).map(x => ({ x, v: adv(G, x, h) })).sort((a, b) => b.v - a.v).slice(0, 8);
-  $('heroCounters').innerHTML = counters.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div><div class="name">${esc(heroName(c.x))}</div><div class="why">лучшие позиции: ${posPrior(c.x).map((v, j) => [j + 1, v]).filter(z => z[1] >= .18).map(z => z[0]).join(', ')}</div></div><div class="lift pos">${pct(c.v)}</div></div>`).join('');
+  $('heroCounters').innerHTML = counters.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div><div class="name">${esc(heroName(c.x))}</div><div class="why">${L('лучшие позиции', 'best positions')}: ${posPrior(c.x).map((v, j) => [j + 1, v]).filter(z => z[1] >= .18).map(z => z[0]).join(', ')}</div></div><div class="lift pos">${pct(c.v)}</div></div>`).join('');
 }
 
 function addHero(input, arr, max) {
@@ -1333,8 +1342,20 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
+function applyStaticLang() {
+  document.documentElement.lang = LANG;
+  $('langBtn').textContent = EN ? 'RU' : 'EN';
+  $('langBtn').setAttribute('aria-label', EN ? 'Переключить на русский' : 'Switch to English');
+  $('langBtn').addEventListener('click', () => { store.set('lang', EN ? 'ru' : 'en'); location.reload(); });
+  if (!EN) return;
+  document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; });
+  document.querySelectorAll('[data-en-placeholder]').forEach(el => { el.placeholder = el.dataset.enPlaceholder; });
+  document.querySelectorAll('[data-en-aria]').forEach(el => { el.setAttribute('aria-label', el.dataset.enAria); });
+}
+
 (async function boot() {
-  try { await loadBase(); } catch (e) { showError('Не удалось загрузить список героев: ' + e.message); return; }
+  applyStaticLang();
+  try { await loadBase(); } catch (e) { showError(L('Не удалось загрузить список героев: ', 'Couldn\'t load the hero list: ') + e.message); return; }
   route();
   const last = store.get('lastId');
   if (last && location.hash !== '#meta') { $('steamId').value = last; analyze(); }
