@@ -268,7 +268,7 @@ function scorePlayer(p) {
 
 /* ---------- match loading ---------- */
 
-const MATCH_CACHE_V = 2;
+const MATCH_CACHE_V = 3;
 function trimMatch(m) {
   const keepP = ['account_id', 'player_slot', 'hero_id', 'isRadiant', 'kills', 'deaths', 'assists', 'last_hits', 'denies', 'gold_per_min', 'xp_per_min', 'net_worth', 'hero_damage', 'tower_damage', 'hero_healing', 'item_0', 'item_1', 'item_2', 'item_3', 'item_4', 'item_5', 'item_neutral', 'benchmarks', 'lane_role', 'is_roaming', 'personaname', 'rank_tier', 'obs_placed', 'sen_placed', 'camps_stacked', 'teamfight_participation', 'lane_efficiency_pct', 'lane_pos', 'position_est'];
   const wards = l => (l || []).map(w => [w.time, +w.x.toFixed(1), +w.y.toFixed(1), w.ehandle]);
@@ -286,6 +286,8 @@ function trimMatch(m) {
       o.purchase_log = (p.purchase_log || []).map(e => [e.time, e.key]);
       o.obs = wards(p.obs_log); o.sen = wards(p.sen_log);
       o.obs_left = left(p.obs_left_log); o.sen_left = left(p.sen_left_log);
+      o.deaths_t = (p.deaths_log || []).map(d => [d.time, d.time_dead || 0]);      o.gold_t = p.gold_t || null;
+      o.buyback_t = (p.buyback_log || []).map(b => b.time);
       return o;
     }),
   };
@@ -304,7 +306,7 @@ async function requestParse(id) {
 
 async function loadMatch(id, force) {
   const cached = !force && store.get('m:' + id);
-  if (cached && cached._v === MATCH_CACHE_V && (cached.version || (Date.now() - cached._ts < 6 * 3600 * 1000 && !parsePendingSince(id)))) return cached;
+  if (cached && (cached._v === MATCH_CACHE_V || (cached._v === 2 && !cached.version)) && (cached.version || (Date.now() - cached._ts < 6 * 3600 * 1000 && !parsePendingSince(id)))) return cached;
   const m = trimMatch(await getJSON(`${API}/matches/${id}`));
   m._ts = Date.now();
   store.set('m:' + id, m);
@@ -1048,6 +1050,11 @@ function renderMap(m) {
       <p class="note">Двигай ползунок или нажми ▶. Видно варды (с зоной обзора), где герои стояли на линии в первые 10 минут и где умирали в драках. Непрерывного движения героев OpenDota не хранит.</p>
       <div class="map-wrap">
         <div class="map-col">
+          <div class="tb card">
+            <div class="tb-team">${m.players.filter(p => p.isRadiant).map(tbHero).join('')}</div>
+            <div class="tb-center"><div class="tb-score"><span class="tb-k" id="tbR">0</span><span id="tbClock">0:00</span><span class="tb-k" id="tbD">0</span></div><div class="tb-adv" id="tbAdv"></div></div>
+            <div class="tb-team">${m.players.filter(p => !p.isRadiant).map(tbHero).join('')}</div>
+          </div>
           <div class="map card"><img src="${MAP_IMG}" alt="Карта Dota 2" width="900" height="900"><svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Варды, позиции на линии и смерти на выбранную минуту"></svg></div>
           <div class="timeline card">
             <button class="btn small" id="mapPlay" aria-label="Проиграть матч">${icon('play')}</button>
@@ -1071,6 +1078,31 @@ function renderMap(m) {
   $('mapPlay').addEventListener('click', () => (S.mapTimer ? stopMap() : playMap()));
   $('dlgBody').querySelectorAll('.tl-fight').forEach(b => b.addEventListener('click', () => { stopMap(); setMapTime(+b.dataset.t); }));
   drawMap(0);
+}
+
+const tbHero = p => `<div class="tb-hero ${p.account_id === S.playerId ? 'me' : ''}" data-slot="${p.player_slot}" title="${esc(heroName(p.hero_id))}${p.personaname ? ' · ' + esc(p.personaname) : ''}"><span class="tb-pic"><img src="${heroImg(p.hero_id)}" alt="${esc(heroName(p.hero_id))}" width="48" height="27"><b class="tb-timer"></b></span><span class="tb-gold"></span></div>`;
+
+function drawTopbar(m, t) {
+  const min = Math.floor(t / 60);
+  let rk = 0, dk = 0;
+  for (const p of m.players) {
+    const d = (p.deaths_t || []).filter(([dt]) => dt <= t).length;
+    if (p.isRadiant) dk += d; else rk += d;
+    const el = document.querySelector(`.tb-hero[data-slot="${p.player_slot}"]`);
+    if (!el) continue;
+    const death = (p.deaths_t || []).find(([dt, dur]) => dt <= t && t < dt + dur);
+    const bought = death && (p.buyback_t || []).some(b => b >= death[0] && b <= t);
+    const dead = death && !bought;
+    el.classList.toggle('dead', !!dead);
+    el.querySelector('.tb-timer').textContent = dead ? Math.ceil(death[0] + death[1] - t) : bought ? 'выкуп' : '';
+    const g = p.gold_t?.[Math.min(p.gold_t.length - 1, min)];
+    el.querySelector('.tb-gold').textContent = g != null ? fmt(g) : '';
+  }
+  $('tbR').textContent = rk; $('tbD').textContent = dk;
+  $('tbClock').textContent = mmss(Math.floor(t));
+  const adv = m.radiant_gold_adv?.[Math.min(m.radiant_gold_adv.length - 1, min)];
+  const myRad = teams(m).myRad;
+  $('tbAdv').innerHTML = adv == null ? '' : adv === 0 ? 'Золото поровну' : `<span class="${(adv > 0) === myRad ? 'pos' : 'neg'}">${adv > 0 ? '◀' : ''} +${fmt(Math.abs(adv))} ${adv > 0 ? '' : '▶'}</span>`;
 }
 
 function setMapTime(t) { $('mapTime').value = t; drawMap(t); }
@@ -1105,6 +1137,7 @@ function drawMap(t) {
   }
   $('mapSvg').innerHTML = out.join('');
   $('mapClock').textContent = mmss(Math.floor(t));
+  drawTopbar(m, t);
 
   const active = d.wards.filter(w => w.t <= t && t < w.end);
   const cnt = (ours, type) => active.filter(w => w.ours === ours && w.type === type).length;
