@@ -168,12 +168,14 @@ async function pool(tasks, n, onDone) {
 /* ---------- static data ---------- */
 
 async function loadBase() {
-  const [heroStats, meta] = await Promise.all([
+  const [heroStats, meta, pros] = await Promise.all([
     getJSONCached(`${API}/heroStats`, 360),
     getJSON('data/meta.json').catch(() => null),
+    getJSON('data/pros.json').catch(() => null),
   ]);
   heroStats.forEach(h => { S.heroes[h.id] = h; });
   S.meta = meta;
+  S.pros = pros?.players || [];
   $('heroList').innerHTML = Object.values(S.heroes).sort((a, b) => a.localized_name.localeCompare(b.localized_name)).map(h => `<option value="${esc(h.localized_name)}">`).join('');
   if (meta) {
     const d = new Date(meta.generated_at * 1000);
@@ -1274,6 +1276,8 @@ async function renderItemsTab(m) {
     ${Object.keys(pro).length ? `<div class="card">${Object.entries(pro).filter(([k]) => isBigItem(k)).sort((a, b) => b[1][0] - a[1][0]).slice(0, 10).map(([k, [rate, t]]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))} ${bought.has(k) ? `<span class="chip pos">${L('есть', 'built')}</span>` : ''}</div><div class="why">${L(`в ${(rate * 100).toFixed(0)}% игр, медиана ${mmss(t)}`, `in ${(rate * 100).toFixed(0)}% of games, median ${mmss(t)}`)}</div></div><div></div></div>`).join('')}</div>
     ${missing.length ? `<p class="note">${L('Ты не собрал', 'You skipped')}: ${missing.map(([k]) => esc(itemName(k))).join(', ')}</p>` : ''}` : `<div class="empty">${L('Мало про-игр на этом герое', 'Too few pro games on this hero')}</div>`}</div>`;
 
+  html += proBuilds(h);
+
   const ci = counterItemsFor(theirs.map(p => p.hero_id), h).slice(0, 8);
   html += `<div class="section"><h3 class="section-title">${L('Предметы против этих врагов', 'Items against these enemies')}</h3>    <div class="card">${ci.length ? ci.map(c => `<div class="item-row">${itemIcon(c.k)}<div><div class="name">${esc(itemName(c.k))} ${bought.has(c.k) ? `<span class="chip pos">${L('куплено', 'bought')}</span>` : ''}</div><div class="why">${esc(itemWhy(c.k))}</div><div class="breakdown" style="margin-top:4px">${c.vs.map(([e, l]) => `<span>${heroImg(e) ? `<img src="${heroImg(e)}" alt="${esc(heroName(e))}" title="${esc(heroName(e))}">` : ''}×${l.toFixed(1)}</span>`).join('')}</div></div><div></div></div>`).join('') : `<div class="empty">${L('Нет данных по этим героям.', 'No data for these heroes.')}</div>`}</div></div>`;
 
@@ -1367,6 +1371,85 @@ $('enemyInput').addEventListener('change', e => { if (S.enemiesExample) { S.enem
 $('allyInput').addEventListener('change', e => { if (addHero(e.target, S.allies, 4)) renderCounterTool(S.groups[S.metaGroup]); });
 $('itemHeroInput').addEventListener('change', e => { const id = heroByName(e.target.value); if (id) { S.itemHero = id; renderItemHero(S.groups[S.metaGroup]); } });
 
+/* ---------- pro players ---------- */
+
+const PRO_METRIC = {
+  gold_per_min: ['gpm', 'GPM'], xp_per_min: ['xpm', 'XPM'], last_hits_per_min: ['lh_min', L('ластхиты в минуту', 'last hits per minute'), false, 1],
+  deaths_per_min: ['deaths', L('смерти за игру', 'deaths per game'), true, 1], hero_damage_per_min: ['hd_min', L('урон по героям в минуту', 'hero damage per minute')],
+  kills_per_min: ['kills', L('убийства за игру', 'kills per game'), false, 1], assists_per_min: ['assists', L('помощь за игру', 'assists per game'), false, 1],
+  tower_damage: ['td', L('урон по башням за игру', 'tower damage per game')],
+};
+const prosAt = pos => (S.pros || []).filter(p => p.pos === pos);
+const myMainPos = () => {
+  const c = [0, 0, 0, 0, 0, 0];
+  Object.values(S.matches || {}).forEach(m => m._me && c[m._me._pos]++);
+  return c.indexOf(Math.max(...c.slice(1))) || 1;
+};
+
+function proRef(metric) {
+  const def = PRO_METRIC[metric], list = prosAt(myMainPos());
+  if (!def || !list.length) return '';
+  const [field, label, lowerBetter, dec = 0] = def;
+  const best = [...list].sort((a, b) => lowerBetter ? a[field] - b[field] : b[field] - a[field])[0];
+  const mean = list.reduce((s, p) => s + p[field], 0) / list.length;
+  return `<div class="pro-ref">${icon('crown')}<span>${L('Tier 1 на твоей позиции', 'Tier 1 at your position')}, ${label}: ${L('в среднем', 'average')} <b>${mean.toFixed(dec)}</b>, ${esc(best.name)} <b>${best[field].toFixed(dec)}</b></span></div>`;
+}
+
+function proBuilds(heroId, limit = 3) {
+  const rows = (S.pros || []).flatMap(p => p.heroes.filter(h => h.hero_id === heroId && h.build.length).map(h => ({ p, h }))).sort((a, b) => b.h.games - a.h.games).slice(0, limit);
+  if (!rows.length) return '';
+  return `<div class="section"><h3 class="label">${L('Как собирают про', 'How pros build it')}</h3><div class="card">${rows.map(({ p, h }) => `
+    <div class="pro-build"><div class="pro-name"><b>${esc(p.name)}</b><span class="note">${esc(p.team)} · ${h.games} ${L('игр', 'games')} · ${h.wr}%</span></div>
+    <div class="build-line">${h.build.map(([k, t]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b></div>`).join('')}</div></div>`).join('')}</div></div>`;
+}
+
+function renderPros() {
+  const box = $('prosBox');
+  if (S.pros?.length && !S.items) { loadItems().then(renderPros, () => {}); }
+  if (!S.pros?.length) { box.innerHTML = `<div class="empty">${L('Данные по про-игрокам ещё не собраны', 'Pro player data isn\'t ready yet')}</div>`; return; }
+  if (!S.proPos) S.proPos = myMainPos();
+  const list = prosAt(S.proPos);
+  if (!list.some(p => p.account_id === S.proId)) S.proId = list[0]?.account_id;
+  $('proPosTabs').innerHTML = [1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.proPos}">${p} · ${POS_NAMES[p]}</button>`).join('');
+  $('proPosTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.proPos = +b.dataset.p; renderPros(); revealList($('prosBox').children); }));
+  const p = list.find(x => x.account_id === S.proId);
+  const sit = (label, [n, wr]) => n ? `<div class="sit"><span class="note">${label}</span><b class="${wr >= 50 ? 'pos' : 'neg'}">${wr}%</b><span class="dim">${n} ${L('игр', 'games')}</span></div>` : '';
+  const phaseMax = Math.max(...(p?.farm_phases || []).filter(Boolean), 1);
+  box.innerHTML = `
+    <div class="pro-cards">${list.map(x => `<button class="card pro-card ${x.account_id === S.proId ? 'active' : ''}" data-id="${x.account_id}"><b>${esc(x.name)}</b><span class="note">${esc(x.team)}</span><span class="pro-card-stats"><span>${x.wr}%</span><span>${x.gpm} GPM</span></span></button>`).join('')}</div>
+    ${p ? `
+    <div class="stats-grid">
+      <div class="card stat"><div class="label">${L('Винрейт', 'Win rate')}</div><div class="value" data-count>${p.wr}%</div><div class="sub">${p.games} ${L('игр в патче', 'games this patch')}</div></div>
+      <div class="card stat"><div class="label">GPM</div><div class="value" data-count>${p.gpm}</div><div class="sub">${p.xpm} XPM</div></div>
+      <div class="card stat"><div class="label">${L('Ластхиты', 'Last hits')}</div><div class="value" data-count>${p.lh_min}</div><div class="sub">${L('в минуту', 'per minute')}</div></div>
+      <div class="card stat"><div class="label">K / D / A</div><div class="value kda">${p.kills} / ${p.deaths} / ${p.assists}</div><div class="sub">${L('за игру', 'per game')}</div></div>
+      <div class="card stat"><div class="label">${L('Урон по героям', 'Hero damage')}</div><div class="value" data-count>${p.hd_min}</div><div class="sub">${L('в минуту', 'per minute')}</div></div>
+      <div class="card stat"><div class="label">${L('Урон по башням', 'Tower damage')}</div><div class="value">${fmt(p.td)}</div><div class="sub">${L('за игру', 'per game')}</div></div>
+    </div>
+    <div class="two-col">
+      <div class="section"><h3 class="label">${L('Фарм по фазам игры, GPM', 'Farm by game phase, GPM')}</h3><div class="card bench-list">${['0–10', '10–20', '20–30', '30–40'].map((lbl, i) => p.farm_phases[i] == null ? '' : `<div class="bench"><span>${lbl} ${L('мин', 'min')}</span><div class="track"><div class="fill" style="width:${(p.farm_phases[i] / phaseMax * 100).toFixed(0)}%;background:var(--accent)"></div></div><span class="num">${p.farm_phases[i]}</span></div>`).join('')}</div></div>
+      <div class="section"><h3 class="label">${L('Ситуации', 'Situations')}</h3><div class="card pad sits">
+        ${sit(L('Игры до 35 мин', 'Games under 35 min'), p.situations.short)}${sit(L('Игры от 45 мин', 'Games over 45 min'), p.situations.long)}
+        ${sit(L('Отставали на 15 мин', 'Behind at 15 min'), p.situations.behind)}${sit(L('Вели на 15 мин', 'Ahead at 15 min'), p.situations.ahead)}
+      </div></div>
+    </div>
+    <div class="two-col">
+      <div class="section"><h3 class="label">${L('Пики силы', 'Power spikes')}</h3><div class="card pad sits">
+        ${p.kill_peak != null ? `<div class="sit"><span class="note">${L('Больше всего убивает', 'Most kills at')}</span><b>${p.kill_peak * 5}–${p.kill_peak * 5 + 5} ${L('мин', 'min')}</b></div>` : ''}
+        ${sit(L('Первый предмет раньше обычного', 'First item faster than usual'), p.spike.fast)}${sit(L('Первый предмет позже обычного', 'First item slower than usual'), p.spike.slow)}
+      </div></div>
+      <div class="section"><h3 class="label">${L('Матчапы', 'Matchups')}</h3><div class="card pad matchups">
+        <div><span class="note">${L('Лучше всего против', 'Best against')}</span><div class="row">${p.best_vs.map(([h, g, wr]) => `<span class="hchip" title="${esc(heroName(h))} · ${g} ${L('игр', 'games')}">${heroImg(h) ? `<img src="${heroImg(h)}" alt="">` : ''}<span class="pos">${wr}%</span><span class="dim">${g}</span></span>`).join('')}</div></div>
+        <div><span class="note">${L('Хуже всего против', 'Worst against')}</span><div class="row">${p.worst_vs.map(([h, g, wr]) => `<span class="hchip" title="${esc(heroName(h))} · ${g} ${L('игр', 'games')}">${heroImg(h) ? `<img src="${heroImg(h)}" alt="">` : ''}<span class="neg">${wr}%</span><span class="dim">${g}</span></span>`).join('')}</div></div>
+      </div></div>
+    </div>
+    <div class="section"><h3 class="label">${L('Герои и сборки', 'Heroes and builds')}</h3><div class="card">${p.heroes.map(h => `
+      <div class="pro-build"><div class="pro-name">${heroCell(h.hero_id)}<span class="note">${h.games} ${L('игр', 'games')} · ${h.wr}% · ${h.gpm} GPM</span></div>
+      <div class="build-line">${h.build.map(([k, t, r]) => `<div class="build-step" title="${Math.round(r * 100)}%">${itemIcon(k)}<b>${mmss(t)}</b></div>`).join('')}</div></div>`).join('')}</div></div>` : ''}`;
+  box.querySelectorAll('.pro-card').forEach(b => b.addEventListener('click', () => { S.proId = +b.dataset.id; renderPros(); countUp($('prosBox')); fillIn($('prosBox')); }));
+  countUp(box); fillIn(box);
+}
+
 /* ---------- learn view ---------- */
 
 const LESSONS = {
@@ -1437,6 +1520,7 @@ function renderLearn() {
         </div>
         <ul class="lesson-tips">${LESSONS[r.k].tips.map(t => `<li>${t}</li>`).join('')}</ul>
         <div class="drill">${icon('target')}<span>${LESSONS[r.k].drill}</span></div>
+        ${proRef(r.k)}
         <div class="lesson-games"><span class="label">${L('Худшие игры', 'Worst games')}</span>${r.worst.map(({ m, v }) => `<button class="hchip" data-id="${m.match_id}">${heroImg(m._me.hero_id) ? `<img src="${heroImg(m._me.hero_id)}" alt="">` : ''}<span class="${isWin(m._me) ? 'pos' : 'neg'}">${isWin(m._me) ? '✓' : '✕'}</span>${Math.round(v * 100)}%</button>`).join('')}</div>
       </div>`).join('');
     $('planBox').querySelectorAll('.lesson-games .hchip').forEach(b => b.addEventListener('click', () => openMatch(+b.dataset.id)));
@@ -1452,6 +1536,7 @@ function renderLearn() {
 
   if (!S.learnHeroPicked) S.learnHero = [...(S.playerHeroes || [])].sort((a, b) => b.games - a.games)[0]?.hero_id || S.itemHero || 1;
   renderHeroGuide();
+  renderPros();
 }
 
 async function renderHeroGuide() {
@@ -1472,7 +1557,8 @@ async function renderHeroGuide() {
     <div class="two-col">
       <div class="section"><h3 class="label">${L('Его контрят', 'Countered by')}</h3><div class="card">${list(counters) || `<div class="empty">—</div>`}</div></div>
       <div class="section"><h3 class="label">${L('Он контрит', 'Counters')}</h3><div class="card">${list(victims) || `<div class="empty">—</div>`}</div></div>
-    </div>`;
+    </div>
+    ${proBuilds(h)}`;
   revealList($('heroGuide').children);
 }
 

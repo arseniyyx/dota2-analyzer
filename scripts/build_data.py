@@ -10,7 +10,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections import defaultdict
+from collections import Counter, defaultdict
 from statistics import median
 
 import numpy as np
@@ -169,7 +169,7 @@ def build_pro(item_consts):
     for s in range(0, len(ids), 150):
         part = ids[s:s + 150]
         rows = sql(
-            "SELECT match_id, player_slot, hero_id, lane_role, is_roaming, net_worth, purchase_log FROM player_matches "
+            "SELECT match_id, account_id, player_slot, hero_id, lane_role, is_roaming, net_worth, purchase_log FROM player_matches "
             f"WHERE match_id >= {part[0]} AND match_id <= {part[-1]} AND match_id IN ({','.join(map(str, part))})"
         )
         players.extend(rows)
@@ -194,6 +194,7 @@ def build_pro(item_consts):
         for side, team in teams.items():
             for i, pnum in assign_positions(team).items():
                 pos_counts[team[i]["hero_id"]][pnum - 1] += 1
+                team[i]["_pos"] = pnum
             enemies = [p["hero_id"] for p in teams[not side]]
             for p in team:
                 first = {}
@@ -235,7 +236,148 @@ def build_pro(item_consts):
     for h, items in hero_item.items():
         pro_items[h] = {k: [round(c / hero_n[h], 3), int(median(hero_item_times[h][k]))]
                         for k, c in items.items() if c / hero_n[h] >= 0.05}
-    return patch, len(by_match), dict(pos_counts), counters, pro_items, dict(seen)
+    return patch, len(by_match), dict(pos_counts), counters, pro_items, dict(seen), ids, by_match
+
+
+def chunked_sql(ids, size, make_query):
+    rows = []
+    for s in range(0, len(ids), size):
+        part = ids[s:s + size]
+        try:
+            rows.extend(sql(make_query(part)))
+        except RuntimeError as e:
+            print(f"  skipped chunk: {e}", file=sys.stderr)
+        time.sleep(1)
+    return rows
+
+
+def build_pros(patch, ids, by_match, items):
+    """Tier-1 players (top-rated active teams), 5 per position, with their hero, item, farm and situation patterns."""
+    teams = sql("SELECT tr.team_id, t.name, tr.rating FROM team_rating tr JOIN teams t USING(team_id) "
+                "WHERE tr.last_match_time > extract(epoch from now() - interval '60 days') ORDER BY tr.rating DESC LIMIT 24")
+    rating = {t["team_id"]: (t["rating"], (t["name"] or "").strip()) for t in teams}
+    in_list = lambda part: f"match_id >= {part[0]} AND match_id <= {part[-1]} AND match_id IN ({','.join(map(str, part))})"
+    minfo = {r["match_id"]: r for r in chunked_sql(ids, 400, lambda part: (
+        "SELECT match_id, radiant_team_id, dire_team_id, radiant_win, duration, radiant_gold_adv FROM matches WHERE " + in_list(part)))}
+
+    acc = defaultdict(lambda: {"games": 0, "teams": Counter(), "pos": Counter()})
+    for mid, ps in by_match.items():
+        mi = minfo.get(mid)
+        if not mi:
+            continue
+        for p in ps:
+            if p.get("account_id") and "_pos" in p:
+                a = acc[p["account_id"]]
+                a["games"] += 1
+                a["teams"][mi["radiant_team_id"] if p["player_slot"] < 128 else mi["dire_team_id"]] += 1
+                a["pos"][p["_pos"]] += 1
+    cands = []
+    for aid, v in acc.items():
+        if v["games"] < 25:
+            continue
+        team, tg = v["teams"].most_common(1)[0]
+        pos, pg = v["pos"].most_common(1)[0]
+        if team in rating and tg >= v["games"] * 0.5 and pg >= v["games"] * 0.6:
+            cands.append((aid, pos, team, v["games"]))
+    chosen = []
+    for pos in range(1, 6):
+        picked = set()  # one player per team per position: the team's main player there
+        for c in sorted([c for c in cands if c[1] == pos], key=lambda c: (-rating[c[2]][0], -c[3])):
+            if c[2] not in picked and len(picked) < 5:
+                picked.add(c[2])
+                chosen.append(c[:3])
+    names = {r["account_id"]: r["name"] for r in sql(
+        f"SELECT account_id, name FROM notable_players WHERE account_id IN ({','.join(str(c[0]) for c in chosen)})")}
+
+    accounts = [c[0] for c in chosen]
+    rows = chunked_sql(accounts, 5, lambda part: (
+        "SELECT account_id, match_id, player_slot, hero_id, kills, deaths, assists, gold_per_min, xp_per_min, last_hits, "
+        "hero_damage, tower_damage, net_worth, gold_t, kills_log, purchase_log FROM player_matches "
+        f"WHERE match_id >= {ids[0]} AND account_id IN ({','.join(map(str, part))})"))
+    by_acc = defaultdict(list)
+    for r in rows:
+        if r["match_id"] in minfo:
+            by_acc[r["account_id"]].append(r)
+
+    big = lambda k: k in items and (items[k].get("cost") or 0) >= 2000 and (items[k].get("components") or k == "blink") and not k.startswith("recipe")
+    players = []
+    for aid, pos, team in chosen:
+        rs = by_acc.get(aid, [])
+        if len(rs) < 15:
+            continue
+        mi = lambda r: minfo[r["match_id"]]
+        rad = lambda r: r["player_slot"] < 128
+        win = lambda r: rad(r) == mi(r)["radiant_win"]
+        mins = lambda r: mi(r)["duration"] / 60
+        n = len(rs)
+        avg = lambda f: sum(f(r) for r in rs) / n
+        wr = lambda lst: [len(lst), round(100 * sum(win(r) for r in lst) / len(lst)) if lst else None]
+
+        phases = []
+        for a, b in ((0, 10), (10, 20), (20, 30), (30, 40)):
+            g = [(r["gold_t"][b] - r["gold_t"][a]) / (b - a) for r in rs if r.get("gold_t") and len(r["gold_t"]) > b]
+            phases.append(round(sum(g) / len(g)) if g else None)
+
+        def adv15(r):
+            adv = mi(r).get("radiant_gold_adv") or []
+            return None if len(adv) <= 15 else adv[15] * (1 if rad(r) else -1)
+
+        kills_by_bucket = Counter(min(9, int(k["time"] // 300)) for r in rs for k in (r.get("kills_log") or []) if k["time"] >= 0)
+        peak = kills_by_bucket.most_common(1)[0][0] if kills_by_bucket else None
+
+        heroes = []
+        fast = slow = fast_w = slow_w = 0
+        for h, c in Counter(r["hero_id"] for r in rs).most_common(6):
+            hr = [r for r in rs if r["hero_id"] == h]
+            firsts = defaultdict(list)
+            first_big = []
+            for r in hr:
+                seen = []
+                for e in r.get("purchase_log") or []:
+                    if big(e["key"]) and e["key"] not in seen:
+                        seen.append(e["key"])
+                        firsts[e["key"]].append(e["time"])
+                        if len(seen) == 1:
+                            first_big.append((e["time"], win(r)))
+            if len(first_big) >= 4:
+                med = median(t for t, _ in first_big)
+                for t, w in first_big:
+                    if t <= med:
+                        fast += 1; fast_w += w
+                    else:
+                        slow += 1; slow_w += w
+            build = sorted([[k, int(median(v)), round(len(v) / c, 2)] for k, v in firsts.items() if len(v) >= max(2, 0.3 * c)], key=lambda x: x[1])[:6]
+            heroes.append({"hero_id": h, "games": c, "wr": round(100 * sum(win(r) for r in hr) / c),
+                           "gpm": round(sum(r["gold_per_min"] for r in hr) / c), "build": build})
+
+        vs = defaultdict(lambda: [0, 0])
+        for r in rs:
+            for e in by_match.get(r["match_id"], []):
+                if (e["player_slot"] < 128) != rad(r):
+                    vs[e["hero_id"]][0] += 1
+                    vs[e["hero_id"]][1] += win(r)
+        base = sum(win(r) for r in rs) / n  # shrink toward the player's own WR so 4-0 doesn't beat 9-1
+        vs_list = [[h, g, round(100 * w / g), (w + 6 * base) / (g + 6)] for h, (g, w) in vs.items() if g >= 5]
+        vs_list = [x[:3] for x in sorted(vs_list, key=lambda x: -x[3])]
+
+        players.append({
+            "account_id": aid, "name": names.get(aid) or str(aid), "team": rating[team][1], "pos": pos,
+            "games": n, "wr": round(100 * sum(win(r) for r in rs) / n, 1),
+            "gpm": round(avg(lambda r: r["gold_per_min"])), "xpm": round(avg(lambda r: r["xp_per_min"])),
+            "lh_min": round(avg(lambda r: r["last_hits"] / mins(r)), 2), "nw": round(avg(lambda r: r["net_worth"] or 0)),
+            "kills": round(avg(lambda r: r["kills"]), 1), "deaths": round(avg(lambda r: r["deaths"]), 1), "assists": round(avg(lambda r: r["assists"]), 1),
+            "hd_min": round(avg(lambda r: r["hero_damage"] / mins(r))), "td": round(avg(lambda r: r["tower_damage"])),
+            "farm_phases": phases, "kill_peak": peak,
+            "situations": {
+                "short": wr([r for r in rs if mins(r) < 35]), "long": wr([r for r in rs if mins(r) >= 45]),
+                "behind": wr([r for r in rs if (adv15(r) or 0) <= -3000]), "ahead": wr([r for r in rs if (adv15(r) or 0) >= 3000]),
+            },
+            "spike": {"fast": [fast, round(100 * fast_w / fast) if fast else None], "slow": [slow, round(100 * slow_w / slow) if slow else None]},
+            "heroes": heroes, "best_vs": vs_list[:3], "worst_vs": vs_list[-3:][::-1],
+        })
+        print(f"  pro {names.get(aid)} pos {pos} {rating[team][1]}: {n} games")
+    with open(os.path.join(OUT, "pros.json"), "w", encoding="utf-8") as f:
+        json.dump({"patch": patch, "generated_at": int(time.time()), "players": players}, f, ensure_ascii=False, separators=(",", ":"))
 
 
 def main():
@@ -245,7 +387,11 @@ def main():
     items = get("constants/items")
 
     print("Pro matches...")
-    patch, pro_matches, positions, counters, pro_items, seen = build_pro(items)
+    patch, pro_matches, positions, counters, pro_items, seen, pro_ids, by_match = build_pro(items)
+    print("Tier-1 players...")
+    build_pros(patch, pro_ids, by_match, items)
+    if os.environ.get("ONLY_PROS"):
+        return
     meta = {
         "generated_at": int(time.time()),
         "patch": patch,
