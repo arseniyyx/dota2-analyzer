@@ -1080,8 +1080,10 @@ function fogLayer(m, d, t) {
   const src = { rad: [{ x: 7, y: 93, r: 16 }], dire: [{ x: 93, y: 7, r: 16 }] };
   const sideOf = p => p.isRadiant ? 'rad' : 'dire';
   for (const w of d.wards) if (w.type === 'obs' && w.t <= t && t < w.end) src[sideOf(w.p)].push({ x: w.x, y: w.y, r: VISION.obs[k] });
-  if (t <= 600) for (const l of d.lanes) src[sideOf(l.p)].push({ x: l.spot.x, y: l.spot.y, r: VISION.hero[k] });
-  for (const f of d.fights) {
+  const pb = S.map?.pb;
+  if (pb) for (const p of m.players) { const h = !isDead(p, t) && heroAt(pb[p.player_slot], t); if (h) src[sideOf(p)].push({ x: h[1], y: h[2], r: VISION.hero[k] }); }
+  else if (t <= 600) for (const l of d.lanes) src[sideOf(l.p)].push({ x: l.spot.x, y: l.spot.y, r: VISION.hero[k] });
+  if (!pb) for (const f of d.fights) {
     if (t < f.start - 3 || t > f.end + 12) continue;
     for (const dd of f.deaths) { src.rad.push({ x: dd.x, y: dd.y, r: VISION.hero[k] }); src.dire.push({ x: dd.x, y: dd.y, r: VISION.hero[k] }); }
   }
@@ -1097,6 +1099,34 @@ function fogLayer(m, d, t) {
 }
 const mapX = x => (x - 64) / 128 * 100, mapY = y => (192 - y) / 128 * 100;
 const WARD_LIFE = { obs: 360, sen: 420 };
+
+const PB = {}; // hero tracks per match, in memory only (~500 KB each)
+async function stratzPlayback(m) {
+  if (PB[m.match_id]) return PB[m.match_id];
+  const acc = (m.players.find(p => p.account_id === S.playerId) || m.players.find(p => p.account_id && p.account_id < 4294967295))?.account_id;
+  if (!acc) return null;
+  const d = await stratzQ(`{ player(steamAccountId: ${acc}) { matches(request: { matchIds: [${m.match_id}], take: 1 }) { players { playerSlot playbackData { playerUpdatePositionEvents { time x y } } } } } }`);
+  const ps = d.player?.matches?.[0]?.players;
+  if (!ps?.some(p => p.playbackData?.playerUpdatePositionEvents?.length)) return null;
+  return PB[m.match_id] = Object.fromEntries(ps.map(p => [p.playerSlot, (p.playbackData?.playerUpdatePositionEvents || []).map(e => [e.time, mapX(e.x), mapY(e.y)])]));
+}
+const WALK = 3.4; // map % per second, roughly hero move speed
+function heroAt(tr, t) {
+  if (!tr?.length) return null;
+  let lo = 0, hi = tr.length - 1;
+  if (t <= tr[0][0]) return tr[0];
+  if (t >= tr[hi][0]) return tr[hi];
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (tr[mid][0] <= t) lo = mid; else hi = mid; }
+  const [, xa, ya] = tr[lo], [tb, xb, yb] = tr[hi], dist = Math.hypot(xb - xa, yb - ya);
+  if (dist > 1.6 * WALK * (tb - tr[lo][0])) return tr[lo]; // teleport or blink: snap when the next point arrives
+  const move = dist / WALK, k = move ? Math.max(0, (t - (tb - move)) / move) : 0; // stand still, then walk to the next point
+  return [t, xa + (xb - xa) * k, ya + (yb - ya) * k];
+}
+function isDead(p, t) {
+  const death = (p.deaths_t || []).find(([dt, dur]) => dt <= t && t < dt + dur);
+  const bought = death && (p.buyback_t || []).some(b => b >= death[0] && b <= t);
+  return death && !bought ? death : null;
+}
 const heroIconUrl = id => S.heroes[id]?.icon ? CDN + S.heroes[id].icon : heroImg(id);
 const heroByNpc = npc => Object.values(S.heroes).find(h => h.name === npc);
 
@@ -1164,16 +1194,17 @@ function renderMap(m) {
             <div class="tb-center"><div class="tb-score"><span class="tb-k" id="tbR">0</span><span id="tbClock">0:00</span><span class="tb-k" id="tbD">0</span></div><div class="tb-adv" id="tbAdv"></div></div>
             <div class="tb-team">${m.players.filter(p => !p.isRadiant).map(tbHero).join('')}</div>
           </div>
-          <div class="map card"><img src="${MAP_IMG}" alt="${L('Карта Dota 2', 'Dota 2 map')}" width="900" height="900"><svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${L('Варды, позиции на линии и смерти на выбранную минуту', 'Wards, lane positions, and deaths at the selected minute')}"></svg></div>
+          <div class="map card"><img src="${MAP_IMG}" alt="${L('Карта Dota 2', 'Dota 2 map')}" width="900" height="900"><svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${L('Варды, позиции на линии и смерти на выбранную минуту', 'Wards, lane positions, and deaths at the selected minute')}"></svg><svg id="heroSvg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg></div>
           <div class="timeline card">
             <button class="btn small" id="mapPlay" aria-label="${L('Проиграть матч', 'Play the match')}">${icon('play')}</button>
             <div class="tl-track"><div class="tl-marks">${marks}</div><input type="range" id="mapTime" min="0" max="${dur}" value="0" step="1" aria-label="${L('Время матча', 'Match time')}"></div>
-            <select id="mapSpeed" class="field tl-speed" aria-label="${L('Скорость', 'Speed')}"><option value="15">×15</option><option value="30" selected>×30</option><option value="60">×60</option></select>
+            <select id="mapSpeed" class="field tl-speed" aria-label="${L('Скорость', 'Speed')}"><option value="5">×5</option><option value="15" selected>×15</option><option value="30">×30</option><option value="60">×60</option></select>
           </div>
         </div>
         <div class="map-side card">
           <div class="map-clock" id="mapClock">0:00</div>
           <div class="tabs" id="fogTabs" role="tablist" aria-label="${L('Туман войны', 'Fog of war')}">${[['both', L('Обе', 'Both')], ['rad', 'Radiant'], ['dire', 'Dire'], ['off', L('Без тумана', 'No fog')]].map(([f, label]) => `<button class="tab" data-f="${f}" aria-selected="${f === S.fog}">${label}</button>`).join('')}</div>
+          <div class="note" id="pbStatus"></div>
           <div id="mapStats" class="map-stats"></div>
           <div class="label">${L('События рядом', 'Nearby events')}</div>
           <div id="mapEvents" class="map-events"></div>
@@ -1193,6 +1224,34 @@ function renderMap(m) {
     drawMap(+$('mapTime').value);
   }));
   drawMap(0);
+  loadTracks(m);
+}
+
+function loadTracks(m) {
+  const status = txt => { const el = $('pbStatus'); if (el) el.textContent = txt; };
+  if (!stratzToken()) return status(L('Передвижения героев: подключи Stratz (ключ в шапке)', 'Hero movement: connect Stratz (key icon at the top)'));
+  status(L('Загружаю передвижения…', 'Loading movement…'));
+  stratzPlayback(m).then(pb => {
+    if (S.map?.m !== m || !$('heroSvg')) return;
+    if (!pb) return status(L('Stratz ещё не обработал этот матч', 'Stratz hasn\'t processed this match yet'));
+    const { mine } = teams(m), ours = new Set(mine);
+    $('heroSvg').innerHTML = m.players.map(p => `<g data-slot="${p.player_slot}" style="display:none"><circle r="2.75" fill="#0a0c10"/><image href="${heroIconUrl(p.hero_id)}" x="-2.25" y="-2.25" width="4.5" height="4.5"/><circle r="2.6" fill="none" stroke="${ours.has(p) ? 'var(--good)' : 'var(--bad)'}" stroke-width="${p.account_id === S.playerId ? .8 : .45}"/></g>`).join('');
+    S.map.pb = pb;
+    S.map.els = m.players.map(p => [p, $('heroSvg').querySelector(`[data-slot="${p.player_slot}"]`)]);
+    status('');
+    drawMap(+$('mapTime').value);
+  }).catch(() => status(L('Не удалось загрузить передвижения', 'Couldn\'t load movement')));
+}
+
+function drawHeroes(t) {
+  const { pb, els, shown } = S.map || {};
+  if (!pb || !els) return;
+  for (const [p, g] of els) {
+    const h = !isDead(p, t) && heroAt(pb[p.player_slot], t);
+    const vis = h && (!shown || shown(p, h[1], h[2]));
+    g.style.display = vis ? '' : 'none';
+    if (vis) g.setAttribute('transform', `translate(${h[1].toFixed(2)} ${h[2].toFixed(2)})`);
+  }
 }
 
 const tbHero = p => `<div class="tb-hero ${p.account_id === S.playerId ? 'me' : ''}" data-slot="${p.player_slot}" title="${esc(heroName(p.hero_id))}${p.personaname ? ' · ' + esc(p.personaname) : ''}"><span class="tb-pic"><img src="${heroImg(p.hero_id)}" alt="${esc(heroName(p.hero_id))}" width="48" height="27"><b class="tb-timer"></b></span><span class="tb-gold"></span></div>`;
@@ -1206,8 +1265,7 @@ function drawTopbar(m, t) {
     const el = document.querySelector(`.tb-hero[data-slot="${p.player_slot}"]`);
     if (!el) continue;
     const death = (p.deaths_t || []).find(([dt, dur]) => dt <= t && t < dt + dur);
-    const bought = death && (p.buyback_t || []).some(b => b >= death[0] && b <= t);
-    const dead = death && !bought;
+    const dead = isDead(p, t), bought = death && !dead;
     el.classList.toggle('dead', !!dead);
     el.querySelector('.tb-timer').textContent = dead ? Math.ceil(death[0] + death[1] - t) : bought ? L('выкуп', 'buyback') : '';
     const g = p.gold_t?.[Math.min(p.gold_t.length - 1, min)];
@@ -1221,17 +1279,21 @@ function drawTopbar(m, t) {
 }
 
 function setMapTime(t) { $('mapTime').value = t; drawMap(t); }
-function stopMap() { clearInterval(S.mapTimer); S.mapTimer = null; const b = $('mapPlay'); if (b) b.innerHTML = icon('play'); }
+function stopMap() { cancelAnimationFrame(S.mapTimer); S.mapTimer = null; const b = $('mapPlay'); if (b) b.innerHTML = icon('play'); }
 function playMap() {
   const dur = S.map.m.duration;
-  if (+$('mapTime').value >= dur) setMapTime(0);
+  let t = +$('mapTime').value, last = performance.now(), drawn = 0;
+  if (t >= dur) t = 0;
   $('mapPlay').innerHTML = icon('pause');
-  S.mapTimer = setInterval(() => {
+  const step = now => {
     if (!$('mapTime')) return stopMap();
-    const t = Math.min(dur, +$('mapTime').value + +$('mapSpeed').value / 10);
-    setMapTime(t);
-    if (t >= dur) stopMap();
-  }, 100);
+    t = Math.min(dur, t + (now - last) / 1000 * +$('mapSpeed').value); last = now;
+    $('mapTime').value = t;
+    if (now - drawn > 100 || t >= dur) { drawMap(t); drawn = now; } else drawHeroes(t); // heroes every frame, the rest 10x per second
+    if (t >= dur) return stopMap();
+    S.mapTimer = requestAnimationFrame(step);
+  };
+  S.mapTimer = requestAnimationFrame(step);
 }
 
 function drawMap(t) {
@@ -1246,12 +1308,14 @@ function drawMap(t) {
     if (w.type === 'obs') out.push(`<g>${tip}<circle cx="${w.x}" cy="${w.y}" r="9.8" fill="${c}" fill-opacity=".07" stroke="${c}" stroke-opacity=".35" stroke-width=".2"/><circle cx="${w.x}" cy="${w.y}" r="1.1" fill="${c}" stroke="#0a0c10" stroke-width=".35"/></g>`);
     else out.push(`<g>${tip}<rect x="${w.x - .8}" y="${w.y - .8}" width="1.6" height="1.6" transform="rotate(45 ${w.x} ${w.y})" fill="${c}" stroke="#0a0c10" stroke-width=".3"/></g>`);
   }
-  if (t <= 600) for (const l of d.lanes.filter(l => fog.shown(l.p, l.spot.x, l.spot.y))) out.push(`<g opacity=".9"><title>${esc(heroName(l.p.hero_id))}: ${L('примерно где стоял на линии', 'approximate laning spot')}</title>${heroImgTag(l.p, l.spot.x, l.spot.y, l.ours, 3.6)}</g>`);
+  if (t <= 600 && !S.map.pb) for (const l of d.lanes.filter(l => fog.shown(l.p, l.spot.x, l.spot.y))) out.push(`<g opacity=".9"><title>${esc(heroName(l.p.hero_id))}: ${L('примерно где стоял на линии', 'approximate laning spot')}</title>${heroImgTag(l.p, l.spot.x, l.spot.y, l.ours, 3.6)}</g>`);
   for (const f of d.fights) {
     if (t < f.start - 3 || t > f.end + 12) continue;
     for (const dd of f.deaths.filter(dd => fog.shown(dd.p, dd.x, dd.y))) out.push(`<g><title>${esc(heroName(dd.p.hero_id))} ${L('погиб в драке на', 'died in the fight at')} ${mmss(f.start)}</title>${heroImgTag(dd.p, dd.x, dd.y, dd.ours, 4.2)}<path d="M${dd.x - 1.4} ${dd.y - 1.4}l2.8 2.8m0 -2.8l-2.8 2.8" stroke="#fff" stroke-width=".6" stroke-linecap="round"/></g>`);
   }
   $('mapSvg').innerHTML = out.join('');
+  S.map.shown = fog.shown;
+  drawHeroes(t);
   $('mapClock').textContent = mmss(Math.floor(t));
   drawTopbar(m, t);
 

@@ -444,3 +444,5 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .search-row { flex-direction: column; }
   .search-field { padding: 4px 10px; }
 }
+
+#heroSvg { pointer-events: none; }
