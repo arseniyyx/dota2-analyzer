@@ -110,9 +110,17 @@ const store = {
 
 async function getJSON(url, opts) {
   const r = await fetch(url, opts);
-  if (r.status === 429) throw new Error('OpenDota ограничил запросы. Подожди минуту и попробуй снова.');
+  if (r.status === 429) throw new Error('OpenDota пускает не больше 60 запросов в минуту с одного устройства. Подожди минуту и попробуй снова.');
   if (!r.ok) throw new Error(`Сервер ответил ошибкой ${r.status}`);
   return r.json();
+}
+
+async function getJSONCached(url, minutes) {
+  const k = 'c:' + url, c = store.get(k);
+  if (c && Date.now() - c.t < minutes * 60000) return c.d;
+  const d = await getJSON(url);
+  store.set(k, { t: Date.now(), d });
+  return d;
 }
 
 async function pool(tasks, n, onDone) {
@@ -132,7 +140,7 @@ async function pool(tasks, n, onDone) {
 
 async function loadBase() {
   const [heroStats, meta] = await Promise.all([
-    getJSON(`${API}/heroStats`),
+    getJSONCached(`${API}/heroStats`, 360),
     getJSON('data/meta.json').catch(() => null),
   ]);
   heroStats.forEach(h => { S.heroes[h.id] = h; });
@@ -296,7 +304,7 @@ async function requestParse(id) {
 
 async function loadMatch(id, force) {
   const cached = !force && store.get('m:' + id);
-  if (cached && cached._v === MATCH_CACHE_V && (cached.version || (Date.now() - cached._ts < 15 * 60 * 1000 && !parsePendingSince(id)))) return cached;
+  if (cached && cached._v === MATCH_CACHE_V && (cached.version || (Date.now() - cached._ts < 6 * 3600 * 1000 && !parsePendingSince(id)))) return cached;
   const m = trimMatch(await getJSON(`${API}/matches/${id}`));
   m._ts = Date.now();
   store.set('m:' + id, m);
@@ -360,9 +368,9 @@ async function analyze() {
   $('loadingText').textContent = 'Загружаю профиль…';
   try {
     const [profile, recent, poolHeroes, period, history] = await Promise.all([
-      getJSON(`${API}/players/${id}`), getJSON(`${API}/players/${id}/recentMatches`),
-      getJSON(`${API}/players/${id}/heroes`), fetchPeriod(id),
-      getJSON(`${API}/players/${id}/matches?limit=100&project=kills&project=deaths&project=assists&project=gold_per_min&project=hero_id`).catch(() => []),
+      getJSONCached(`${API}/players/${id}`, 5), getJSONCached(`${API}/players/${id}/recentMatches`, 5),
+      getJSONCached(`${API}/players/${id}/heroes`, 5), fetchPeriod(id),
+      getJSONCached(`${API}/players/${id}/matches?limit=100&project=kills&project=deaths&project=assists&project=gold_per_min&project=hero_id`, 5).catch(() => []),
     ]);
     if (!profile.profile) throw new Error('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».');
     saveHistory({ id, name: profile.profile.personaname, avatar: profile.profile.avatarmedium, tier: profile.rank_tier });
@@ -421,7 +429,7 @@ function renderFlags() {
 async function fetchPeriod(id) {
   const qs = S.limit ? `?limit=${S.limit}` : '';
   const [wl, heroes, totals] = await Promise.all([
-    getJSON(`${API}/players/${id}/wl${qs}`), getJSON(`${API}/players/${id}/heroes${qs}`), getJSON(`${API}/players/${id}/totals${qs}`),
+    getJSONCached(`${API}/players/${id}/wl${qs}`, 5), getJSONCached(`${API}/players/${id}/heroes${qs}`, 5), getJSONCached(`${API}/players/${id}/totals${qs}`, 5),
   ]);
   return { wl, heroes: heroes.filter(h => h.games > 0), totals };
 }
