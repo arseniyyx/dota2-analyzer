@@ -144,6 +144,9 @@ async function getJSON(url, opts) {
   return r.json();
 }
 
+// data files are rebuilt daily: a per-day query string skips yesterday's browser cache
+const dataUrl = f => `data/${f}?d=${new Date().toISOString().slice(0, 10)}`;
+
 async function getJSONCached(url, minutes) {
   const k = 'c:' + url, c = store.get(k);
   if (c && Date.now() - c.t < minutes * 60000) return c.d;
@@ -202,8 +205,8 @@ async function pool(tasks, n, onDone) {
 async function loadBase() {
   const [heroStats, meta, pros] = await Promise.all([
     getJSONCached(`${API}/heroStats`, 360),
-    getJSON('data/meta.json').catch(() => null),
-    getJSON('data/pros.json').catch(() => null),
+    getJSON(dataUrl('meta.json')).catch(() => null),
+    getJSON(dataUrl('pros.json')).catch(() => null),
   ]);
   heroStats.forEach(h => { S.heroes[h.id] = h; });
   S.meta = meta;
@@ -217,7 +220,7 @@ async function loadBase() {
 
 async function loadGroup(g) {
   if (S.groups[g]) return S.groups[g];
-  const d = await getJSON(`data/g${g}.json`);
+  const d = await getJSON(dataUrl(`g${g}.json`));
   d.n = d.heroes.length;
   d.idx = Object.fromEntries(d.heroes.map((h, i) => [h, i]));
   S.groups[g] = d;
@@ -1645,6 +1648,7 @@ function renderLearn() {
   if (!S.learnHeroPicked) S.learnHero = [...(S.playerHeroes || [])].sort((a, b) => b.games - a.games)[0]?.hero_id || S.itemHero || 1;
   renderHeroGrid();
   renderHeroGuide();
+  renderFarm();
   renderPros();
 }
 
@@ -1652,7 +1656,7 @@ async function renderHeroGuide() {
   const h = S.learnHero;
   const G = await loadGroup(S.group || 3).catch(() => null);
   await loadItems().catch(() => {});
-  if (!S.heroPos) S.heroPos = await getJSON('data/heroes.json').catch(() => ({}));
+  if (!S.heroPos) S.heroPos = await getJSON(dataUrl('heroes.json')).catch(() => ({}));
   const hp = S.heroPos[h] || {};
   const posList = Object.keys(hp).map(Number).sort((a, b) => (hp[b].pub?.games || 0) + hp[b].n * 40 - (hp[a].pub?.games || 0) - hp[a].n * 40)
     .filter((p, i, arr) => i === 0 || (hp[p].pub?.games || 0) + hp[p].n * 40 >= 0.08 * ((hp[arr[0]].pub?.games || 0) + hp[arr[0]].n * 40)); // drop rare off-roles
@@ -1674,14 +1678,17 @@ async function renderHeroGuide() {
   const mini = id => heroImg(id) ? `<img class="mini-hero" src="${heroImg(id)}" alt="${esc(heroName(id))}" title="${esc(heroName(id))}" loading="lazy">` : '';
   const wrCls = v => v >= 53 ? 'pos' : v <= 47 ? 'neg' : '';
 
-  // timings that decide games: biggest gap between "on time" and "late", pubs first, pro scene as fallback
-  const timings = [
+  // an item bought early always looks good (teams that are ahead buy everything earlier), so an item only counts
+  // as a spike when its on-time vs late gap beats this hero's typical gap; boots and cheap items never qualify
+  const all = [
     ...(pub?.build || []).filter(r => r[2] >= 0.3 && r[4] != null && r[5] != null).map(([k, t, , , f, sl]) => ({ k, t, f, sl, src: 'pub' })),
     ...(gp?.timing || []).map(([k, t, f, sl]) => ({ k, t, f, sl, src: 'pro' })),
-  ].filter((x, i, a) => x.f - x.sl >= 5 && a.findIndex(y => y.k === x.k) === i).sort((a, b) => (b.f - b.sl) - (a.f - a.sl)).slice(0, 4);
-
+  ].filter((x, i, a) => a.findIndex(y => y.k === x.k) === i);
+  const gaps = all.map(x => x.f - x.sl).sort((a, b) => a - b), typical = gaps.length ? gaps[gaps.length >> 1] : 0;
+  const timings = all.filter(x => spikeItem(x.k, S.guidePos <= 3) && x.f - x.sl - typical >= 3).sort((a, b) => (b.f - b.sl) - (a.f - a.sl)).slice(0, 3);
   const spike = timings[0];
-  const plan = gamePlan(S.guidePos, gp?.farm, spike, trend, peak, pub, gp);
+  const pw = powerWindows(pub?.power, S.guidePos <= 3);
+  const plan = gamePlan(S.guidePos, gp?.farm, spike, trend, peak, pub, gp, pw);
 
   const buildLine = (rows, sub) => `<div class="card build-line">${rows.map(r => `<div class="build-step">${itemIcon(r[0])}<b>${mmss(r[1])}</b>${sub(r)}</div>`).join('')}</div>`;
   const posTabs = posList.length > 1 ? `<div class="tabs" id="guidePosTabs">${posList.map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.guidePos}">${p} · ${POS_NAMES[p]}</button>`).join('')}</div>` : '';
@@ -1697,8 +1704,14 @@ async function renderHeroGuide() {
       <ul class="lesson-tips">${lines.map(t => `<li>${t}</li>`).join('')}</ul>${target ? `<div class="drill">${icon('target')}<span>${target}</span></div>` : ''}</div>`).join('')}</div></div>` : ''}
 
     <div class="section"><h3 class="label">${L('Пики силы', 'Power spikes')}</h3><div class="two-col">
-      ${curve.length ? `<div class="card bench-list">${curve.map((v, b) => `<div class="bench"><span>${DUR_LABELS[b]} ${L('мин', 'min')}</span><div class="track"><div class="fill" style="width:${Math.max(4, Math.min(100, (v - 0.4) / 0.2 * 100)).toFixed(0)}%;background:${b === peak ? 'var(--accent)' : v >= 0.5 ? 'var(--good)' : 'var(--bad)'}"></div></div><span class="num ${b === peak ? 'peak' : ''}">${(v * 100).toFixed(1)}%</span></div>`).join('')}</div>` : ''}
-      <div class="card pad spikes">${timings.length ? timings.map(x => `<div class="spike">${itemIcon(x.k)}<div><b>${esc(itemName(x.k))}</b><div class="note">${L(`до ${mmss(x.t)}`, `by ${mmss(x.t)}`)}: <b class="pos">${x.f}%</b> · ${L('позже', 'later')}: <b class="neg">${x.sl}%</b>${x.src === 'pro' ? ` · ${L('про', 'pro')}` : ''}</div></div></div>`).join('') : `<div class="empty">${L('Мало данных по таймингам', 'Not enough timing data')}</div>`}</div>
+      ${pub?.power ? `<div class="card pad">${powerChart(pub.power, pw, timings)}</div>` : ''}
+      <div class="card pad spikes">
+        ${pw.lvl6 ? `<div class="spike"><span class="spike-ic">6</span><div><b>${L('Ульта', 'Ultimate')}</b><div class="note">${L(`6-й уровень в среднем к ${pw.lvl6}:00`, `level 6 on average by ${pw.lvl6}:00`)}</div></div></div>` : ''}
+        ${pw.fight ? `<div class="spike"><span class="spike-ic fight">${icon('swords')}</span><div><b>${L(`Окно драк: ${pw.fight[0]}–${pw.fight[1]} мин`, `Fight window: ${pw.fight[0]}–${pw.fight[1]} min`)}</b><div class="note">${L(`убийств и помощи в ${pw.fight[2]} раза больше, чем у среднего героя этой позиции`, `${pw.fight[2]}× the kills and assists of an average hero in this role`)}</div></div></div>` : ''}
+        ${pw.farm ? `<div class="spike"><span class="spike-ic farm">${icon('coins')}</span><div><b>${L(`Фарм-окно: с ${pw.farm[0]} мин`, `Farm window: from ${pw.farm[0]} min`)}</b><div class="note">${L(`фармит на ${pw.farm[2]}% быстрее среднего героя этой позиции`, `farms ${pw.farm[2]}% faster than an average hero in this role`)}</div></div></div>` : ''}
+        ${timings.map(x => `<div class="spike">${itemIcon(x.k)}<div><b>${esc(spikeName(x.k))}</b><div class="note">${L(`до ${mmss(x.t)}`, `by ${mmss(x.t)}`)}: <b class="pos">${x.f}%</b> · ${L('позже', 'later')}: <b class="neg">${x.sl}%</b>${x.src === 'pro' ? ` · ${L('про', 'pro')}` : ''}</div></div></div>`).join('')}
+        ${!pw.lvl6 && !pw.fight && !pw.farm && !timings.length ? `<div class="empty">${L('Мало данных', 'Not enough data')}</div>` : ''}
+      </div>
     </div></div>
 
     ${pub?.build?.length ? `<div class="section"><h3 class="label">${L('Сборка в пабах Divine+', 'Divine+ pub build')} · ${fmt(pub.games)} ${L('игр', 'games')}</h3>${buildLine(pub.build, r => `<span class="note ${wrCls(r[3])}">${r[3]}%</span>`)}</div>` : ''}
@@ -1730,10 +1743,49 @@ async function renderHeroGuide() {
   fillIn($('heroGuide'));
 }
 
+const BOOTS = /boots|treads|greaves|bearing/;
+const spikeItem = (k, core = true) => !BOOTS.test(k) && ((itemByKey(k)?.cost || 0) >= (core ? 2000 : 1000) || ['blink', 'ultimate_scepter', 'aghanims_shard'].includes(k));
+
+// windows where the hero fights or farms clearly above the average hero in its role (series start at minute 1)
+function powerWindows(power, core = true) {
+  if (!power) return {};
+  const win = (series, min, rel) => {
+    const v = series.map((x, i) => i < 2 ? 0 : x ?? 0), top = Math.max(...v); // minutes 1-2 are noise: almost nobody has kills yet
+    if (top < min) return null;
+    const i = v.indexOf(top), cut = Math.max(min - 0.05, top * rel);
+    let a = i, b = i;
+    while (a > 0 && v[a - 1] >= cut) a--;
+    while (b < v.length - 1 && v[b + 1] >= cut) b++;
+    return b > a ? [a + 1, b + 1, top] : null; // a single minute is noise, not a window
+  };
+  const f = win(power.fight, 1.25, 0.85), g = core ? win(power.farm, 1.07, 0.92) : null; // supports don't have farm windows
+  return {
+    lvl6: power.lvl6,
+    fight: f && [f[0], f[1], f[2].toFixed(1)],
+    farm: g && [g[0], g[1], Math.round((g[2] - 1) * 100)],
+  };
+}
+
+function powerChart(power, pw, items) {
+  const W = 320, H = 150, X = m => 28 + (m - 1) / 39 * (W - 36), lo = 0.5, hi = 2;
+  const Y = v => 10 + (1 - (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo)) * (H - 30);
+  const line = (series, cls) => `<path class="${cls}" d="${series.map((v, i) => v == null ? '' : `${i && series[i - 1] != null ? 'L' : 'M'}${X(i + 1).toFixed(1)} ${Y(v).toFixed(1)}`).join('')}"/>`;
+  const band = (w, cls) => w ? `<rect class="${cls}" x="${X(w[0])}" y="10" width="${Math.max(3, X(w[1]) - X(w[0]))}" height="${H - 30}"/>` : '';
+  const mark = (m, label) => m && m <= 40 ? `<line class="pc-mark" x1="${X(m)}" x2="${X(m)}" y1="10" y2="${H - 20}"/><text class="pc-mlabel" x="${X(m) + 3}" y="20">${label}</text>` : '';
+  return `<svg class="power-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${L('Драки и фарм героя относительно среднего героя позиции по минутам', 'Hero fighting and farming compared with an average hero in the role, by minute')}">
+    ${band(pw.fight, 'pc-band-fight')}${band(pw.farm, 'pc-band-farm')}
+    ${[0.5, 1, 1.5, 2].map(v => `<line class="${v === 1 ? 'pc-base' : 'pc-grid'}" x1="28" x2="${W - 8}" y1="${Y(v)}" y2="${Y(v)}"/><text class="pc-axis" x="2" y="${Y(v) + 3}">${v}×</text>`).join('')}
+    ${[1, 10, 20, 30, 40].map(m => `<text class="pc-axis" x="${X(m) - 4}" y="${H - 6}">${m}</text>`).join('')}
+    ${line(power.farm, 'pc-farm')}${line(power.fight, 'pc-fight')}
+    ${mark(pw.lvl6, '6')}${items.slice(0, 1).map(x => mark(Math.round(x.t / 60), esc(itemName(x.k)).slice(0, 14))).join('')}
+  </svg>
+  <div class="legend"><span><i style="background:var(--bad)"></i>${L('драки', 'fights')}</span><span><i style="background:var(--good)"></i>${L('фарм', 'farm')}</span><span>${L('1× — средний герой позиции', '1× is an average hero in this role')}</span></div>`;
+}
+
 const spikeName = k => itemName(k) + (k === 'ultimate_scepter' ? L(' (улучшение ульта)', ' (ultimate upgrade)') : k === 'aghanims_shard' ? L(' (улучшение способности)', ' (ability upgrade)') : '');
 
 // Phase-by-phase plan for a hero in a role: role habits + this hero's numbers (pro farm medians, spike item, best game length)
-function gamePlan(pos, farm, spike, trend, peak, pub, gp) {
+function gamePlan(pos, farm, spike, trend, peak, pub, gp, pw = {}) {
   if (!pos) return [];
   const [lh10, g10, g15, g20, g25] = farm || [];
   const core = pos <= 3;
@@ -1768,11 +1820,71 @@ function gamePlan(pos, farm, spike, trend, peak, pub, gp) {
       : L('Держись рядом с корами, носи дасты и сентри против невидимых, сейв важнее урона.', 'Stay near your cores, carry dust and sentries, saving matters more than damage.'),
     L('После выигранной драки — сразу башня или Рошан, не возвращайся в лес.', 'After a won fight, take a tower or Roshan right away instead of going back to the jungle.'),
   ];
+  const fightTip = pw.fight && L(`С ${pw.fight[0]}-й по ${pw.fight[1]}-ю минуту ты дерёшься сильнее большинства героев этой позиции: ищи убийства, а не только фарм.`, `From minute ${pw.fight[0]} to ${pw.fight[1]} you fight harder than most heroes in this role: look for kills, not just farm.`);
+  const farmTip = pw.farm && L(`С ${pw.farm[0]}-й минуты герой фармит быстрее среднего: держи две линии и лес, не трать время на пустые драки.`, `From minute ${pw.farm[0]} this hero farms faster than average: hold two lanes and the jungle, skip pointless fights.`);
+  const endMid = spike ? Math.round(spike.t / 60) : 20;
+  if (fightTip) (pw.fight[0] < 10 ? lane : pw.fight[0] < endMid ? mid : after).unshift(fightTip);
+  if (farmTip) (pw.farm[0] < endMid ? mid : after).splice(1, 0, farmTip);
   return [
     [L('Линия', 'Laning'), '0–10 ' + L('мин', 'min'), lane, target10],
     [core ? L('До пика силы', 'Before your spike') : L('Середина игры', 'Mid game'), `10–${spike ? spikeT : '20:00'}`, mid, targetMid],
     [L('После пика', 'After the spike'), `${spike ? spikeT : '20:00'}+`, after, g25 ? L(`К 25:00 у про на этой позиции ${fmt(g25)} золота`, `By 25:00 pros in this role have ${fmt(g25)} gold`) : ''],
   ];
+}
+
+/* ---------- carry farm patterns ---------- */
+
+const FARM_SITS = [
+  ['all', L('Все игры', 'All games')],
+  ['lane:won', L('Линия выиграна', 'Lane won')], ['lane:tie', L('Линия ровная', 'Lane even')], ['lane:lost', L('Линия проиграна', 'Lane lost')],
+  ['tower:alive', L('Своя T1 стоит на 15:00', 'Own T1 up at 15:00')], ['tower:fallen', L('Своя T1 упала до 15:00', 'Own T1 lost by 15:00')],
+  ['mid:held', L('Мид стоит на линии', 'Mid holds the lane')], ['mid:free', L('Мид свободен', 'Mid lane free')],
+];
+const FARM_CATS = {
+  lane: L('Своя линия', 'Own safe lane'), push: L('Линия у вражеской вышки', 'Lane at the enemy tower'), mid: L('Мид', 'Mid lane'),
+  other: L('Другие линии', 'Other lanes'), jungle: L('Лес', 'Jungle'), ancients: L('Древние', 'Ancients'),
+};
+const FARM_PATS = { lane: L('Линия', 'Lane'), jungle: L('Лес и древние', 'Jungle and ancients'), rotate: L('Мид и другие линии', 'Mid and other lanes'), mixed: L('Смешанный', 'Mixed') };
+// where each lane category sits on the map, seen from the Radiant side (map %)
+const FARM_SPOTS = { lane: [44, 93], push: [92, 44], mid: [50, 50], other: [8, 30] };
+
+async function renderFarm() {
+  if (S.farm === undefined) S.farm = await getJSON(dataUrl('farm.json')).catch(() => null);
+  const F = S.farm;
+  if (!F) { $('farmBox').innerHTML = `<div class="empty">${L('Данные по фарму ещё не собраны', 'Farm data isn\'t ready yet')}</div>`; return; }
+  S.farmSit = S.farmSit || 'all';
+  const pick = k => { if (k === 'all') return F.all; const [a, b] = k.split(':'); return F.by[a]?.[b]; };
+  $('farmTabs').innerHTML = FARM_SITS.filter(([k]) => pick(k)).map(([k, label]) => `<button class="tab" data-k="${k}" aria-selected="${k === S.farmSit}">${label}</button>`).join('');
+  $('farmTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.farmSit = b.dataset.k; renderFarm(); }));
+  const d = pick(S.farmSit) || F.all, base = F.all;
+  const cats = Object.keys(FARM_CATS);
+  const heat = d.heat || (S.farmSit !== 'all' ? null : base.heat);
+  const top = heat ? Math.max(...Object.values(heat)) : 1;
+  const cells = heat ? Object.entries(heat).map(([c, v]) => { c = +c; return `<rect x="${(c % 24) * 100 / 24}" y="${Math.floor(c / 24) * 100 / 24}" width="${100 / 24}" height="${100 / 24}" fill="var(--accent)" fill-opacity="${(0.12 + 0.68 * v / top).toFixed(2)}"/>`; }).join('') : '';
+  const spots = Object.entries(FARM_SPOTS).map(([k, [x, y]]) => `<g class="farm-spot"><rect x="${x - 8}" y="${y - 3.4}" width="16" height="6.8" rx="1.6"/><text x="${x}" y="${y + 1.6}">${Math.round(d.share[k] * 100)}%</text></g>`).join('');
+
+  const pats = Object.entries(d.patterns).filter(([, [n]]) => n >= d.n * 0.08).sort((a, b) => b[1][2] - a[1][2]);
+  const diffs = cats.map(k => [k, d.best[k]]).sort((a, b) => b[1] - a[1]);
+  const vsAll = cats.map(k => [k, d.share[k] - base.share[k]]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
+  const pctp = v => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v * 100))}%`;
+  const tips = [
+    pats[0] && L(`Быстрее всего здесь фармят через «${FARM_PATS[pats[0][0]]}»: ${pats[0][1][2]} GPM на 10–20 минуте, ${pats[0][1][1]}% побед.`, `The fastest farm here comes from "${FARM_PATS[pats[0][0]]}": ${pats[0][1][2]} GPM at 10–20 min, ${pats[0][1][1]}% wins.`),
+    (() => { const w = [...pats].sort((x, y) => y[1][1] - x[1][1])[0]; return w && pats[0] && w[0] !== pats[0][0] && w[1][1] - pats[0][1][1] >= 3 && L(`Чаще всего выигрывают через «${FARM_PATS[w[0]]}»: ${w[1][1]}% побед, хотя фарма меньше (${w[1][2]} GPM). Такой керри раньше включается в драки и давит линии.`, `"${FARM_PATS[w[0]]}" wins most often: ${w[1][1]}% wins with less farm (${w[1][2]} GPM). That carry joins fights and pushes earlier.`); })(),
+    diffs[0][1] >= 0.02 && L(`Лучшие по фарму (верхние 25%) берут на ${Math.round(diffs[0][1] * 100)}% больше золота из зоны «${FARM_CATS[diffs[0][0]]}»${diffs.at(-1)[1] <= -0.02 ? ` и на ${Math.round(-diffs.at(-1)[1] * 100)}% меньше из зоны «${FARM_CATS[diffs.at(-1)[0]]}»` : ''}.`, `The best farmers (top 25%) take ${Math.round(diffs[0][1] * 100)}% more of their gold from "${FARM_CATS[diffs[0][0]]}"${diffs.at(-1)[1] <= -0.02 ? ` and ${Math.round(-diffs.at(-1)[1] * 100)}% less from "${FARM_CATS[diffs.at(-1)[0]]}"` : ''}.`),
+    S.farmSit !== 'all' && Math.abs(vsAll[1]) >= 0.02 && L(`По сравнению с обычной игрой доля зоны «${FARM_CATS[vsAll[0]]}» ${vsAll[1] > 0 ? 'выше' : 'ниже'} на ${Math.abs(Math.round(vsAll[1] * 100))}%.`, `Compared with a typical game, "${FARM_CATS[vsAll[0]]}" is ${Math.abs(Math.round(vsAll[1] * 100))}% ${vsAll[1] > 0 ? 'higher' : 'lower'}.`),
+  ].filter(Boolean);
+
+  $('farmBox').innerHTML = `<div class="farm-wrap">
+    <div class="map card"><img src="${MAP_IMG}" alt="${L('Карта Dota 2', 'Dota 2 map')}" width="900" height="900"><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${L('Где про-керри проводят 10–20 минуту и откуда берут золото', 'Where pro carries spend minutes 10–20 and where their gold comes from')}">${cells}${spots}</svg></div>
+    <div class="stack-sm">
+      <div class="card pad farm-head"><div><b>${fmt(d.n)}</b><span class="note">${L('игр про-керри', 'pro carry games')}</span></div><div><b>${d.wr}%</b><span class="note">${L('побед', 'wins')}</span></div><div><b>${d.gpm}</b><span class="note">${L('GPM на 10–20 мин', 'GPM at 10–20 min')}</span></div></div>
+      ${tips.length ? `<div class="card pad"><ul class="lesson-tips">${tips.map(t => `<li>${t}</li>`).join('')}</ul></div>` : ''}
+      <div class="card bench-list">${cats.map(k => `<div class="bench"><span>${FARM_CATS[k]}</span><div class="track"><div class="fill" style="width:${Math.min(100, d.share[k] * 200).toFixed(0)}%;background:var(--accent)"></div></div><span class="num">${Math.round(d.share[k] * 100)}%</span></div>`).join('')}</div>
+      <div class="card">${pats.map(([k, [n, wr, gpm]], i) => `<div class="item-row farm-pat ${i === 0 ? 'best' : ''}"><span class="chip ${i === 0 ? 'pos' : ''}">${Math.round(n / d.n * 100)}%</span><div class="name">${FARM_PATS[k]}</div><div class="note">${gpm} GPM · ${wr}%</div></div>`).join('')}</div>
+    </div>
+  </div>
+  <p class="note">${L(`Доли золота за всю игру по ${fmt(d.n)} про-играм керри, патч ${F.patch}. Тепловая карта — где керри были на 10–20 минуте в ${d.tracked || base.tracked} реплеях, показано за Radiant.`, `Gold shares over the whole game across ${fmt(d.n)} pro carry games, patch ${F.patch}. The heat map shows where carries were at 10–20 min in ${d.tracked || base.tracked} replays, from the Radiant side.`)}</p>`;
+  fillIn($('farmBox'));
 }
 
 const ATTRS = [['str', L('Сила', 'Strength')], ['agi', L('Ловкость', 'Agility')], ['int', L('Интеллект', 'Intelligence')], ['all', L('Универсальные', 'Universal')]];

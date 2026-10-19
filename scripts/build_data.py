@@ -286,10 +286,12 @@ def build_pub_items(hero_ids, items):
     key_of = {v["id"]: k for k, v in items.items() if v.get("id")}
     big = lambda k: k in items and (items[k].get("cost") or 0) >= 1000 and (items[k].get("components") or k == "blink") and not k.startswith("recipe")
     out = defaultdict(dict)
+    curves = {}  # (hero, pos) -> {minute: (kills+assists, level, networth)}, cumulative averages
     for n, h in enumerate(hero_ids):
         q = " ".join(
             f"f{p}: itemFullPurchase(heroId: {h}, bracketBasicIds: [DIVINE_IMMORTAL], positionIds: [POSITION_{p}]) {{ itemId time matchCount winCount }} "
-            f"s{p}: itemStartingPurchase(heroId: {h}, bracketBasicIds: [DIVINE_IMMORTAL], positionIds: [POSITION_{p}]) {{ itemId matchCount winCount }}"
+            f"s{p}: itemStartingPurchase(heroId: {h}, bracketBasicIds: [DIVINE_IMMORTAL], positionIds: [POSITION_{p}]) {{ itemId matchCount winCount }} "
+            f"t{p}: stats(heroIds: [{h}], bracketBasicIds: [DIVINE_IMMORTAL], positionIds: [POSITION_{p}], groupByTime: true) {{ time matchCount kills assists level networth }}"
             for p in range(1, 6))
         d = stratz(f"{{ heroStats {{ {q} }} }}", token)
         time.sleep(0.5)
@@ -297,6 +299,8 @@ def build_pub_items(hero_ids, items):
             continue
         hs = d["heroStats"]
         for p in range(1, 6):
+            curves[(h, p)] = {r["time"]: (float(r["kills"]) + float(r["assists"]), float(r["level"]), float(r["networth"]))
+                              for r in hs.get(f"t{p}") or [] if r["time"] is not None and r["matchCount"] >= 300}
             start = hs.get(f"s{p}") or []
             games = max((r["matchCount"] for r in start), default=0)  # every game starts with some tango/branch purchase
             if games < 1000:
@@ -335,6 +339,34 @@ def build_pub_items(hero_ids, items):
                              "start": sorted([[k, round(c / games, 2)] for k, (c, w) in agg.items() if c >= games * 0.2], key=lambda x: -x[1])[:6]}
         if n % 20 == 0:
             print(f"  stratz pubs: {n}/{len(hero_ids)} heroes")
+
+    # power over time: how much faster than the average hero in the same role this hero fights (kills + assists)
+    # and farms (net worth) minute by minute, smoothed over 3 minutes
+    def rate(c, i):
+        return {t: c[t][i] - c[t - 1][i] for t in c if t - 1 in c and 1 <= t <= 40}
+    for p in range(1, 6):
+        avg = []
+        for i in (0, 2):
+            tot = defaultdict(list)
+            for (h, pp), c in curves.items():
+                if pp == p:
+                    for t, v in rate(c, i).items():
+                        tot[t].append(v)
+            avg.append({t: sum(v) / len(v) for t, v in tot.items() if len(v) >= 10})
+        for (h, pp), c in curves.items():
+            if pp != p or p not in out.get(h, {}):
+                continue
+            series = []
+            for i, a in zip((0, 2), avg):
+                r = rate(c, i)
+                raw = [r[t] / a[t] if t in r and a.get(t) else None for t in range(1, 41)]
+                sm = []
+                for t in range(40):
+                    win = [x for x in raw[max(0, t - 1):t + 2] if x is not None]
+                    sm.append(round(sum(win) / len(win), 2) if win else None)
+                series.append(sm)
+            lvl6 = next((t for t in sorted(c) if c[t][1] >= 6), None)
+            out[h][p]["power"] = {"fight": series[0], "farm": series[1], "lvl6": lvl6}
     return out
 
 
@@ -415,9 +447,14 @@ def build_hero_pos(by_match, minfo, items, hero_ids=()):
                                       "games": [[g[3], g[0], int(g[1]), g[4], g[5], sorted([[k, t] for k, t in g[2].items()], key=lambda x: x[1])[:6]] for g in recent]}
     accs = sorted({a for c in cands.values() for a, _ in c} | {g[1] for h in out.values() for v in h.values() for g in v["games"] if g[1]})
     names = {}
-    for s_ in range(0, len(accs), 300):
-        part = accs[s_:s_ + 300]
-        for r in sql(f"SELECT account_id, name, team_name FROM notable_players WHERE account_id IN ({','.join(map(str, part))})"):
+    for s_ in range(0, len(accs), 150):
+        part = accs[s_:s_ + 150]
+        try:
+            rows = sql(f"SELECT account_id, name, team_name FROM notable_players WHERE account_id IN ({','.join(map(str, part))})")
+        except RuntimeError as e:  # names are a nice-to-have, never fail the build over them
+            print(f"  skipped names chunk: {e}"[:200], file=sys.stderr)
+            rows = []
+        for r in rows:
             if r.get("name"):
                 names[r["account_id"]] = (r["name"].strip(), (r.get("team_name") or "").strip())
         time.sleep(1)
