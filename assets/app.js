@@ -423,6 +423,7 @@ async function analyze() {
     revealList($('results').children);
     countUp($('results'));
     fillIn($('positions'));
+    if (location.hash === '#learn') renderLearn();
   } catch (e) {
     showError(e.message || L('Не удалось загрузить данные.', 'Couldn\'t load data.'));
   } finally {
@@ -1366,13 +1367,127 @@ $('enemyInput').addEventListener('change', e => { if (S.enemiesExample) { S.enem
 $('allyInput').addEventListener('change', e => { if (addHero(e.target, S.allies, 4)) renderCounterTool(S.groups[S.metaGroup]); });
 $('itemHeroInput').addEventListener('change', e => { const id = heroByName(e.target.value); if (id) { S.itemHero = id; renderItemHero(S.groups[S.metaGroup]); } });
 
+/* ---------- learn view ---------- */
+
+const LESSONS = {
+  gold_per_min: {
+    tips: EN ? ['Take the nearest jungle camp between lane waves', 'Right after a fight, go to a free lane instead of standing around', 'Get your farming item earlier if your hero uses one'] : ['Между волнами бери ближайший лесной лагерь', 'После драки сразу иди на свободную линию, а не стой', 'Если герою подходит предмет на фарм, бери его раньше'],
+    drill: L('Смотри на золото на 10:00 в каждой игре. Цель: +50 GPM за 10 игр', 'Check your gold at 10:00 every game. Goal: +50 GPM over 10 games'),
+  },
+  last_hits_per_min: {
+    tips: EN ? ['Only hit creeps to last hit, don\'t push the wave', 'Keep the wave close to your tower', 'Pull or stack a camp to reset a bad wave'] : ['Бей крипа только на добивание, не толкай волну', 'Держи волну ближе к своей башне', 'Пулл или стак лагеря помогает сбросить плохую волну'],
+    drill: L('Демо-режим, 5 минут без способностей. Цель: 40 ластхитов к 5:00', 'Demo mode, 5 minutes without spells. Goal: 40 last hits by 5:00'),
+  },
+  xp_per_min: {
+    tips: EN ? ['Stay in XP range even when you can\'t last hit', 'Don\'t leave lane before level 6 without a reason', 'Every death costs XP and minutes of farm'] : ['Стой в радиусе опыта, даже если не добиваешь', 'Не уходи с линии до 6 уровня без причины', 'Каждая смерть стоит опыта и минут фарма'],
+    drill: L('Цель: 6 уровень до 7:00 на коре, до 9:00 на саппорте', 'Goal: level 6 before 7:00 on core, before 9:00 on support'),
+  },
+  deaths_per_min: {
+    tips: EN ? ['Before entering fog, count how many enemies are visible on the minimap', 'Always keep a TP scroll', 'If 3+ enemies are missing, farm on your side of the map', 'Buy a save item earlier: BKB, Force Staff, Glimmer'] : ['Перед выходом в туман посчитай, сколько врагов видно на мини-карте', 'ТП всегда в слоте', 'Если 3+ врага пропали, фарми на своей половине карты', 'Бери сейв-предмет раньше: BKB, Force Staff, Glimmer'],
+    drill: L('Цель: не больше 5 смертей за игру в следующих 10 играх', 'Goal: 5 or fewer deaths per game over the next 10 games'),
+  },
+  hero_damage_per_min: {
+    tips: EN ? ['Stand where you can hit for the whole fight', 'Aim spells to hit several heroes', 'Show up to fights at your timing: level 6 and your key item'] : ['Становись так, чтобы бить всю драку', 'Целься способностями в нескольких героев', 'Приходи на драки в свой тайминг: 6 уровень и ключевой предмет'],
+    drill: L('После каждой драки проверь, успел ли ты прожать все способности', 'After every fight, check whether you used all your spells'),
+  },
+  kills_per_min: {
+    tips: EN ? ['Look for pickoffs when you spike: level 6, key item', 'Smoke with your team instead of farming alone', 'TP onto low-HP enemies under your tower'] : ['Ищи убийства на своём пике: 6 уровень, ключевой предмет', 'Ходи в смоки с командой вместо одиночного фарма', 'Прилетай ТП на раненых врагов под своей башней'],
+    drill: L('Каждые 5 минут спрашивай себя: где сейчас можно убить?', 'Every 5 minutes ask yourself: where can we get a kill right now?'),
+  },
+  assists_per_min: {
+    tips: EN ? ['Watch fights on the minimap and TP in', 'As a support, rotate after level 6', 'Stay near your cores in the mid game'] : ['Следи за драками на мини-карте и прилетай ТП', 'На саппорте ротируй после 6 уровня', 'В мид-гейме держись рядом со своими корами'],
+    drill: L('Цель: участие в драках 60%+ в следующих играх', 'Goal: 60%+ fight participation in your next games'),
+  },
+  tower_damage: {
+    tips: EN ? ['After a won fight, hit a tower instead of the jungle', 'Push with a creep wave, not alone', 'Towers and Roshan are the real reward for a fight'] : ['После выигранной драки бей башню, а не лес', 'Пушь вместе с волной крипов, а не один', 'Башни и Рошан — главная награда за драку'],
+    drill: L('После каждой выигранной драки — хотя бы одна башня', 'After every won fight, take at least one tower'),
+  },
+};
+
+const POS_GUIDE = {
+  1: EN ? [['Lane', ['Last hit every creep, deny your own', 'Keep the wave near your tower', 'Avoid fights: your goal is levels and items']], ['Mid game', ['Farm the jungle between waves', 'Join fights once you have your key item', 'Don\'t farm the enemy jungle without vision']], ['Late game', ['Stay with your team, hit from a safe spot', 'Always keep buyback gold', 'After a won fight: Roshan and barracks']]]
+    : [['Линия', ['Добивай каждого крипа, денай своих', 'Держи волну у своей башни', 'Не дерись без нужды: цель — уровень и предмет']], ['Середина', ['Фарми лес между волнами', 'Иди в драку, когда есть ключевой предмет', 'Не фарми вражеский лес без вижна']], ['Поздняя игра', ['Держись с командой, бей с безопасной позиции', 'Всегда держи золото на выкуп', 'После выигранной драки — Рошан и бараки']]],
+  2: EN ? [['Lane', ['Control runes every 2 minutes', 'Win the last-hit battle', 'Keep your bottle full']], ['Mid game', ['Rotate with a rune to winnable lanes', 'Take towers after kills', 'Press your advantage while you\'re stronger']], ['Late game', ['Hunt enemy supports', 'Don\'t AFK-farm', 'Control the map with your team']]]
+    : [['Линия', ['Контролируй руны каждые 2 минуты', 'Выигрывай линию по ластхитам', 'Держи бутылку полной']], ['Середина', ['Ротируй с руной на линии, где можно убить', 'После убийств бери башни', 'Дави, пока ты сильнее']], ['Поздняя игра', ['Охоться на вражеских саппортов', 'Не уходи в долгий фарм', 'Контролируй карту вместе с командой']]],
+  3: EN ? [['Lane', ['Your goal is XP, not last hits', 'Harass the enemy carry', 'Don\'t die: offlane deaths snowball']], ['Mid game', ['Initiate fights', 'Buy team items: Pipe, Crimson, Blink', 'Make space for your carry']], ['Late game', ['Go in first and soak the enemy disables', 'Keep auras and saves ready', 'Split push while the enemy is busy']]]
+    : [['Линия', ['Цель — опыт, а не ластхиты', 'Мешай вражескому керри добивать', 'Не умирай: смерти на оффлейне копятся']], ['Середина', ['Инициируй драки', 'Покупай предметы для команды: Pipe, Crimson, Blink', 'Давай пространство своему керри']], ['Поздняя игра', ['Входи первым и забирай контроль врага', 'Держи ауры и сейвы готовыми', 'Сплитпушь, пока враг занят']]],
+  4: EN ? [['Lane', ['Help your offlaner, harass the enemy support', 'Stack camps at :53', 'Look for mid kills with the rune']], ['Mid game', ['Rotate and ward for smokes', 'Be where the next fight will be', 'Save up for Blink or Force']], ['Late game', ['Save your cores, land your disables', 'Keep vision around Roshan', 'Don\'t farm when enemy cores are more dangerous']]]
+    : [['Линия', ['Помогай оффлейнеру, гоняй вражеского саппорта', 'Стакай лагеря на :53', 'Ищи убийства на миде с руной']], ['Середина', ['Ротируй и ставь варды для смоков', 'Будь там, где будет драка', 'Копи на Blink или Force']], ['Поздняя игра', ['Сейвь коров, прожимай контроль', 'Держи вижн вокруг Рошана', 'Не фарми, когда вражеские коры опаснее']]],
+  5: EN ? [['Lane', ['Block the first wave, pull camps', 'Ward your lane and your jungle', 'Give XP to your carry, watch their HP']], ['Mid game', ['Place observers before every fight', 'Sentries against invisible heroes', 'Stay behind your cores']], ['Late game', ['Vision around Roshan and base exits', 'Save items: Glimmer, Force, Lotus', 'Die last, not first']]]
+    : [['Линия', ['Блокируй первую волну, пулляй лагеря', 'Варды на линии и в своём лесу', 'Отдавай опыт керри, следи за его здоровьем']], ['Середина', ['Обс-варды до каждой драки', 'Сентри против невидимых', 'Держись за спиной своих коров']], ['Поздняя игра', ['Вижн вокруг Рошана и выходов из базы', 'Сейв-предметы: Glimmer, Force, Lotus', 'Умирай последним, а не первым']]],
+};
+
+function renderLearn() {
+  const mine = Object.values(S.matches || {}).filter(m => m._me);
+  if (mine.length < 3) {
+    $('planBox').innerHTML = `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">${L('Сначала проанализируй свой профиль', 'Analyze your profile first')}</div></div><a class="btn small" href="#player">${L('К анализу', 'Go to analysis')}</a></div>`;
+  } else {
+    const roles = mine.reduce((a, m) => (a[m._me._role]++, a), { core: 0, support: 0 });
+    const role = roles.support > roles.core ? 'support' : 'core';
+    const rows = Object.keys(WEIGHTS[role]).map(k => {
+      const vals = mine.map(m => ({ m, v: pctOf(m._me, k) })).filter(x => x.v != null).sort((a, b) => a.v - b.v);
+      return { k, n: vals.length, avg: vals.reduce((s, x) => s + x.v, 0) / Math.max(1, vals.length), worst: vals.slice(0, 3) };
+    }).filter(r => r.n >= 3).sort((a, b) => a.avg - b.avg);
+    $('planBox').innerHTML = rows.slice(0, 3).map((r, i) => `
+      <div class="card lesson">
+        <div class="lesson-head">
+          <span class="lesson-n">${i + 1}</span>
+          <div class="lesson-title"><b>${METRICS[r.k].name}</b><span class="note">${L(`лучше ${Math.round(r.avg * 100)}% игроков на тех же героях`, `better than ${Math.round(r.avg * 100)}% of players on the same heroes`)}</span></div>
+          <div class="ring" style="--p:${Math.round(r.avg * 100)};--c:${r.avg >= .5 ? 'var(--accent)' : 'var(--bad)'}"><span data-count>${Math.round(r.avg * 100)}%</span></div>
+        </div>
+        <ul class="lesson-tips">${LESSONS[r.k].tips.map(t => `<li>${t}</li>`).join('')}</ul>
+        <div class="drill">${icon('target')}<span>${LESSONS[r.k].drill}</span></div>
+        <div class="lesson-games"><span class="label">${L('Худшие игры', 'Worst games')}</span>${r.worst.map(({ m, v }) => `<button class="hchip" data-id="${m.match_id}">${heroImg(m._me.hero_id) ? `<img src="${heroImg(m._me.hero_id)}" alt="">` : ''}<span class="${isWin(m._me) ? 'pos' : 'neg'}">${isWin(m._me) ? '✓' : '✕'}</span>${Math.round(v * 100)}%</button>`).join('')}</div>
+      </div>`).join('');
+    $('planBox').querySelectorAll('.lesson-games .hchip').forEach(b => b.addEventListener('click', () => openMatch(+b.dataset.id)));
+    countUp($('planBox')); fillIn($('planBox'));
+  }
+
+  const posCount = [0, 0, 0, 0, 0, 0];
+  mine.forEach(m => posCount[m._me._pos]++);
+  if (!S.learnPosPicked) S.learnPos = posCount.indexOf(Math.max(...posCount.slice(1))) || 1;
+  $('learnPosTabs').innerHTML = [1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.learnPos}">${p} · ${POS_NAMES[p]}</button>`).join('');
+  $('learnPosTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.learnPos = +b.dataset.p; S.learnPosPicked = true; renderLearn(); revealList($('posGuide').children); }));
+  $('posGuide').innerHTML = POS_GUIDE[S.learnPos].map(([phase, items]) => `<div class="card pad"><div class="label">${phase}</div><ul class="lesson-tips">${items.map(t => `<li>${t}</li>`).join('')}</ul></div>`).join('');
+
+  if (!S.learnHeroPicked) S.learnHero = [...(S.playerHeroes || [])].sort((a, b) => b.games - a.games)[0]?.hero_id || S.itemHero || 1;
+  renderHeroGuide();
+}
+
+async function renderHeroGuide() {
+  const h = S.learnHero;
+  const G = await loadGroup(S.group || 3).catch(() => null);
+  await loadItems().catch(() => {});
+  const pro = S.meta?.pro_items?.[h] || {};
+  const build = Object.entries(pro).filter(([k, [rate]]) => rate >= 0.12 && itemByKey(k) && (itemByKey(k).cost || 0) >= 1000 && (itemByKey(k).components || k === 'blink')).sort((a, b) => a[1][1] - b[1][1]).slice(0, 9);
+  const heroesWith = G ? Object.keys(S.heroes).map(Number).filter(x => x !== h && G.idx[x] != null && heroPick(G, x) >= 0.01) : [];
+  const counters = G ? heroesWith.map(x => ({ x, v: adv(G, x, h) })).sort((a, b) => b.v - a.v).slice(0, 5) : [];
+  const victims = G ? heroesWith.map(x => ({ x, v: adv(G, h, x) })).sort((a, b) => b.v - a.v).slice(0, 5) : [];
+  const curve = G ? DUR_LABELS.map((_, b) => durWr(G, h, b)) : [];
+  const peak = curve.length ? curve.indexOf(Math.max(...curve)) : -1;
+  const list = (arr) => arr.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div class="name">${esc(heroName(c.x))}</div><div class="lift ${signCls(c.v)}">${pct(c.v)}</div></div>`).join('');
+  $('heroGuide').innerHTML = `
+    <div class="card pad hero-head">${heroCell(h)}${G ? `<span class="chip pos">${L('Сильнее всего', 'Strongest at')}: ${DUR_LABELS[peak]} ${L('мин', 'min')}</span><span class="note">${L('Винрейт', 'Win rate')} ${(heroWr(G, h) * 100).toFixed(1)}% · ${GROUPS[S.group || 3]}</span>` : ''}</div>
+    ${build.length ? `<div class="section"><h3 class="label">${L('Сборка про-игроков', 'Pro build')}</h3><div class="card build-line">${build.map(([k, [rate, t]]) => `<div class="build-step">${itemIcon(k)}<b>${mmss(t)}</b><span class="note">${Math.round(rate * 100)}%</span></div>`).join('')}</div></div>` : ''}
+    <div class="two-col">
+      <div class="section"><h3 class="label">${L('Его контрят', 'Countered by')}</h3><div class="card">${list(counters) || `<div class="empty">—</div>`}</div></div>
+      <div class="section"><h3 class="label">${L('Он контрит', 'Counters')}</h3><div class="card">${list(victims) || `<div class="empty">—</div>`}</div></div>
+    </div>`;
+  revealList($('heroGuide').children);
+}
+
+$('learnHeroInput').addEventListener('change', e => { const id = heroByName(e.target.value); if (id) { S.learnHero = id; S.learnHeroPicked = true; e.target.value = ''; renderHeroGuide(); } });
+
 /* ---------- router & boot ---------- */
 
 function route() {
-  const meta = location.hash === '#meta';
-  $('viewPlayer').hidden = meta; $('viewMeta').hidden = !meta;
-  $('navPlayer').setAttribute('aria-current', meta ? 'false' : 'page');
+  const view = location.hash === '#meta' ? 'meta' : location.hash === '#learn' ? 'learn' : 'player';
+  const meta = view === 'meta';
+  $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn';
+  $('navPlayer').setAttribute('aria-current', view === 'player' ? 'page' : 'false');
   $('navMeta').setAttribute('aria-current', meta ? 'page' : 'false');
+  $('navLearn').setAttribute('aria-current', view === 'learn' ? 'page' : 'false');
+  if (view === 'learn') { renderLearn(); revealList($('viewLearn').children); }
   if (meta) {
     Promise.resolve(S.items || loadItems().catch(() => {})).then(async () => {
       if (S.metaGroup == null) S.metaGroup = store.get('metaGroup') || S.group || 3;

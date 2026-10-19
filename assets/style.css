@@ -319,6 +319,30 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .example { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
 
+/* ---------- learn ---------- */
+.stack-sm { display: flex; flex-direction: column; gap: 12px; }
+.lesson { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.lesson-head { display: flex; align-items: center; gap: 14px; }
+.lesson-n { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; background: var(--accent-soft); color: var(--accent-strong); font-family: var(--display); }
+.lesson-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lesson-title b { font-family: var(--display); font-weight: 400; font-size: 18px; }
+.lesson-tips { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.lesson-tips li::marker { color: var(--accent); }
+.drill { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; font-size: 14px; }
+.drill svg { width: 18px; height: 18px; flex-shrink: 0; }
+.lesson-games { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lesson-games .hchip { cursor: pointer; padding-right: 8px; }
+.lesson-games .hchip:hover { border-color: var(--accent); }
+.learn-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.learn-grid .label { margin-bottom: 10px; }
+.hero-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.hero-head .hero-cell img { width: 64px; height: 36px; }
+.hero-head .hero-cell span { font-family: var(--display); font-size: 20px; }
+.build-line { display: flex; gap: 6px; padding: 14px; overflow-x: auto; }
+.build-step { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; padding: 8px 6px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.build-step .item-icon { width: 44px; height: 32px; }
+.build-step b { font-size: 13px; }
+
 /* ---------- match map ---------- */
 .map-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; align-items: start; }
 .map-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -386,6 +410,7 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .pos-top { flex-direction: column; align-items: flex-start; gap: 10px; }
   .two-col { grid-template-columns: 1fr; }
   .map-wrap { grid-template-columns: 1fr; }
+  .learn-grid { grid-template-columns: 1fr; }
   .map-events { max-height: 240px; }
   .cand { grid-template-columns: minmax(0, 1fr) 64px; }
   .cand .breakdown { grid-column: 1 / -1; }
