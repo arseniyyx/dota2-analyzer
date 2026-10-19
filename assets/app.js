@@ -325,12 +325,13 @@ async function analyze() {
   $('searchBtn').disabled = true; $('results').hidden = true; $('error').hidden = true; $('loading').hidden = false;
   $('loadingText').textContent = 'Загружаю профиль…';
   try {
-    const [profile, recent, poolHeroes, period] = await Promise.all([
+    const [profile, recent, poolHeroes, period, history] = await Promise.all([
       getJSON(`${API}/players/${id}`), getJSON(`${API}/players/${id}/recentMatches`),
       getJSON(`${API}/players/${id}/heroes`), fetchPeriod(id),
+      getJSON(`${API}/players/${id}/matches?limit=100&project=kills&project=deaths&project=assists&project=gold_per_min&project=hero_id`).catch(() => []),
     ]);
     if (!profile.profile) throw new Error('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».');
-    S.playerId = Number(id); S.profile = profile; S.poolHeroes = poolHeroes; S.recent = recent; S.period = period; S.posFilter = 0;
+    S.playerId = Number(id); S.profile = profile; S.poolHeroes = poolHeroes; S.recent = recent; S.period = period; S.posFilter = 0; S.history = history;
     S.group = groupOfTier(profile.rank_tier);
     await loadGroup(S.group).catch(() => null);
 
@@ -340,6 +341,7 @@ async function analyze() {
     ms.forEach(m => { if (m) S.matches[m.match_id] = prepareMatch(m); });
 
     renderPeriod();
+    renderFlags();
     renderPositions();
     renderMatches();
     $('results').hidden = false;
@@ -355,6 +357,31 @@ S.limit = store.get('period') ?? 20;
 const minGames = () => ({ 20: 2, 100: 4 })[S.limit] ?? 5;
 const losingGames = () => ({ 20: 4, 100: 7 })[S.limit] ?? 10;
 const periodLabel = () => S.limit ? `за последние ${S.limit} игр` : 'за всю историю';
+
+function renderFlags() {
+  const games = Object.values(S.matches).filter(m => m._me);
+  const mvp = games.filter(m => m.players.every(p => p._score <= m._me._score)).length;
+  const avgScore = games.reduce((s, m) => s + m._me._score, 0) / Math.max(1, games.length);
+  const total = (S.poolHeroes || []).reduce((s, h) => s + h.games, 0);
+  const sum = list => {
+    const k = list.reduce((s, m) => s + m.kills, 0), d = list.reduce((s, m) => s + m.deaths, 0), a = list.reduce((s, m) => s + m.assists, 0);
+    return { n: list.length, wr: list.filter(isWin).length / Math.max(1, list.length), kda: (k + a) / Math.max(1, d), gpm: list.reduce((s, m) => s + m.gold_per_min, 0) / Math.max(1, list.length) };
+  };
+  const hist = S.history || [], now = sum(hist.slice(0, 20)), before = sum(hist.slice(20));
+  const oldHeroes = new Set(hist.slice(20).map(m => m.hero_id));
+  const newHeroShare = hist.slice(0, 20).filter(m => !oldHeroes.has(m.hero_id)).length / Math.max(1, Math.min(20, hist.length));
+  const p0 = v => `${Math.round(v * 100)}%`;
+  const dominant = games.length >= 10 && (mvp / games.length >= 0.35 || avgScore >= 7);
+  const flags = [];
+  if (dominant && total <= 300 && now.wr >= 0.6) {
+    flags.push({ title: 'Похоже на смурфа', reasons: [`всего ${total} игр на аккаунте`, `MVP матча в ${mvp} из ${games.length} последних игр`, `средняя оценка ${avgScore.toFixed(1)} из 10`, `винрейт ${p0(now.wr)} за последние 20`] });
+  }
+  if (dominant && before.n >= 40 && now.wr - before.wr >= 0.2 && (now.kda / before.kda >= 1.4 || now.gpm / before.gpm >= 1.2)) {
+    flags.push({ title: 'Похоже, что на аккаунте играет бустер', reasons: [`винрейт ${p0(before.wr)} → ${p0(now.wr)}`, `KDA ${before.kda.toFixed(1)} → ${now.kda.toFixed(1)}`, `GPM ${Math.round(before.gpm)} → ${Math.round(now.gpm)}`, `MVP матча в ${mvp} из ${games.length} последних игр`, newHeroShare >= 0.4 ? `${p0(newHeroShare)} последних игр на героях, которых не было в играх 21–100` : ''].filter(Boolean) });
+  }
+  $('flags').innerHTML = flags.map(f => `<div class="card issue warn">${sevIcon('bad')}<div class="body"><div class="title">${f.title}</div><div class="detail">${f.reasons.join(' · ')}. Это признаки по статистике, а не доказательство.</div></div></div>`).join('')
+    + `<p class="note">MVP матча (лучшая оценка из 10 игроков) в ${mvp} из ${games.length} последних игр, средняя оценка ${avgScore.toFixed(1)} из 10.</p>`;
+}
 
 async function fetchPeriod(id) {
   const qs = S.limit ? `?limit=${S.limit}` : '';
