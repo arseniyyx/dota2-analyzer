@@ -79,7 +79,13 @@ const ICONS = {
   check: '<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
 };
-const icon = (name, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+const icon = (name, cls = '') => `<svg class="i ${cls}" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+const RANK_IMG = 'https://www.opendota.com/assets/images/dota2/rank_icons/';
+function rankEmblem(tier, size) {
+  if (!tier) return '';
+  const medal = Math.floor(tier / 10), stars = tier % 10;
+  return `<span class="emblem" style="--s:${size}px" title="${rankName(tier)}"><img src="${RANK_IMG}rank_icon_${medal}.png" alt="${rankName(tier)}" width="${size}" height="${size}">${stars && medal < 8 ? `<img src="${RANK_IMG}rank_star_${stars}.png" alt="" width="${size}" height="${size}">` : ''}</span>`;
+}
 const SEV_ICON = { bad: 'alert', warn: 'down', good: 'check', info: 'info' };
 const sevIcon = sev => `<span class="sev">${icon(SEV_ICON[sev] || 'info')}</span>`;
 function ago(ts) {
@@ -388,6 +394,7 @@ function renderProfile(profile, wl) {
   const p = profile.profile, total = wl.win + wl.lose, wr = total ? wl.win / total * 100 : 0;
   $('profile').innerHTML = `
     <img src="${esc(p.avatarfull)}" alt="">
+    ${rankEmblem(profile.rank_tier, 76)}
     <div><h2>${esc(p.personaname)}</h2><div class="meta"><span class="rank-pill">${icon('shield')}${rankName(profile.rank_tier)}</span><span>${S.limit ? `винрейт за последние ${total} игр` : `${total.toLocaleString('ru')} матчей всего`}</span><span>мета по ${GROUPS[S.group]}</span></div></div>
     <div class="wl"><div class="big" style="color:${wr >= 52 ? 'var(--good)' : wr >= 48 ? 'var(--fg)' : 'var(--bad)'}">${wr.toFixed(1)}%</div>
     <div class="note"><span class="pos">${wl.win} побед</span> · <span class="neg">${wl.lose} поражений</span></div></div>`;
@@ -630,7 +637,7 @@ function renderOverview(m) {
       <thead><tr><th>Поз.</th><th>Игрок</th><th>Герой</th><th class="num">K/D/A</th><th class="num">GPM</th><th class="num">LH</th><th class="num">Урон</th><th>Предметы</th><th class="num">Оценка</th></tr></thead>
       <tbody>${team.map(p => `<tr class="${p === me ? 'me' : ''}">
         <td>${posBadge(p)}</td>
-        <td>${esc(p.personaname || 'Аноним')} ${p === best ? '<span class="chip pos">MVP</span>' : ''}${p === worst ? '<span class="chip neg">Худший</span>' : ''}<div class="dim" style="font-size:12px">${p.rank_tier ? rankName(p.rank_tier) : ''}</div></td>
+        <td>${esc(p.personaname || 'Аноним')} ${p === best ? '<span class="chip pos">MVP</span>' : ''}${p === worst ? '<span class="chip neg">Худший</span>' : ''}<div class="dim rank-line">${p.rank_tier ? rankEmblem(p.rank_tier, 22) + rankName(p.rank_tier) : ''}</div></td>
         <td>${heroCell(p.hero_id)}</td><td class="num">${p.kills}/${p.deaths}/${p.assists}</td>
         <td class="num">${p.gold_per_min}</td><td class="num">${p.last_hits}</td><td class="num">${fmt(p.hero_damage)}</td>
         <td><div class="items">${finalItems(p).map(itemIcon).join('')}</div></td>

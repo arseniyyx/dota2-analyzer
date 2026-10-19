@@ -135,11 +135,17 @@ a:hover { color: var(--accent-strong); }
 
 .profile { display: flex; align-items: center; gap: 18px; padding: 18px 20px; flex-wrap: wrap; position: relative; overflow: hidden; }
 .profile::after { content: ''; position: absolute; inset: 0 0 auto auto; width: 320px; height: 100%; background: radial-gradient(260px 140px at 100% 0%, var(--accent-soft), transparent 70%); pointer-events: none; }
-.profile img { width: 68px; height: 68px; border-radius: 12px; box-shadow: 0 0 0 2px var(--accent), 0 8px 20px -8px rgba(0,0,0,.8); }
+.profile > img { width: 68px; height: 68px; border-radius: 12px; box-shadow: 0 0 0 2px var(--accent), 0 8px 20px -8px rgba(0,0,0,.8); }
 .profile h2 { font-size: 26px; text-transform: none; letter-spacing: .01em; }
 .profile .meta { color: var(--fg-muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .rank-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
 .profile .wl { margin-left: auto; text-align: right; position: relative; z-index: 1; }
+.emblem { position: relative; display: inline-block; width: var(--s); height: var(--s); flex-shrink: 0; vertical-align: middle; }
+.emblem img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.profile > .emblem { order: 3; filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
+.profile .wl { order: 4; margin-left: 0; }
+.profile > div:not(.wl) { flex: 1; min-width: 0; }
+.rank-line { display: flex; align-items: center; gap: 4px; font-size: 12px; }
 .big { font-family: var(--display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
 
 .period { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -313,7 +319,7 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 @media (max-width: 760px) {
   .topbar { margin-inline: 0; }
   .topbar .updated { margin-left: 0; width: 100%; }
-  .profile .wl { margin-left: 0; width: 100%; text-align: left; }
+  .profile .wl { margin-left: 0; text-align: left; }
   .match { grid-template-columns: 64px 26px minmax(0,1fr) auto 14px; gap: 10px; padding: 10px 12px; }
   .match .gpm, .match .dur { display: none; }
   .match .hero-cell img { width: 44px; height: 25px; }
