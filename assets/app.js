@@ -107,6 +107,27 @@ function ago(ts) {
   return d === 1 ? L('вчера', 'yesterday') : L(`${d} дн назад`, `${d} days ago`);
 }
 
+const M = window.Motion;
+const motionOn = () => !!M && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+function revealList(els, step = 0.04) {
+  if (!motionOn() || !els.length) return;
+  M.animate([...els], { opacity: [0, 1], y: [10, 0] }, { duration: 0.35, ease: 'easeOut', delay: M.stagger(step) });
+}
+function countUp(root) {
+  if (!motionOn()) return;
+  root.querySelectorAll('[data-count]').forEach(el => {
+    const m = el.textContent.trim().match(/^(-?\d+(?:\.\d+)?)(.*)$/);
+    if (!m) return;
+    const target = parseFloat(m[1]), dec = (m[1].split('.')[1] || '').length, suffix = m[2];
+    M.animate(0, target, { duration: 0.7, ease: 'easeOut', onUpdate: v => { el.textContent = v.toFixed(dec) + suffix; } });
+  });
+}
+function fillIn(root) {
+  if (!motionOn()) return;
+  root.querySelectorAll('.ring').forEach(r => M.animate(r, { '--p': [0, parseFloat(r.style.getPropertyValue('--p')) || 0] }, { duration: 0.8, ease: 'easeOut' }));
+  root.querySelectorAll('.fill').forEach(f => M.animate(f, { scaleX: [0, 1] }, { duration: 0.5, ease: 'easeOut' }));
+}
+
 const store = {
   get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set(k, v) {
@@ -399,6 +420,9 @@ async function analyze() {
     renderPositions();
     renderMatches();
     $('results').hidden = false;
+    revealList($('results').children);
+    countUp($('results'));
+    fillIn($('positions'));
   } catch (e) {
     showError(e.message || L('Не удалось загрузить данные.', 'Couldn\'t load data.'));
   } finally {
@@ -462,6 +486,7 @@ async function changePeriod(n) {
   try {
     S.period = await fetchPeriod(S.playerId);
     renderPeriod();
+    countUp($('stats')); countUp($('profile'));
   } catch (e) {
     showError(e.message || L('Не удалось загрузить статистику.', 'Couldn\'t load stats.'));
     $('periodTabs').querySelectorAll('.tab').forEach(b => { b.disabled = false; });
@@ -477,13 +502,13 @@ function renderProfile(profile, wl) {
     <img src="${esc(p.avatarfull)}" alt="">
     ${rankEmblem(profile.rank_tier, 76)}
     <div><h2>${esc(p.personaname)}</h2><div class="meta"><span class="rank-pill">${icon('shield')}${rankName(profile.rank_tier)}</span><span>${S.limit ? L(`винрейт за последние ${total} игр`, `win rate over the last ${total} games`) : L(`${total.toLocaleString(LOC)} матчей всего`, `${total.toLocaleString(LOC)} matches total`)}</span><span>${L('мета по', 'meta for')} ${GROUPS[S.group]}</span></div></div>
-    <div class="wl"><div class="big" style="color:${wr >= 52 ? 'var(--good)' : wr >= 48 ? 'var(--fg)' : 'var(--bad)'}">${wr.toFixed(1)}%</div>
+    <div class="wl"><div class="big" data-count style="color:${wr >= 52 ? 'var(--good)' : wr >= 48 ? 'var(--fg)' : 'var(--bad)'}">${wr.toFixed(1)}%</div>
     <div class="note"><span class="pos">${wl.win} ${L('побед', 'wins')}</span> · <span class="neg">${wl.lose} ${L('поражений', 'losses')}</span></div></div>`;
 }
 
 function renderStats(t) {
   const k = avgOf(t, 'kills'), d = avgOf(t, 'deaths'), a = avgOf(t, 'assists');
-  const card = (ic, l, v, s) => `<div class="card stat"><div class="label">${icon(ic)}${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`;
+  const card = (ic, l, v, s) => `<div class="card stat"><div class="label">${icon(ic)}${l}</div><div class="value" data-count>${v}</div><div class="sub">${s}</div></div>`;
   $('stats').innerHTML =
     card('swords', 'KDA', (d ? (k + a) / d : k + a).toFixed(2), `${k.toFixed(1)} / ${d.toFixed(1)} / ${a.toFixed(1)}`) +
     card('coins', 'GPM', Math.round(avgOf(t, 'gold_per_min')), L('золото в минуту', 'gold per minute')) +
@@ -506,7 +531,7 @@ function renderPositions() {
     const c = !b.n ? 'var(--fg-dim)' : b.wr >= 55 ? 'var(--good)' : b.wr >= 45 ? 'var(--accent)' : 'var(--bad)';
     return `<button class="card pos-card ${best && b.pos === best.pos ? 'best' : ''}" data-pos="${b.pos}" ${b.n ? '' : 'disabled'} title="${L('Показать матчи на этой позиции', 'Show matches at this position')}">
       <span class="pos-top">
-        <span class="ring" style="--p:${b.n ? b.wr.toFixed(0) : 0};--c:${c}"><span>${b.n ? b.wr.toFixed(0) + '%' : '—'}</span></span>
+        <span class="ring" style="--p:${b.n ? b.wr.toFixed(0) : 0};--c:${c}"><span data-count>${b.n ? b.wr.toFixed(0) + '%' : '—'}</span></span>
         <span class="pos-name"><span class="label">Pos ${b.pos}</span><b>${POS_NAMES[b.pos]}</b><span class="note">${b.n} ${L('игр', 'games')}${b.n ? ` · ${L('оценка', 'score')} ${b.score.toFixed(1)}` : ''}</span></span>
       </span>
       <span class="pos-heroes">${b.heroes.map(heroIcon).join('')}</span>
@@ -516,6 +541,7 @@ function renderPositions() {
   $('positions').querySelectorAll('.pos-card').forEach(b => b.addEventListener('click', () => {
     S.posFilter = +b.dataset.pos;
     renderMatches();
+    revealList($('matches').children, 0.025);
     $('posFilter').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
 }
@@ -595,7 +621,7 @@ function renderMatches() {
   const posOf = r => S.matches[r.match_id]?._me?._pos;
   const count = p => S.recent.filter(r => !p || posOf(r) === p).length;
   $('posFilter').innerHTML = [0, 1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.posFilter}" ${p && !count(p) ? 'disabled' : ''}>${p ? `${p} · ${POS_NAMES[p]}` : L('Все', 'All')} <span class="dim">${count(p)}</span></button>`).join('');
-  $('posFilter').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.posFilter = +b.dataset.p; renderMatches(); }));
+  $('posFilter').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.posFilter = +b.dataset.p; renderMatches(); revealList($('matches').children, 0.025); }));
   $('matches').innerHTML = S.recent.filter(r => !S.posFilter || posOf(r) === S.posFilter).map(r => {
     const m = S.matches[r.match_id], me = m?._me;
     const won = isWin(r);
@@ -636,6 +662,7 @@ async function openMatch(id) {
   $('dlgTitle').textContent = `${L('Матч', 'Match')} ${id}`;
   $('dlgBody').innerHTML = `<div class="loading"><div class="spinner"></div><p>${L('Загружаю матч…', 'Loading match…')}</p></div>`;
   $('matchDlg').showModal();
+  if (motionOn()) M.animate($('matchDlg'), { opacity: [0, 1], scale: [0.97, 1] }, { type: 'spring', bounce: 0, visualDuration: 0.3 });
   try {
     const [m] = await Promise.all([S.matches[id] ? Promise.resolve(S.matches[id]) : loadMatch(id).then(prepareMatch), loadItems().catch(() => {}), loadGroup(S.group).catch(() => null)]);
     S.matches[id] = m;
@@ -656,6 +683,8 @@ function showTab(tab) {
   const r = { overview: renderOverview, draft: renderDraft, flow: renderFlow, map: renderMap, items: renderItemsTab }[tab];
   $('dlgBody').innerHTML = '';
   r(current, G);
+  if (motionOn()) M.animate($('dlgBody'), { opacity: [0, 1], y: [6, 0] }, { duration: 0.2, ease: 'easeOut' });
+  fillIn($('dlgBody'));
 }
 
 function teams(m) {
@@ -1353,7 +1382,8 @@ function route() {
         S.enemiesExample = true;
       }
       if (G && !S.itemHero) S.itemHero = Object.keys(S.heroes).map(Number).filter(h => S.meta?.counter_items?.[h]?.length).sort((a, b) => heroPick(G, b) - heroPick(G, a))[0];
-      renderMeta();
+      await renderMeta();
+      revealList($('viewMeta').children);
     });
   }
 }

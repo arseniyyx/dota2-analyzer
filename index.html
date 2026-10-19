@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=16">
+<link rel="stylesheet" href="assets/style.css?v=17">
 </head>
 <body>
 <div class="wrap">
@@ -42,7 +42,7 @@
     <div id="loading" hidden class="loading"><div class="spinner"></div><p id="loadingText">Загружаю данные из OpenDota…</p></div>
     <div id="error" hidden class="error-msg" role="alert"></div>
 
-    <div id="results" hidden class="stack reveal">
+    <div id="results" hidden class="stack">
       <div id="profile" class="card profile"></div>
       <div id="flags" class="issue-list"></div>
       <div class="period"><span class="label" data-en="Stats for">Статистика за</span><div class="tabs" id="periodTabs" role="tablist"></div></div>
@@ -82,7 +82,7 @@
     </div>
   </main>
 
-  <main id="viewMeta" class="stack reveal" hidden>
+  <main id="viewMeta" class="stack" hidden>
     <div class="row">
       <div class="tabs" id="groupTabs"></div>
       <div class="tabs" id="posTabs"></div>
@@ -140,6 +140,7 @@
   <div class="dlg-body" id="dlgBody"></div>
 </dialog>
 
-<script src="assets/app.js?v=16"></script>
+<script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
+<script src="assets/app.js?v=17"></script>
 </body>
 </html>
