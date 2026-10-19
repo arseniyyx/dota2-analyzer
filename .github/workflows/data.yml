@@ -28,11 +28,13 @@ jobs:
         run: python scripts/build_data.py
         env:
           STRATZ_TOKEN: ${{ secrets.STRATZ_TOKEN }}
+      - name: Build static pages
+        run: python scripts/build_pages.py
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data
+          git add data hero en heroes meta sitemap.xml
           git diff --cached --quiet && exit 0
           git commit -m "Refresh meta data"
           git pull --rebase origin main

@@ -1979,6 +1979,7 @@ function applyStaticLang() {
     document.querySelector('link[rel="canonical"]').href = 'https://arseniyyx.github.io/dota2-analyzer/?lang=en';
   }
   if (!EN) return;
+  $('footHeroes').href = 'en/heroes/'; $('footMeta').href = 'en/meta/';
   document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; });
   document.querySelectorAll('[data-en-placeholder]').forEach(el => { el.placeholder = el.dataset.enPlaceholder; });
   document.querySelectorAll('[data-en-aria]').forEach(el => { el.setAttribute('aria-label', el.dataset.enAria); });
@@ -1988,7 +1989,11 @@ function applyStaticLang() {
   applyStaticLang();
   wireKey();
   try { await loadBase(); } catch (e) { showError(L('Не удалось загрузить список героев: ', 'Couldn\'t load the hero list: ') + e.message); return; }
+  const linkHero = +new URLSearchParams(location.search).get('hero'); // links from the static hero pages
+  if (S.heroes[linkHero]) { S.learnHero = linkHero; S.learnHeroPicked = true; history.replaceState(null, '', location.pathname + location.search + '#learn'); }
   route();
+  const linkMatch = +new URLSearchParams(location.search).get('match');
+  if (linkMatch) openMatch(linkMatch);
   const last = store.get('lastId');
   if (last && location.hash !== '#meta') { $('steamId').value = last; analyze(); }
 })();
