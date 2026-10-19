@@ -344,6 +344,8 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .map img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: saturate(.85) brightness(.8); }
 .map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .map-side { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+#fogTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#fogTabs .tab { justify-content: center; }
 .map-clock { font-family: var(--display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent-strong); }
 .map-stats { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .map-events { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }

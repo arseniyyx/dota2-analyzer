@@ -990,6 +990,30 @@ function renderFlow(m, G) {
 /* ---------- map ---------- */
 
 const MAP_IMG = 'https://www.opendota.com/assets/images/dota2/map/detailed_740.webp';
+S.fog = store.get('fog') || 'both';
+const VISION = { obs: [9.8, 6.1], hero: [11, 4.9] };
+
+function fogLayer(m, d, t) {
+  if (S.fog === 'off') return { svg: '', shown: () => true };
+  const day = Math.floor(t / 300) % 2 === 0, k = day ? 0 : 1;
+  const src = { rad: [{ x: 7, y: 93, r: 16 }], dire: [{ x: 93, y: 7, r: 16 }] };
+  const sideOf = p => p.isRadiant ? 'rad' : 'dire';
+  for (const w of d.wards) if (w.type === 'obs' && w.t <= t && t < w.end) src[sideOf(w.p)].push({ x: w.x, y: w.y, r: VISION.obs[k] });
+  if (t <= 600) for (const l of d.lanes) src[sideOf(l.p)].push({ x: l.spot.x, y: l.spot.y, r: VISION.hero[k] });
+  for (const f of d.fights) {
+    if (t < f.start - 3 || t > f.end + 12) continue;
+    for (const dd of f.deaths) { src.rad.push({ x: dd.x, y: dd.y, r: VISION.hero[k] }); src.dire.push({ x: dd.x, y: dd.y, r: VISION.hero[k] }); }
+  }
+  const holes = S.fog === 'both' ? [...src.rad, ...src.dire] : src[S.fog];
+  const rims = S.fog === 'both' ? [['rad', 'var(--good)'], ['dire', 'var(--bad)']].map(([s, c]) => src[s].map(h => `<circle cx="${h.x}" cy="${h.y}" r="${h.r}" fill="none" stroke="${c}" stroke-opacity=".35" stroke-width=".25"/>`).join('')).join('') : '';
+  const seen = (x, y) => holes.some(h => Math.hypot(h.x - x, h.y - y) < h.r);
+  return {
+    svg: `<defs><filter id="fogBlur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    <mask id="fogMask"><rect width="100" height="100" fill="#fff"/><g filter="url(#fogBlur)">${holes.map(h => `<circle cx="${h.x}" cy="${h.y}" r="${h.r}" fill="#000"/>`).join('')}</g></mask></defs>
+    <rect width="100" height="100" fill="#04060a" fill-opacity=".68" mask="url(#fogMask)"/>${rims}`,
+    shown: (p, x, y) => S.fog === 'both' || sideOf(p) === S.fog || (x != null && seen(x, y)),
+  };
+}
 const mapX = x => (x - 64) / 128 * 100, mapY = y => (192 - y) / 128 * 100;
 const WARD_LIFE = { obs: 360, sen: 420 };
 const heroIconUrl = id => S.heroes[id]?.icon ? CDN + S.heroes[id].icon : heroImg(id);
@@ -1068,6 +1092,7 @@ function renderMap(m) {
         </div>
         <div class="map-side card">
           <div class="map-clock" id="mapClock">0:00</div>
+          <div class="tabs" id="fogTabs" role="tablist" aria-label="${L('Туман войны', 'Fog of war')}">${[['both', L('Обе', 'Both')], ['rad', 'Radiant'], ['dire', 'Dire'], ['off', L('Без тумана', 'No fog')]].map(([f, label]) => `<button class="tab" data-f="${f}" aria-selected="${f === S.fog}">${label}</button>`).join('')}</div>
           <div id="mapStats" class="map-stats"></div>
           <div class="label">${L('События рядом', 'Nearby events')}</div>
           <div id="mapEvents" class="map-events"></div>
@@ -1081,6 +1106,11 @@ function renderMap(m) {
   $('mapTime').addEventListener('input', e => { stopMap(); drawMap(+e.target.value); });
   $('mapPlay').addEventListener('click', () => (S.mapTimer ? stopMap() : playMap()));
   $('dlgBody').querySelectorAll('.tl-fight').forEach(b => b.addEventListener('click', () => { stopMap(); setMapTime(+b.dataset.t); }));
+  $('fogTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    S.fog = b.dataset.f; store.set('fog', S.fog);
+    $('fogTabs').querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    drawMap(+$('mapTime').value);
+  }));
   drawMap(0);
 }
 
@@ -1127,17 +1157,18 @@ function drawMap(t) {
   const { m, d } = S.map;
   const col = ours => ours ? 'var(--good)' : 'var(--bad)';
   const heroImgTag = (p, x, y, ours, size) => `<image href="${heroIconUrl(p.hero_id)}" x="${x - size / 2}" y="${y - size / 2}" width="${size}" height="${size}"/><circle cx="${x}" cy="${y}" r="${size / 2 + .3}" fill="none" stroke="${col(ours)}" stroke-width=".5"/>`;
-  const out = [];
+  const fog = fogLayer(m, d, t);
+  const out = [fog.svg];
   for (const w of d.wards) {
-    if (w.t > t || t >= w.end) continue;
+    if (w.t > t || t >= w.end || !fog.shown(w.p)) continue;
     const c = col(w.ours), tip = `<title>${w.type === 'obs' ? L('Обс', 'Observer') : L('Сентри', 'Sentry')}: ${esc(heroName(w.p.hero_id))}, ${mmss(w.t)}${w.killer ? L(`, сломал ${esc(w.killer.localized_name)} на ${mmss(w.end)}`, `, destroyed by ${esc(w.killer.localized_name)} at ${mmss(w.end)}`) : ''}</title>`;
     if (w.type === 'obs') out.push(`<g>${tip}<circle cx="${w.x}" cy="${w.y}" r="9.8" fill="${c}" fill-opacity=".07" stroke="${c}" stroke-opacity=".35" stroke-width=".2"/><circle cx="${w.x}" cy="${w.y}" r="1.1" fill="${c}" stroke="#0a0c10" stroke-width=".35"/></g>`);
     else out.push(`<g>${tip}<rect x="${w.x - .8}" y="${w.y - .8}" width="1.6" height="1.6" transform="rotate(45 ${w.x} ${w.y})" fill="${c}" stroke="#0a0c10" stroke-width=".3"/></g>`);
   }
-  if (t <= 600) for (const l of d.lanes) out.push(`<g opacity=".9"><title>${esc(heroName(l.p.hero_id))}: ${L('примерно где стоял на линии', 'approximate laning spot')}</title>${heroImgTag(l.p, l.spot.x, l.spot.y, l.ours, 3.6)}</g>`);
+  if (t <= 600) for (const l of d.lanes.filter(l => fog.shown(l.p, l.spot.x, l.spot.y))) out.push(`<g opacity=".9"><title>${esc(heroName(l.p.hero_id))}: ${L('примерно где стоял на линии', 'approximate laning spot')}</title>${heroImgTag(l.p, l.spot.x, l.spot.y, l.ours, 3.6)}</g>`);
   for (const f of d.fights) {
     if (t < f.start - 3 || t > f.end + 12) continue;
-    for (const dd of f.deaths) out.push(`<g><title>${esc(heroName(dd.p.hero_id))} ${L('погиб в драке на', 'died in the fight at')} ${mmss(f.start)}</title>${heroImgTag(dd.p, dd.x, dd.y, dd.ours, 4.2)}<path d="M${dd.x - 1.4} ${dd.y - 1.4}l2.8 2.8m0 -2.8l-2.8 2.8" stroke="#fff" stroke-width=".6" stroke-linecap="round"/></g>`);
+    for (const dd of f.deaths.filter(dd => fog.shown(dd.p, dd.x, dd.y))) out.push(`<g><title>${esc(heroName(dd.p.hero_id))} ${L('погиб в драке на', 'died in the fight at')} ${mmss(f.start)}</title>${heroImgTag(dd.p, dd.x, dd.y, dd.ours, 4.2)}<path d="M${dd.x - 1.4} ${dd.y - 1.4}l2.8 2.8m0 -2.8l-2.8 2.8" stroke="#fff" stroke-width=".6" stroke-linecap="round"/></g>`);
   }
   $('mapSvg').innerHTML = out.join('');
   $('mapClock').textContent = mmss(Math.floor(t));
@@ -1147,6 +1178,7 @@ function drawMap(t) {
   const cnt = (ours, type) => active.filter(w => w.ours === ours && w.type === type).length;
   const adv = m.radiant_gold_adv?.[Math.min(m.radiant_gold_adv.length - 1, Math.floor(t / 60))];
   $('mapStats').innerHTML = `
+    <div>${Math.floor(t / 300) % 2 === 0 ? L('☀ День', '☀ Day') : L('☾ Ночь', '☾ Night')}</div>
     <div><span class="pos">${L('Ваши варды', 'Your wards')}</span> ${cnt(true, 'obs')} ${L('обс', 'obs')} · ${cnt(true, 'sen')} ${L('сентри', 'sentry')}</div>
     <div><span class="neg">${L('Вражеские', 'Enemy wards')}</span> ${cnt(false, 'obs')} ${L('обс', 'obs')} · ${cnt(false, 'sen')} ${L('сентри', 'sentry')}</div>
     ${adv != null ? `<div>${L('Золото', 'Gold')}: <b class="${signCls(adv * d.sign)}">${adv * d.sign >= 0 ? '+' : '−'}${fmt(Math.abs(adv))}</b></div>` : ''}`;
