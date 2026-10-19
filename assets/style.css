@@ -471,7 +471,7 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .spikes { display: flex; flex-direction: column; gap: 12px; }
 .spike { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; }
 .spike .item-icon { width: 44px; height: 32px; }
-.item-row.tip { align-items: start; }
+.item-row.item-tip { align-items: start; }
 .tip-ic { display: grid; place-items: center; width: 44px; height: 32px; border-radius: 6px; background: var(--surface-2); color: var(--accent); }
 .start-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .start-items span { position: relative; display: inline-flex; }
