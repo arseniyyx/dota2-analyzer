@@ -229,8 +229,10 @@ th.num, td.num { text-align: right; }
 
 /* ---------- positions ---------- */
 .pos-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-.pos-card { padding: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; transition: border-color .2s, transform .2s var(--ease); }
-.pos-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.pos-card { padding: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; text-align: left; color: inherit; transition: border-color .2s, transform .2s var(--ease); }
+.pos-card:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--accent); }
+.pos-card:disabled { cursor: default; opacity: .7; }
+#posFilter { align-self: flex-start; }
 .pos-card.best { border-color: rgba(79,210,134,.55); box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 0 0 3px var(--good-soft); }
 .pos-top { display: flex; align-items: center; gap: 12px; }
 .ring { --p: 0; --c: var(--fg-dim); width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;

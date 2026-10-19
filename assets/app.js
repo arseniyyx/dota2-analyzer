@@ -46,7 +46,7 @@ const ITEM_WHY = {
 const S = {
   heroes: {}, meta: null, groups: {}, items: null, itemIds: null,
   playerId: null, profile: null, group: 3, playerHeroes: [], recent: [], matches: {},
-  metaTab: 'mine', metaGroup: null, metaPos: 0, enemies: [], allies: [], itemHero: null,
+  metaTab: 'mine', posFilter: 0, metaGroup: null, metaPos: 0, enemies: [], allies: [], itemHero: null,
 };
 
 const $ = id => document.getElementById(id);
@@ -330,7 +330,7 @@ async function analyze() {
       getJSON(`${API}/players/${id}/heroes`), fetchPeriod(id),
     ]);
     if (!profile.profile) throw new Error('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».');
-    S.playerId = Number(id); S.profile = profile; S.poolHeroes = poolHeroes; S.recent = recent; S.period = period;
+    S.playerId = Number(id); S.profile = profile; S.poolHeroes = poolHeroes; S.recent = recent; S.period = period; S.posFilter = 0;
     S.group = groupOfTier(profile.rank_tier);
     await loadGroup(S.group).catch(() => null);
 
@@ -425,15 +425,20 @@ function renderPositions() {
   const best = by.filter(b => b.n >= 3).sort((a, b) => adjWr(b) - adjWr(a) || b.score - a.score)[0];
   $('positions').innerHTML = by.map(b => {
     const c = !b.n ? 'var(--fg-dim)' : b.wr >= 55 ? 'var(--good)' : b.wr >= 45 ? 'var(--accent)' : 'var(--bad)';
-    return `<div class="card pos-card ${best && b.pos === best.pos ? 'best' : ''}">
-      <div class="pos-top">
-        <div class="ring" style="--p:${b.n ? b.wr.toFixed(0) : 0};--c:${c}" role="img" aria-label="Винрейт ${b.n ? b.wr.toFixed(0) + '%' : 'нет игр'}"><span>${b.n ? b.wr.toFixed(0) + '%' : '—'}</span></div>
-        <div class="pos-name"><span class="label">Pos ${b.pos}</span><b>${POS_NAMES[b.pos]}</b><span class="note">${b.n} игр${b.n ? ` · оценка ${b.score.toFixed(1)}` : ''}</span></div>
-      </div>
-      <div class="pos-heroes">${b.heroes.map(heroIcon).join('')}</div>
+    return `<button class="card pos-card ${best && b.pos === best.pos ? 'best' : ''}" data-pos="${b.pos}" ${b.n ? '' : 'disabled'} title="Показать матчи на этой позиции">
+      <span class="pos-top">
+        <span class="ring" style="--p:${b.n ? b.wr.toFixed(0) : 0};--c:${c}"><span>${b.n ? b.wr.toFixed(0) + '%' : '—'}</span></span>
+        <span class="pos-name"><span class="label">Pos ${b.pos}</span><b>${POS_NAMES[b.pos]}</b><span class="note">${b.n} игр${b.n ? ` · оценка ${b.score.toFixed(1)}` : ''}</span></span>
+      </span>
+      <span class="pos-heroes">${b.heroes.map(heroIcon).join('')}</span>
       ${best && b.pos === best.pos ? `<span class="best-tag">${icon('crown')}Лучше всего получается</span>` : ''}
-    </div>`;
+    </button>`;
   }).join('');
+  $('positions').querySelectorAll('.pos-card').forEach(b => b.addEventListener('click', () => {
+    S.posFilter = +b.dataset.pos;
+    renderMatches();
+    $('posFilter').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
 }
 
 function renderIssues(t, recent, heroes) {
@@ -508,7 +513,11 @@ function renderMatches() {
   $('parseAll').hidden = unparsed.length === 0;
   $('parseAll').disabled = ready.length === 0;
   $('parseAll').textContent = ready.length ? `Разобрать реплеи (${ready.length})` : `Разбор запрошен (${unparsed.length})`;
-  $('matches').innerHTML = S.recent.map(r => {
+  const posOf = r => S.matches[r.match_id]?._me?._pos;
+  const count = p => S.recent.filter(r => !p || posOf(r) === p).length;
+  $('posFilter').innerHTML = [0, 1, 2, 3, 4, 5].map(p => `<button class="tab" data-p="${p}" aria-selected="${p === S.posFilter}" ${p && !count(p) ? 'disabled' : ''}>${p ? `${p} · ${POS_NAMES[p]}` : 'Все'} <span class="dim">${count(p)}</span></button>`).join('');
+  $('posFilter').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.posFilter = +b.dataset.p; renderMatches(); }));
+  $('matches').innerHTML = S.recent.filter(r => !S.posFilter || posOf(r) === S.posFilter).map(r => {
     const m = S.matches[r.match_id], me = m?._me;
     const won = isWin(r);
     const posb = me ? `<span class="posb ${me._posExact ? '' : 'approx'}" title="${POS_NAMES[me._pos]}${me._posExact ? '' : ' (примерно)'}">${me._pos}</span>` : '<span></span>';
