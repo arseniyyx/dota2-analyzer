@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=12">
+<link rel="stylesheet" href="assets/style.css?v=13">
 </head>
 <body>
 <div class="wrap">
@@ -29,7 +29,7 @@
   <main id="viewPlayer" class="stack">
     <div class="search-box">
       <h1 data-en="Break down your skill">Разбор твоего мастерства</h1>
-      <p data-en="Steam ID, Friend ID, or profile link. See your positions, weak spots, how you stack up against the meta, and a detailed breakdown of every game: draft, fights, timings, and items.">Steam ID, Friend ID или ссылка на профиль. Покажу позиции, слабые стороны, тебя против меты и подробный разбор каждой игры: драфт, драки, тайминги и предметы.</p>
+      <p data-en="Positions, weak spots, the meta, and every game broken down.">Позиции, слабые места, мета и разбор каждой игры.</p>
       <form class="search-row" id="searchForm">
         <label class="search-field" for="steamId">
           <svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -73,11 +73,10 @@
       <section class="section">
         <h2 class="section-title" data-en="Recent matches">Последние матчи</h2>
         <div class="row" style="justify-content: space-between">
-          <p class="note"><span data-en="Click a match for draft, counterpicks, game flow, fights, timings, and items.">Нажми на матч: драфт, контрпики, ход игры, драки, тайминги и предметы.</span> <span class="posb">2</span> <span data-en="position from replay,">позиция по реплею,</span> <span class="posb approx">2</span> <span data-en="estimated.">примерная.</span></p>
+          <div class="tabs" id="posFilter" role="tablist" aria-label="Фильтр по позиции" data-en-aria="Filter by position"></div>
           <button class="btn ghost small" id="parseAll" hidden>Разобрать реплеи</button>
         </div>
         <p class="note" id="parseStatus" hidden></p>
-        <div class="tabs" id="posFilter" role="tablist" aria-label="Фильтр по позиции" data-en-aria="Filter by position"></div>
         <div id="matches" class="matches"></div>
       </section>
     </div>
@@ -97,9 +96,7 @@
     </section>
 
     <section class="section">
-      <h2 class="section-title" data-en="Counterpick">Контрпик</h2>
-      <p class="note" data-en="Add the heroes the enemy has already picked (and your allies, if you want synergy counted). The best options come from matchups at the selected rank and position.">Добавь героев, которых уже взяли враги (и союзники, если хочешь учесть сочетания). Лучшие варианты считаются по матчапам выбранного ранга и позиции.</p>
-      <div class="two-col">
+      <h2 class="section-title" data-en="Counterpick">Контрпик</h2>      <div class="two-col">
         <div class="picker card pad">
           <label class="label" for="enemyInput" data-en="Enemies">Враги</label>
           <input class="field" id="enemyInput" list="heroList" placeholder="Начни вводить героя" data-en-placeholder="Start typing a hero">
@@ -118,9 +115,7 @@
     </section>
 
     <section class="section">
-      <h2 class="section-title" data-en="Items against a hero">Предметы против героя</h2>
-      <p class="note" data-en="What pros this patch build against a hero more often than they usually do on their heroes. &quot;×1.8&quot; means the item is bought 1.8 times as often when this hero is on the enemy team.">Что про-игроки патча собирают против героя чаще, чем обычно на своих героях. «×1.8» значит, что предмет берут в 1.8 раза чаще, когда этот герой у врагов.</p>
-      <div class="row"><input class="field" id="itemHeroInput" list="heroList" placeholder="Выбери героя" data-en-placeholder="Pick a hero" style="max-width: 320px"></div>
+      <h2 class="section-title" data-en="Items against a hero">Предметы против героя</h2>      <div class="row"><input class="field" id="itemHeroInput" list="heroList" placeholder="Выбери героя" data-en-placeholder="Pick a hero" style="max-width: 320px"></div>
       <div class="two-col">
         <div class="section"><h3 class="label" id="itemHeroTitle" data-en="Items">Предметы</h3><div class="card" id="itemCounters"></div></div>
         <div class="section"><h3 class="label" data-en="Who counters it">Кто его контрит</h3><div class="card" id="heroCounters"></div></div>
@@ -145,6 +140,6 @@
   <div class="dlg-body" id="dlgBody"></div>
 </dialog>
 
-<script src="assets/app.js?v=12"></script>
+<script src="assets/app.js?v=13"></script>
 </body>
 </html>

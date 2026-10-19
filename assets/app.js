@@ -433,8 +433,8 @@ function renderFlags() {
   if (dominant && before.n >= 40 && now.wr - before.wr >= 0.2 && (now.kda / before.kda >= 1.4 || now.gpm / before.gpm >= 1.2)) {
     flags.push({ title: L('Похоже, что на аккаунте играет бустер', 'Looks like a booster is playing this account'), reasons: [`${L('винрейт', 'win rate')} ${p0(before.wr)} → ${p0(now.wr)}`, `KDA ${before.kda.toFixed(1)} → ${now.kda.toFixed(1)}`, `GPM ${Math.round(before.gpm)} → ${Math.round(now.gpm)}`, L(`MVP матча в ${mvp} из ${games.length} последних игр`, `match MVP in ${mvp} of the last ${games.length} games`), newHeroShare >= 0.4 ? L(`${p0(newHeroShare)} последних игр на героях, которых не было в играх 21–100`, `${p0(newHeroShare)} of recent games on heroes not played in games 21–100`) : ''].filter(Boolean) });
   }
-  $('flags').innerHTML = flags.map(f => `<div class="card issue warn">${sevIcon('bad')}<div class="body"><div class="title">${f.title}</div><div class="detail">${f.reasons.join(' · ')}. ${L('Это признаки по статистике, а не доказательство.', 'These are statistical signs, not proof.')}</div></div></div>`).join('')
-    + `<p class="note">${L(`MVP матча (лучшая оценка из 10 игроков) в ${mvp} из ${games.length} последних игр, средняя оценка ${avgScore.toFixed(1)} из 10.`, `Match MVP (best score of 10 players) in ${mvp} of the last ${games.length} games, average score ${avgScore.toFixed(1)} of 10.`)}</p>`;
+  $('flags').innerHTML = flags.map(f => `<div class="card issue warn">${sevIcon('bad')}<div class="body"><div class="title">${f.title}</div><div class="detail">${f.reasons.join(' · ')}</div></div></div>`).join('')
+    + `<p class="note">MVP ${mvp}/${games.length} · ${L('средняя оценка', 'avg score')} ${avgScore.toFixed(1)}</p>`;
 }
 
 async function fetchPeriod(id) {
@@ -495,8 +495,6 @@ function renderStats(t) {
 
 function renderPositions() {
   const mine = Object.values(S.matches).map(m => m._me).filter(Boolean);
-  const exact = mine.filter(p => p._posExact).length;
-  $('posNote').textContent = L(`По последним ${mine.length} матчам. Позиция определена по реплею в ${exact}, в остальных примерно (по героям и золоту в команде). Разбери реплеи внизу, чтобы было точнее.`, `Based on the last ${mine.length} matches. Position comes from the replay in ${exact}, the rest are estimated from heroes and team gold. Parse replays below for more accuracy.`);
   const by = [1, 2, 3, 4, 5].map(pos => {
     const ps = mine.filter(p => p._pos === pos);
     const w = ps.filter(isWin).length;
@@ -569,17 +567,17 @@ function setMetaTab(tab, G) {
   const myWr = h => h && h.games ? h.win / h.games * 100 : null;
   const mwr = id => heroWr(G, id) * 100;
   if (tab === 'mine') {
-    $('metaNote').textContent = L(`Твой винрейт ${periodLabel()} против общего винрейта героя в ${g}. Плюс значит, что ты играешь его лучше среднего.${S.limit === 20 ? ' На 2–3 играх разница сильно зависит от случая.' : ''}`, `Your win rate ${periodLabel()} vs the hero's overall win rate in ${g}. Plus means you play it better than average.${S.limit === 20 ? ' With 2–3 games the difference is mostly luck.' : ''}`);
+    $('metaNote').textContent = '';
     const rows = S.playerHeroes.filter(h => h.games >= minGames()).sort((a, b) => b.games - a.games).slice(0, 15);
     $('metaTable').innerHTML = `<thead><tr><th>${L('Герой', 'Hero')}</th><th class="num">${L('Игр', 'Games')}</th><th class="num">${L('Твой WR', 'Your WR')}</th><th class="num">${L('WR в', 'WR in')} ${g}</th><th class="num">${L('Разница', 'Diff')}</th></tr></thead><tbody>` +
       rows.map(h => `<tr><td>${heroCell(h.hero_id)}</td><td class="num">${h.games}</td><td class="num">${myWr(h).toFixed(1)}%</td><td class="num muted">${mwr(h.hero_id).toFixed(1)}%</td><td class="num ${signCls(myWr(h) - mwr(h.hero_id))}">${pct(myWr(h) - mwr(h.hero_id))}</td></tr>`).join('') + '</tbody>';
   } else if (tab === 'meta') {
-    $('metaNote').textContent = L(`Самые сильные популярные герои в ${g}. Справа твой опыт на них ${periodLabel()}.`, `The strongest popular heroes in ${g}. On the right, your games on them ${periodLabel()}.`);
+    $('metaNote').textContent = '';
     const rows = Object.keys(S.heroes).map(Number).filter(h => heroPick(G, h) >= 0.04).sort((a, b) => heroWr(G, b) - heroWr(G, a)).slice(0, 15);
     $('metaTable').innerHTML = `<thead><tr><th>${L('Герой', 'Hero')}</th><th class="num">${L('WR в', 'WR in')} ${g}</th><th class="num">${L('Пик', 'Pick')}</th><th class="num">${L('Твоих игр', 'Your games')}</th><th class="num">${L('Твой WR', 'Your WR')}</th></tr></thead><tbody>` +
       rows.map(h => { const m = mine[h]; return `<tr><td>${heroCell(h)}</td><td class="num pos">${mwr(h).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${m ? m.games : 0}</td><td class="num">${m && m.games >= minGames() ? myWr(m).toFixed(1) + '%' : '<span class="dim">—</span>'}</td></tr>`; }).join('') + '</tbody>';
   } else {
-    $('metaNote').textContent = L(`Герои, которые сильны в ${g} и у тебя уже получаются (${periodLabel()}). Их стоит спамить ради рейтинга.`, `Heroes that are strong in ${g} and already work for you (${periodLabel()}). Spam them to climb.`);
+    $('metaNote').textContent = '';
     const rows = S.playerHeroes.filter(h => h.games >= minGames() && mwr(h.hero_id) >= 50 && myWr(h) >= 52)
       .map(h => ({ ...h, s: (myWr(h) - 50) * Math.log(h.games) + (mwr(h.hero_id) - 50) * 2 })).sort((a, b) => b.s - a.s).slice(0, 10);
     $('metaTable').innerHTML = rows.length
@@ -619,10 +617,10 @@ $('parseAll').addEventListener('click', async () => {
   let sent = 0;
   for (const id of ids) {
     if (await requestParse(id)) sent++;
-    $('parseStatus').textContent = L(`Отправлено на разбор: ${sent}/${ids.length}. Старые реплеи (старше ~2 недель) Valve уже удалила, их не разобрать.`, `Sent for parsing: ${sent}/${ids.length}. Valve deletes replays older than ~2 weeks, those can't be parsed.`);
+    $('parseStatus').textContent = `${L('Отправлено', 'Sent')} ${sent}/${ids.length}`;
     await new Promise(r => setTimeout(r, 1100));
   }
-  $('parseStatus').textContent = L(`Отправлено на разбор: ${sent}. Обычно это занимает 1–5 минут. Потом нажми «Анализ» ещё раз.`, `Sent for parsing: ${sent}. It usually takes 1–5 minutes. Then press "Analyze" again.`);
+  $('parseStatus').textContent = L(`Отправлено ${sent}. Будет готово через 1–5 минут`, `Sent ${sent}. Ready in 1–5 minutes`);
   renderMatches();
 });
 
@@ -677,10 +675,10 @@ function parseBlock(m) {
   const since = parsePendingSince(m.match_id);
   if (since) {
     const min = Math.floor((Date.now() - since) / 60000);
-    return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">${L('Разбор запрошен', 'Parse requested')} ${min < 1 ? L('только что', 'just now') : L(`${min} мин назад`, `${min} min ago`)}</div><div class="detail">${L('Обычно это 1–5 минут. Окно обновится само, нажимать ничего не нужно.', 'It usually takes 1–5 minutes. This view updates by itself.')}</div></div><div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
+    return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">${L('Разбираем реплей', 'Parsing the replay')}</div><div class="detail">${min < 1 ? L('только что', 'just now') : L(`${min} мин назад`, `${min} min ago`)}</div></div><div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
   }
   const failed = store.get('pr:' + m.match_id);
-  return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">${L('Реплей не разобран', 'Replay not parsed')}</div><div class="detail">${failed ? L('Прошлый запрос за 30 минут так и не дал разбора: скорее всего, Valve уже удалила реплей (они хранятся около двух недель). Можно попробовать ещё раз.', 'The last request didn\'t produce a parse in 30 minutes. Valve has probably deleted the replay (they keep them about two weeks). You can try again.') : L('Без разбора нет позиций по линиям, графика золота, драк и таймингов предметов. Разбор занимает 1–5 минут.', 'Without a parse there are no lane positions, gold graph, fights, or item timings. Parsing takes 1–5 minutes.')}</div></div><button class="btn small" id="parseOne">${L('Разобрать', 'Parse')}</button></div>`;
+  return `<div class="card issue info">${sevIcon('info')}<div class="body"><div class="title">${failed ? L('Реплей не удалось разобрать', 'Couldn\'t parse the replay') : L('Откроются карта, драки и тайминги', 'Unlock the map, fights, and timings')}</div><div class="detail">${failed ? L('Возможно, он уже удалён', 'It may have expired') : L('Около 1–5 минут', 'About 1–5 minutes')}</div></div><button class="btn small" id="parseOne">${L('Разобрать реплей', 'Parse replay')}</button></div>`;
 }
 
 const pollers = new Set();
@@ -750,7 +748,7 @@ function renderOverview(m) {
     if (me.camps_stacked) extra.push(L(`стаков ${me.camps_stacked}`, `stacks ${me.camps_stacked}`));
     mineBlock = `
       <div class="section"><h3 class="section-title">${L('Где можно было лучше', 'Where you could do better')}</h3>
-        <p class="note">${L(`Ты на ${esc(heroName(me.hero_id))}, позиция ${me._pos} (${POS_NAMES[me._pos]}${me._posExact ? '' : ', примерно'}), ${rank}-е место из 10 по оценке. Полоса показывает, какую долю игроков на этом герое ты обошёл.`, `You on ${esc(heroName(me.hero_id))}, position ${me._pos} (${POS_NAMES[me._pos]}${me._posExact ? '' : ', estimated'}), rank ${rank} of 10 by score. Each bar shows the share of players on this hero you beat.`)}${extra.length ? ' ' + L('Ещё', 'Also') + ': ' + extra.join(', ') + '.' : ''}</p>
+        <p class="note">${esc(heroName(me.hero_id))} · ${POS_NAMES[me._pos]} · ${L(`${rank}-е место из 10`, `rank ${rank} of 10`)}${extra.length ? ' · ' + extra.join(' · ') : ''}</p>
         <div class="card bench-list">${rows.map(r => `<div class="bench"><span>${METRICS[r.k].name}</span><div class="track"><div class="fill" style="width:${(r.v * 100).toFixed(0)}%;background:${r.v >= .6 ? 'var(--good)' : r.v >= .4 ? 'var(--warn)' : 'var(--bad)'}"></div></div><span class="num">${(r.v * 100).toFixed(0)}%</span></div>`).join('')}</div>
         <div class="issue-list">
           ${weak.map(r => `<div class="card issue">${sevIcon('bad')}<div class="body"><div class="title">${METRICS[r.k].name}: ${L(`хуже ${(100 - r.v * 100).toFixed(0)}% игроков`, `worse than ${(100 - r.v * 100).toFixed(0)}% of players`)}</div><div class="detail">${METRICS[r.k].tip}</div></div></div>`).join('')}
@@ -758,9 +756,7 @@ function renderOverview(m) {
           ${!weak.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">${L('Серьёзных провалов нет', 'No major weak spots')}</div><div class="detail">${L('По ключевым показателям роли ты не хуже большинства.', 'On your role\'s key stats you\'re no worse than most players.')}</div></div></div>` : ''}
         </div></div>`;
   }
-  $('dlgBody').innerHTML = parseBlock(m) + mineBlock + table(mine, me ? L('Твоя команда', 'Your team') : 'Radiant', me ? won : m.radiant_win) + table(theirs, me ? L('Враги', 'Enemies') : 'Dire', me ? !won : !m.radiant_win) + `
-    <p class="note">${L('Оценка 0–10: сравнение с другими игроками на том же герое по метрикам роли (позиции 1–3 считаются корами, 4–5 саппортами).', 'Score 0–10: compared with other players on the same hero by role metrics (positions 1–3 count as cores, 4–5 as supports).')}</p>
-    <div class="row note"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a><a href="https://stratz.com/matches/${m.match_id}" target="_blank" rel="noopener">Stratz</a></div>`;
+  $('dlgBody').innerHTML = parseBlock(m) + mineBlock + table(mine, me ? L('Твоя команда', 'Your team') : 'Radiant', me ? won : m.radiant_win) + table(theirs, me ? L('Враги', 'Enemies') : 'Dire', me ? !won : !m.radiant_win) + `    <div class="row note"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a><a href="https://stratz.com/matches/${m.match_id}" target="_blank" rel="noopener">Stratz</a></div>`;
   wireParse(m);
   $('dlgBody').querySelectorAll('.player-link').forEach(b => b.addEventListener('click', () => {
     $('matchDlg').close();
@@ -806,9 +802,7 @@ function renderDraft(m, G) {
   const metaMine = myH.reduce((s, h) => s + (heroWr(G, h) - .5) * 100, 0), metaTheirs = thH.reduce((s, h) => s + (heroWr(G, h) - .5) * 100, 0);
 
   let html = `
-    <div class="section"><h3 class="section-title">${L('Кто кого контрпикает', 'Who counters whom')}</h3>
-      <p class="note">${L(`Строки — ваши герои, столбцы — враги. Число показывает, насколько герой слева выигрывает чаще ожидаемого против героя сверху в ${GROUPS[S.group]} (${(G.matches / 1000).toFixed(0)}k матчей за ${G.days} дней).`, `Rows are your heroes, columns are enemies. Each number shows how much more often the hero on the left wins than expected against the hero on top in ${GROUPS[S.group]} (${(G.matches / 1000).toFixed(0)}k matches over ${G.days} days).`)}</p>
-      <div class="card table-wrap"><table class="matrix"><thead><tr><th></th>${theirs.map(p => `<th class="hcol">${posBadge(p)} ${heroIcon(p.hero_id)}</th>`).join('')}<th class="num">${L('Итого', 'Total')}</th></tr></thead>
+    <div class="section"><h3 class="section-title">${L('Кто кого контрпикает', 'Who counters whom')}</h3>      <div class="card table-wrap"><table class="matrix"><thead><tr><th></th>${theirs.map(p => `<th class="hcol">${posBadge(p)} ${heroIcon(p.hero_id)}</th>`).join('')}<th class="num">${L('Итого', 'Total')}</th></tr></thead>
       <tbody>${mine.map((p, i) => `<tr class="${p === me ? 'me' : ''}"><td><div class="row">${posBadge(p)}${heroCell(p.hero_id)}</div></td>${matrix[i].map(advCell).join('')}<td class="num ${signCls(matrix[i].reduce((s, v) => s + v, 0))}"><b>${pct(matrix[i].reduce((s, v) => s + v, 0))}</b></td></tr>`).join('')}
       <tr><td class="muted">${L('Итого против врага', 'Total vs enemy')}</td>${thH.map((_, j) => { const s = matrix.reduce((a, r) => a + r[j], 0); return `<td class="num ${signCls(s)}">${pct(s)}</td>`; }).join('')}<td class="num ${signCls(total)}"><b>${pct(total)}</b></td></tr></tbody></table></div>
     </div>
@@ -831,14 +825,12 @@ function renderDraft(m, G) {
     const myHero = (S.poolHeroes || []).find(h => h.hero_id === me.hero_id);
     html += `
       <div class="section"><h3 class="section-title">${L('Твой пик', 'Your pick')}: ${esc(heroName(me.hero_id))}</h3>
-        <p class="note">${L('Позиция', 'Position')} ${me._pos} (${POS_NAMES[me._pos]}). ${myIdx >= 0 ? L(`${myIdx + 1}-е место из ${list.length} подходящих героев против этого состава.`, `Rank ${myIdx + 1} of ${list.length} fitting heroes against this lineup.`) : ''} ${L('Счёт = сумма матчапов против 5 врагов + сочетание с союзниками + сила героя в мете.', 'Score = matchups vs 5 enemies + synergy with allies + hero meta strength.')}</p>
+        <p class="note">${POS_NAMES[me._pos]}${myIdx >= 0 ? ' · ' + L(`${myIdx + 1}-е место из ${list.length}`, `rank ${myIdx + 1} of ${list.length}`) : ''}</p>
         <div class="card">${candRow(myC, 'mine')}</div>
       </div>
-      <div class="section"><h3 class="section-title">${L('Кого лучше было бы взять', 'Better picks')}</h3>
-        <p class="note">${L(`Лучшие герои на позицию ${me._pos} против этих врагов и с этими союзниками. Учти, что в драфте не все враги известны заранее: если ты пикал рано, смотри на матчапы против первых пиков.`, `Best heroes for position ${me._pos} against these enemies and with these allies. Not every enemy is known during the draft: if you picked early, look at matchups vs the first picks.`)}</p>
-        <div class="card">${top.map(c => candRow(c)).join('')}</div>
+      <div class="section"><h3 class="section-title">${L('Кого лучше было бы взять', 'Better picks')}</h3>        <div class="card">${top.map(c => candRow(c)).join('')}</div>
         ${fromPool.length ? `<h3 class="label">${L('Из твоих героев (10+ игр)', 'From your heroes (10+ games)')}</h3><div class="card">${fromPool.map(c => candRow(c)).join('')}</div>` : ''}
-        ${myHero ? `<p class="note">${L(`Твой винрейт на ${esc(heroName(me.hero_id))}: ${(myHero.win / myHero.games * 100).toFixed(0)}% за ${myHero.games} игр. Комфортный герой часто важнее пары процентов матчапа.`, `Your win rate on ${esc(heroName(me.hero_id))}: ${(myHero.win / myHero.games * 100).toFixed(0)}% over ${myHero.games} games. A comfort hero often matters more than a couple of matchup percent.`)}</p>` : ''}
+        ${myHero ? `<p class="note">${esc(heroName(me.hero_id))}: ${(myHero.win / myHero.games * 100).toFixed(0)}% · ${myHero.games} ${L('игр', 'games')}</p>` : ''}
       </div>`;
   }
   $('dlgBody').innerHTML = html;
@@ -944,7 +936,7 @@ function renderFlow(m, G) {
     const roshans = (m.objectives || []).map(o => ({ time: o.time, ours: (o.team === 2) === (sign === 1) }));
     html += `<div class="section"><h3 class="section-title">${L('Преимущество по золоту', 'Gold lead')}</h3>
       <div class="card chart-wrap">${goldChart(adv, fights, roshans)}<div class="tip" hidden></div></div>
-      <div class="legend"><span><i style="background:var(--good)"></i>${L('выигранная драка', 'fight won')}</span><span><i style="background:var(--bad)"></i>${L('проигранная драка', 'fight lost')}</span><span>${L('размер точки = число смертей', 'dot size = deaths')}</span><span>${L('пунктир = Рошан', 'dashed line = Roshan')}</span></div></div>`;
+      <div class="legend"><span><i style="background:var(--good)"></i>${L('выигранная драка', 'fight won')}</span><span><i style="background:var(--bad)"></i>${L('проигранная драка', 'fight lost')}</span><span>${L('пунктир — Рошан', 'dashed — Roshan')}</span></div></div>`;
 
     const maxLead = Math.max(...adv), maxDef = Math.min(...adv);
     const tLead = adv.indexOf(maxLead), tDef = adv.indexOf(maxDef);
@@ -976,14 +968,12 @@ function renderFlow(m, G) {
       }
     }
     timings.sort((a, b) => a.t - b.t);
-    html += `<div class="section"><h3 class="section-title">${L('Ключевые тайминги коров', 'Core item timings')}</h3><p class="note">${L('Первые три крупных предмета (от 2500 золота) у позиций 1–3. Это моменты, когда герой резко усиливается.', 'First three big items (2500+ gold) for positions 1–3. These are the moments a hero spikes.')}</p>
+    html += `<div class="section"><h3 class="section-title">${L('Ключевые тайминги коров', 'Core item timings')}</h3>
       <div class="card table-wrap"><table><thead><tr><th>${L('Время', 'Time')}</th><th>${L('Команда', 'Team')}</th><th>${L('Герой', 'Hero')}</th><th>${L('Предмет', 'Item')}</th></tr></thead><tbody>${timings.slice(0, 15).map(r => `<tr><td class="num">${mmss(r.t)}</td><td class="${r.ours ? 'pos' : 'neg'}">${r.ours ? L('вы', 'you') : L('враг', 'enemy')}</td><td>${heroCell(r.p.hero_id)}</td><td><div class="row">${itemIcon(r.k)}${esc(itemName(r.k))}</div></td></tr>`).join('')}</tbody></table></div></div>`;
     html += `<div class="section"><h3 class="section-title">${L('Крупные драки', 'Biggest fights')}</h3><div class="issue-list">${fightRows || `<div class="empty">${L('Драк не найдено.', 'No fights found.')}</div>`}</div></div>`;
   }
 
-  html = `<div class="section"><h3 class="section-title">${L('Когда вы были сильнее', 'When you were stronger')}</h3>
-    <p class="note">${L(`Перевес вашего драфта по длительности игры: как герои обеих команд выигрывают в зависимости от минуты окончания матча в ${GROUPS[S.group]}. Бледные столбики — время после конца этой игры.`, `Your draft advantage by game length: how both teams' heroes win depending on when the match ends in ${GROUPS[S.group]}. Faded bars are after this game ended.`)}</p>
-    <div class="card chart-wrap">${draftBars(curve, endBin)}</div></div>
+  html = `<div class="section"><h3 class="section-title">${L('Когда вы были сильнее', 'When you were stronger')}</h3>    <div class="card chart-wrap">${draftBars(curve, endBin)}</div></div>
     <div class="issue-list">${insights.map(i => `<div class="card issue ${i.sev}">${sevIcon(i.sev)}<div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div></div>`).join('')}</div>` + html;
   $('dlgBody').innerHTML = html;
   const wrap = $('dlgBody').querySelectorAll('.chart-wrap')[1];
@@ -1050,7 +1040,7 @@ function mapData(m) {
 
 function renderMap(m) {
   if (!m.version) {
-    $('dlgBody').innerHTML = parseBlock(m) + `<p class="note">${L('Карта с вардами и драками появится после разбора реплея.', 'The map with wards and fights appears after the replay is parsed.')}</p>`;
+    $('dlgBody').innerHTML = parseBlock(m);
     wireParse(m);
     return;
   }
@@ -1062,9 +1052,7 @@ function renderMap(m) {
     ...d.wards.map(w => `<i class="tl-ward ${w.ours ? 'win' : 'loss'}" style="left:${pctT(w.t)}%"></i>`),
   ].join('');
   $('dlgBody').innerHTML = `
-    <div class="section"><h3 class="section-title">${L('Карта матча', 'Match map')}</h3>
-      <p class="note">${L('Двигай ползунок или нажми ▶. Видно варды (с зоной обзора), где герои стояли на линии в первые 10 минут и где умирали в драках. Непрерывного движения героев OpenDota не хранит.', 'Drag the slider or press ▶. You can see wards (with vision range), where heroes laned in the first 10 minutes, and where they died in fights. OpenDota doesn\'t store continuous hero movement.')}</p>
-      <div class="map-wrap">
+    <div class="section"><h3 class="section-title">${L('Карта матча', 'Match map')}</h3>      <div class="map-wrap">
         <div class="map-col">
           <div class="tb card">
             <div class="tb-team">${m.players.filter(p => p.isRadiant).map(tbHero).join('')}</div>
@@ -1087,7 +1075,7 @@ function renderMap(m) {
       </div>
       <div class="legend">
         <span><i style="background:var(--good)"></i>${L('ваши', 'yours')}</span><span><i style="background:var(--bad)"></i>${L('враги', 'enemies')}</span>
-        <span>${L('● обс-вард и зона обзора', '● observer ward and vision')}</span><span>${L('◆ сентри', '◆ sentry')}</span><span>${L('✕ смерть в драке', '✕ death in a fight')}</span><span>${L('полосы сверху — драки, засечки снизу — варды, R — Рошан', 'top bars: fights, bottom ticks: wards, R: Roshan')}</span>
+        <span>${L('● обс', '● observer')}</span><span>${L('◆ сентри', '◆ sentry')}</span><span>${L('✕ смерть', '✕ death')}</span><span>${L('R Рошан', 'R Roshan')}</span>
       </div>
     </div>`;
   $('mapTime').addEventListener('input', e => { stopMap(); drawMap(+e.target.value); });
@@ -1217,17 +1205,15 @@ async function renderItemsTab(m) {
     const seen = new Set();
     for (const [t, k] of me.purchase_log || []) if (isBigItem(k) && !seen.has(k)) { seen.add(k); bigs.push({ t, k }); }
   }
-  html += `<div class="section"><h3 class="section-title">${L('Тайминги', 'Timings')}</h3>${m.version ? `<p class="note">${L(`Когда ты собрал крупные предметы, по сравнению с медианой про-игроков на этом герое в патче ${S.meta?.patch || ''} и с винрейтом в пабах при таком тайминге.`, `When you finished big items, compared with the pro median on this hero in patch ${S.meta?.patch || ''} and with pub win rate at that timing.`)}</p><div class="card" id="timingRows"><div class="loading"><div class="spinner"></div></div></div>` : `<p class="note">${L('Тайминги видны только после разбора реплея.', 'Timings show up only after the replay is parsed.')}</p>`}</div>`;
+  if (m.version) html += `<div class="section"><h3 class="section-title">${L('Тайминги', 'Timings')}</h3><div class="card" id="timingRows"><div class="loading"><div class="spinner"></div></div></div></div>`;
 
   const missing = Object.entries(pro).filter(([k, [rate]]) => rate >= 0.3 && isBigItem(k) && !bought.has(k)).sort((a, b) => b[1][0] - a[1][0]).slice(0, 5);
   html += `<div class="section"><h3 class="section-title">${L('Что обычно собирают про-игроки', 'What pros usually build')}</h3>
     ${Object.keys(pro).length ? `<div class="card">${Object.entries(pro).filter(([k]) => isBigItem(k)).sort((a, b) => b[1][0] - a[1][0]).slice(0, 10).map(([k, [rate, t]]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))} ${bought.has(k) ? `<span class="chip pos">${L('есть', 'built')}</span>` : ''}</div><div class="why">${L(`в ${(rate * 100).toFixed(0)}% игр, медиана ${mmss(t)}`, `in ${(rate * 100).toFixed(0)}% of games, median ${mmss(t)}`)}</div></div><div></div></div>`).join('')}</div>
-    ${missing.length ? `<p class="note">${L('Ты не собрал', 'You didn\'t build')}: ${missing.map(([k]) => esc(itemName(k))).join(', ')}. ${L('Не обязательно ошибка, но стоит понимать, почему.', 'Not necessarily a mistake, but know why.')}</p>` : ''}` : `<p class="note">${L('На этом герое мало про-игр в текущем патче.', 'Few pro games on this hero in the current patch.')}</p>`}</div>`;
+    ${missing.length ? `<p class="note">${L('Ты не собрал', 'You skipped')}: ${missing.map(([k]) => esc(itemName(k))).join(', ')}</p>` : ''}` : `<div class="empty">${L('Мало про-игр на этом герое', 'Too few pro games on this hero')}</div>`}</div>`;
 
   const ci = counterItemsFor(theirs.map(p => p.hero_id), h).slice(0, 8);
-  html += `<div class="section"><h3 class="section-title">${L('Предметы против этих врагов', 'Items against these enemies')}</h3>
-    <p class="note">${L('Что про-игроки собирают против героев из этого матча чаще обычного, с учётом того, что подходит твоему герою.', 'What pros build more often than usual against the heroes in this match, filtered to what fits your hero.')}</p>
-    <div class="card">${ci.length ? ci.map(c => `<div class="item-row">${itemIcon(c.k)}<div><div class="name">${esc(itemName(c.k))} ${bought.has(c.k) ? `<span class="chip pos">${L('куплено', 'bought')}</span>` : ''}</div><div class="why">${esc(itemWhy(c.k))}</div><div class="breakdown" style="margin-top:4px">${c.vs.map(([e, l]) => `<span>${heroImg(e) ? `<img src="${heroImg(e)}" alt="${esc(heroName(e))}" title="${esc(heroName(e))}">` : ''}×${l.toFixed(1)}</span>`).join('')}</div></div><div></div></div>`).join('') : `<div class="empty">${L('Нет данных по этим героям.', 'No data for these heroes.')}</div>`}</div></div>`;
+  html += `<div class="section"><h3 class="section-title">${L('Предметы против этих врагов', 'Items against these enemies')}</h3>    <div class="card">${ci.length ? ci.map(c => `<div class="item-row">${itemIcon(c.k)}<div><div class="name">${esc(itemName(c.k))} ${bought.has(c.k) ? `<span class="chip pos">${L('куплено', 'bought')}</span>` : ''}</div><div class="why">${esc(itemWhy(c.k))}</div><div class="breakdown" style="margin-top:4px">${c.vs.map(([e, l]) => `<span>${heroImg(e) ? `<img src="${heroImg(e)}" alt="${esc(heroName(e))}" title="${esc(heroName(e))}">` : ''}×${l.toFixed(1)}</span>`).join('')}</div></div><div></div></div>`).join('') : `<div class="empty">${L('Нет данных по этим героям.', 'No data for these heroes.')}</div>`}</div></div>`;
 
   $('dlgBody').innerHTML = html;
   wireParse(m);
@@ -1265,11 +1251,10 @@ async function renderMeta() {
   if (!S.meta) { $('metaInfo').textContent = L('Данные меты ещё не собраны.', 'Meta data isn\'t ready yet.'); return; }
   let G;
   try { G = await loadGroup(S.metaGroup); } catch { $('metaInfo').textContent = L('Не удалось загрузить данные ранга.', 'Couldn\'t load data for this rank.'); return; }
-  $('metaInfo').textContent = L(`Патч ${S.meta.patch}. ${GROUPS[S.metaGroup]}: ${G.matches.toLocaleString(LOC)} рейтинговых матчей за ${G.days} дней. Предметы: ${S.meta.pro_matches.toLocaleString(LOC)} про-матчей патча.`, `Patch ${S.meta.patch}. ${GROUPS[S.metaGroup]}: ${G.matches.toLocaleString(LOC)} ranked matches over ${G.days} days. Items: ${S.meta.pro_matches.toLocaleString(LOC)} pro matches this patch.`);
+  $('metaInfo').textContent = '';
   const pos = S.metaPos;
   const list = Object.keys(S.heroes).map(Number).filter(h => G.idx[h] != null && heroPick(G, h) >= 0.02 && (!pos || posPrior(h)[pos - 1] >= 0.18))
     .sort((a, b) => heroWr(G, b) - heroWr(G, a)).slice(0, 20);
-  $('tierNote').textContent = pos ? L(`Герои, которых часто играют на позиции ${pos}, по винрейту.`, `Heroes often played at position ${pos}, by win rate.`) : L('Все популярные герои по винрейту.', 'All popular heroes by win rate.');
   $('tierTable').innerHTML = `<thead><tr><th>#</th><th>${L('Герой', 'Hero')}</th><th class="num">${L('Винрейт', 'Win rate')}</th><th class="num">${L('Пик', 'Pick')}</th><th class="num">${L('Позиции', 'Positions')}</th><th class="num">${L('Лучше всего в', 'Best at')}</th></tr></thead><tbody>` +
     list.map((h, i) => {
       const pr = posPrior(h); const top = pr.map((v, j) => [j + 1, v]).filter(x => x[1] >= 0.18).sort((a, b) => b[1] - a[1]);
@@ -1303,7 +1288,7 @@ function renderItemHero(G) {
   $('itemHeroTitle').textContent = `${L('Предметы против', 'Items against')} ${heroName(h)}`;
   const rows = (S.meta?.counter_items?.[h] || []).filter(([k, , obs]) => itemByKey(k) && obs >= 10).slice(0, 10);
   const n = S.meta?.counter_samples?.[h] || 0;
-  $('itemCounters').innerHTML = rows.length ? rows.map(([k, lift, obs]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))}</div><div class="why">${esc(itemWhy(k))}${itemWhy(k) ? ' · ' : ''}${L(`${obs} раз в ${Math.round(n / 5)} про-играх`, `${obs} times in ${Math.round(n / 5)} pro games`)}</div></div><div class="lift pos">×${lift.toFixed(1)}</div></div>`).join('')
+  $('itemCounters').innerHTML = rows.length ? rows.map(([k, lift, obs]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))}</div><div class="why">${esc(itemWhy(k))}</div></div><div class="lift pos" title="${L(`В ${lift.toFixed(1)} раза чаще обычного · ${obs} из ${Math.round(n / 5)} про-игр`, `${lift.toFixed(1)}× more often than usual · ${obs} of ${Math.round(n / 5)} pro games`)}">×${lift.toFixed(1)}</div></div>`).join('')
     : `<div class="empty">${L('Мало про-игр против этого героя в патче.', 'Too few pro games against this hero this patch.')}</div>`;
   const counters = Object.keys(S.heroes).map(Number).filter(x => x !== h && G.idx[x] != null && heroPick(G, x) >= 0.01).map(x => ({ x, v: adv(G, x, h) })).sort((a, b) => b.v - a.v).slice(0, 8);
   $('heroCounters').innerHTML = counters.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div><div class="name">${esc(heroName(c.x))}</div><div class="why">${L('лучшие позиции', 'best positions')}: ${posPrior(c.x).map((v, j) => [j + 1, v]).filter(z => z[1] >= .18).map(z => z[0]).join(', ')}</div></div><div class="lift pos">${pct(c.v)}</div></div>`).join('');
