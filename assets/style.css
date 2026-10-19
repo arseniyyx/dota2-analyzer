@@ -527,3 +527,6 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .farm-pat { grid-template-columns: 56px minmax(0, 1fr) auto; }
 .farm-pat.best .name { color: var(--accent-strong); }
 @media (max-width: 900px) { .farm-wrap { grid-template-columns: 1fr; } }
+
+.noscript { max-width: 720px; margin: 48px auto; padding: 0 16px; line-height: 1.6; }
+.noscript h1 { margin-bottom: 12px; }

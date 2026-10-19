@@ -1,7 +1,10 @@
 'use strict';
 
 const LANG = (() => {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q === 'ru' || q === 'en') return q;
   try { const s = localStorage.getItem('lang'); if (s) return JSON.parse(s); } catch { /* storage unavailable */ }
+  if (/bot|crawl|spider|slurp|yandex/i.test(navigator.userAgent)) return 'ru'; // the bare URL is the Russian page (hreflang)
   return (navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en';
 })();
 const EN = LANG === 'en';
@@ -1916,8 +1919,14 @@ $('learnHeroInput').addEventListener('keydown', e => {
 
 /* ---------- router & boot ---------- */
 
+const VIEW_TITLES = {
+  player: L('Dota 2 Analyzer — разбор игрока, мета патча и обучение', 'Dota 2 Analyzer: player analysis, patch meta and coaching'),
+  meta: L('Мета патча Dota 2: сильнейшие герои и контрпики — Dota 2 Analyzer', 'Dota 2 patch meta: strongest heroes and counterpicks | Dota 2 Analyzer'),
+  learn: L('Обучение Dota 2: сборки, пики силы и фарм про-игроков — Dota 2 Analyzer', 'Dota 2 coaching: builds, power spikes and pro farming | Dota 2 Analyzer'),
+};
 function route() {
   const view = location.hash === '#meta' ? 'meta' : location.hash === '#learn' ? 'learn' : 'player';
+  document.title = VIEW_TITLES[view];
   const meta = view === 'meta';
   $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn';
   $('navPlayer').setAttribute('aria-current', view === 'player' ? 'page' : 'false');
@@ -1958,7 +1967,17 @@ function applyStaticLang() {
   document.documentElement.lang = LANG;
   $('langBtn').textContent = EN ? 'RU' : 'EN';
   $('langBtn').setAttribute('aria-label', EN ? 'Переключить на русский' : 'Switch to English');
-  $('langBtn').addEventListener('click', () => { store.set('lang', EN ? 'ru' : 'en'); location.reload(); });
+  $('langBtn').addEventListener('click', () => {
+    const next = EN ? 'ru' : 'en', u = new URL(location.href);
+    store.set('lang', next);
+    if (next === 'en') u.searchParams.set('lang', 'en'); else u.searchParams.delete('lang');
+    location.href = u.toString();
+  });
+  if (EN) {  // English copy of the head for the ?lang=en page
+    document.title = 'Dota 2 Analyzer: player analysis, patch meta and coaching';
+    document.querySelector('meta[name="description"]').content = 'Free Dota 2 player analysis by Steam ID: positions, weak spots, draft and counterpicks, an interactive match map, patch meta, hero builds and power spikes, and pro farming patterns.';
+    document.querySelector('link[rel="canonical"]').href = 'https://arseniyyx.github.io/dota2-analyzer/?lang=en';
+  }
   if (!EN) return;
   document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; });
   document.querySelectorAll('[data-en-placeholder]').forEach(el => { el.placeholder = el.dataset.enPlaceholder; });
