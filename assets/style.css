@@ -316,6 +316,36 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .example { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
 
+/* ---------- match map ---------- */
+.map-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; align-items: start; }
+.map-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.map { position: relative; aspect-ratio: 1; overflow: hidden; padding: 0; }
+.map img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: saturate(.85) brightness(.8); }
+.map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map-side { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.map-clock { font-family: var(--display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent-strong); }
+.map-stats { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.map-events { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
+.map-ev { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 8px; border: none; border-radius: 8px; background: transparent; text-align: left; font-size: 12px; box-shadow: inset 2px 0 0 var(--good); }
+.map-ev.loss { box-shadow: inset 2px 0 0 var(--bad); }
+.map-ev:hover { background: var(--surface-hover); }
+.map-ev .num { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.map-ev-body { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.map-ev-body .hero-icon { width: 26px; height: 15px; }
+.timeline { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.tl-track { position: relative; flex: 1; min-width: 0; height: 52px; }
+.tl-marks { position: absolute; left: 8px; right: 8px; top: 0; height: 30px; }
+.tl-fight { position: absolute; top: 4px; height: 10px; min-width: 4px; padding: 0; border: none; border-radius: 3px; background: var(--good); opacity: .85; cursor: pointer; }
+.tl-fight.loss { background: var(--bad); }
+.tl-fight:hover { opacity: 1; transform: scaleY(1.3); }
+.tl-ward { position: absolute; top: 20px; width: 2px; height: 8px; border-radius: 1px; background: var(--good); opacity: .7; }
+.tl-ward.loss { background: var(--bad); }
+.tl-rosh { position: absolute; top: -8px; transform: translateX(-50%); font-style: normal; font-family: var(--display); font-size: 10px; color: var(--good); }
+.tl-rosh.loss { color: var(--bad); }
+.tl-track input[type="range"] { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.tl-speed { width: auto; padding: 6px 8px; font-size: 13px; }
+#mapPlay { width: 40px; padding: 0; }
+
 /* ---------- entrance motion ---------- */
 .reveal > * { animation: rise .45s var(--ease) both; }
 .reveal > *:nth-child(2) { animation-delay: .04s; } .reveal > *:nth-child(3) { animation-delay: .08s; }
@@ -332,6 +362,8 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .topbar { margin-inline: 0; }
   .topbar .updated { margin-left: 0; width: 100%; }
   .profile .wl { margin-left: 0; text-align: left; }
+  .profile > div:not(.wl) { flex-basis: calc(100% - 90px); }
+  .profile > .emblem { --s: 56px !important; }
   .match { grid-template-columns: 64px 26px minmax(0,1fr) auto 14px; gap: 10px; padding: 10px 12px; }
   .match .gpm, .match .dur { display: none; }
   .match .hero-cell img { width: 44px; height: 25px; }
@@ -339,6 +371,8 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .pos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pos-top { flex-direction: column; align-items: flex-start; gap: 10px; }
   .two-col { grid-template-columns: 1fr; }
+  .map-wrap { grid-template-columns: 1fr; }
+  .map-events { max-height: 240px; }
   .cand { grid-template-columns: minmax(0, 1fr) 64px; }
   .cand .breakdown { grid-column: 1 / -1; }
   .search-row { flex-direction: column; }

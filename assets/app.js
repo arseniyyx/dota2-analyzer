@@ -78,6 +78,8 @@ const ICONS = {
   down: '<path d="m22 17-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>',
   check: '<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  play: '<path d="M6 4l14 8-14 8z" fill="currentColor"/>',
+  pause: '<path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor"/>',
 };
 const icon = (name, cls = '') => `<svg class="i ${cls}" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 const RANK_IMG = 'https://www.opendota.com/assets/images/dota2/rank_icons/';
@@ -211,6 +213,10 @@ function assignPositions(team) {
     order.forEach((p, i) => { p._pos = Math.min(5, i + 1); p._posExact = false; p._role = i < 3 ? 'core' : 'support'; });
     return;
   }
+  if (new Set(team.map(p => p.position_est).filter(Boolean)).size === 5) {
+    team.forEach(p => { p._pos = p.position_est; p._posExact = true; p._role = p._pos <= 3 ? 'core' : 'support'; });
+    return;
+  }
   const rank = new Map(order.map((p, i) => [p, i]));
   const scoreOf = (p, pos) => {
     let s = Math.log(posPrior(p.hero_id)[pos - 1] + 0.02) - 0.45 * Math.abs(rank.get(p) - (pos - 1));
@@ -254,17 +260,24 @@ function scorePlayer(p) {
 
 /* ---------- match loading ---------- */
 
+const MATCH_CACHE_V = 2;
 function trimMatch(m) {
-  const keepP = ['account_id', 'player_slot', 'hero_id', 'isRadiant', 'kills', 'deaths', 'assists', 'last_hits', 'denies', 'gold_per_min', 'xp_per_min', 'net_worth', 'hero_damage', 'tower_damage', 'hero_healing', 'item_0', 'item_1', 'item_2', 'item_3', 'item_4', 'item_5', 'item_neutral', 'benchmarks', 'lane_role', 'is_roaming', 'personaname', 'rank_tier', 'obs_placed', 'sen_placed', 'camps_stacked', 'teamfight_participation', 'lane_efficiency_pct'];
+  const keepP = ['account_id', 'player_slot', 'hero_id', 'isRadiant', 'kills', 'deaths', 'assists', 'last_hits', 'denies', 'gold_per_min', 'xp_per_min', 'net_worth', 'hero_damage', 'tower_damage', 'hero_healing', 'item_0', 'item_1', 'item_2', 'item_3', 'item_4', 'item_5', 'item_neutral', 'benchmarks', 'lane_role', 'is_roaming', 'personaname', 'rank_tier', 'obs_placed', 'sen_placed', 'camps_stacked', 'teamfight_participation', 'lane_efficiency_pct', 'lane_pos', 'position_est'];
+  const wards = l => (l || []).map(w => [w.time, +w.x.toFixed(1), +w.y.toFixed(1), w.ehandle]);
+  const left = l => (l || []).map(w => [w.time, w.ehandle, w.attackername || '']);
   return {
+    _v: MATCH_CACHE_V,
     match_id: m.match_id, radiant_win: m.radiant_win, duration: m.duration, start_time: m.start_time,
     radiant_score: m.radiant_score, dire_score: m.dire_score, version: m.version || null,
     radiant_gold_adv: m.radiant_gold_adv || null,
-    teamfights: (m.teamfights || []).map(t => ({ start: t.start, end: t.end, deaths: t.deaths, players: t.players.map(p => ({ gold_delta: p.gold_delta, deaths: p.deaths })) })),
+    teamfights: (m.teamfights || []).map(t => ({ start: t.start, end: t.end, deaths: t.deaths, players: t.players.map(p => ({ gold_delta: p.gold_delta, deaths: p.deaths, deaths_pos: p.deaths_pos })) })),
     objectives: (m.objectives || []).filter(o => o.type === 'CHAT_MESSAGE_ROSHAN_KILL').map(o => ({ time: o.time, team: o.team })),
+    buildings: (m.objectives || []).filter(o => o.type === 'building_kill' && o.key).map(o => ({ time: o.time, key: o.key })),
     players: m.players.map(p => {
       const o = Object.fromEntries(keepP.map(k => [k, p[k]]));
       o.purchase_log = (p.purchase_log || []).map(e => [e.time, e.key]);
+      o.obs = wards(p.obs_log); o.sen = wards(p.sen_log);
+      o.obs_left = left(p.obs_left_log); o.sen_left = left(p.sen_left_log);
       return o;
     }),
   };
@@ -283,7 +296,7 @@ async function requestParse(id) {
 
 async function loadMatch(id, force) {
   const cached = !force && store.get('m:' + id);
-  if (cached && (cached.version || (Date.now() - cached._ts < 15 * 60 * 1000 && !parsePendingSince(id)))) return cached;
+  if (cached && cached._v === MATCH_CACHE_V && (cached.version || (Date.now() - cached._ts < 15 * 60 * 1000 && !parsePendingSince(id)))) return cached;
   const m = trimMatch(await getJSON(`${API}/matches/${id}`));
   m._ts = Date.now();
   store.set('m:' + id, m);
@@ -598,6 +611,7 @@ $('parseAll').addEventListener('click', async () => {
 
 let current = null;
 $('dlgClose').addEventListener('click', () => $('matchDlg').close());
+$('matchDlg').addEventListener('close', () => stopMap());
 $('matchDlg').addEventListener('click', e => { if (e.target === $('matchDlg')) $('matchDlg').close(); });
 document.querySelectorAll('#dlgTabs .tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
@@ -621,7 +635,8 @@ function showTab(tab) {
   document.querySelectorAll('#dlgTabs .tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   if (!current) return;
   const G = S.groups[S.group];
-  const r = { overview: renderOverview, draft: renderDraft, flow: renderFlow, items: renderItemsTab }[tab];
+  stopMap();
+  const r = { overview: renderOverview, draft: renderDraft, flow: renderFlow, map: renderMap, items: renderItemsTab }[tab];
   $('dlgBody').innerHTML = '';
   r(current, G);
 }
@@ -954,6 +969,152 @@ function renderFlow(m, G) {
     wireGoldChart(wrap, m.radiant_gold_adv.map(v => v * sign), fights);
   }
   wireParse(m);
+}
+
+/* ---------- map ---------- */
+
+const MAP_IMG = 'https://www.opendota.com/assets/images/dota2/map/detailed_740.webp';
+const mapX = x => (x - 64) / 128 * 100, mapY = y => (192 - y) / 128 * 100;
+const WARD_LIFE = { obs: 360, sen: 420 };
+const heroIconUrl = id => S.heroes[id]?.icon ? CDN + S.heroes[id].icon : heroImg(id);
+const heroByNpc = npc => Object.values(S.heroes).find(h => h.name === npc);
+
+function buildingName(k) {
+  const side = k.includes('goodguys') ? 'Radiant' : 'Dire';
+  const lane = /_top/.test(k) ? ' верх' : /_mid/.test(k) ? ' мид' : /_bot/.test(k) ? ' низ' : '';
+  const t = k.match(/tower(\d)/);
+  const what = t ? `T${t[1]}` : /melee_rax/.test(k) ? 'бараки ближнего боя' : /range_rax/.test(k) ? 'бараки дальнего боя' : /fort/.test(k) ? 'трон' : 'здание';
+  return `${what}${lane} ${side}`;
+}
+
+function laneSpot(lp) {
+  if (!lp) return null;
+  const xs = [], ys = [];
+  for (const x in lp) for (const y in lp[x]) { xs.push([+x, lp[x][y]]); ys.push([+y, lp[x][y]]); }
+  if (!xs.length) return null;
+  const med = arr => { arr.sort((a, b) => a[0] - b[0]); const half = arr.reduce((s, a) => s + a[1], 0) / 2; let acc = 0; for (const [v, c] of arr) { acc += c; if (acc >= half) return v; } return arr[0][0]; };
+  return { x: mapX(med(xs)), y: mapY(med(ys)) };
+}
+
+function mapData(m) {
+  const { mine, sign, myRad } = teams(m);
+  const ours = new Set(mine);
+  const wards = [];
+  for (const p of m.players) for (const type of ['obs', 'sen']) {
+    const leftBy = new Map((p[type + '_left'] || []).map(([t, eh, by]) => [eh, [t, by]]));
+    for (const [t, x, y, eh] of p[type] || []) {
+      const l = leftBy.get(eh), end = l ? l[0] : t + WARD_LIFE[type];
+      wards.push({ type, t, end, x: mapX(x), y: mapY(y), p, ours: ours.has(p), killer: l && l[1] && end < t + WARD_LIFE[type] - 3 ? heroByNpc(l[1]) : null });
+    }
+  }
+  const fights = (m.teamfights || []).map(f => {
+    const deaths = [];
+    f.players.forEach((fp, i) => {
+      const p = m.players[i];
+      for (const x in fp.deaths_pos || {}) for (const y in fp.deaths_pos[x]) deaths.push({ p, x: mapX(+x), y: mapY(+y), ours: ours.has(p) });
+    });
+    const swing = f.players.reduce((s, fp, i) => s + (ours.has(m.players[i]) ? 1 : -1) * (fp.gold_delta || 0), 0);
+    return { start: f.start, end: f.end, deaths, swing };
+  });
+  const lanes = m.players.map(p => ({ p, ours: ours.has(p), spot: laneSpot(p.lane_pos) })).filter(l => l.spot);
+  const roshans = (m.objectives || []).map(o => ({ t: o.time, ours: (o.team === 2) === myRad }));
+  const buildings = (m.buildings || []).map(b => ({ t: b.time, name: buildingName(b.key), ours: b.key.includes('goodguys') !== myRad }));
+  return { wards, fights, lanes, roshans, buildings, sign };
+}
+
+function renderMap(m) {
+  if (!m.version) {
+    $('dlgBody').innerHTML = parseBlock(m) + '<p class="note">Карта с вардами и драками появится после разбора реплея.</p>';
+    wireParse(m);
+    return;
+  }
+  const d = mapData(m), dur = m.duration, pctT = t => Math.min(100, Math.max(0, t / dur * 100));
+  S.map = { m, d };
+  const marks = [
+    ...d.fights.map((f, i) => `<button class="tl-fight ${f.swing >= 0 ? 'win' : 'loss'}" data-t="${f.start}" style="left:${pctT(f.start)}%;width:${Math.max(0.6, pctT(f.end) - pctT(f.start))}%" title="Драка ${mmss(f.start)}: ${f.swing >= 0 ? 'выиграна' : 'проиграна'}" aria-label="Перейти к драке на ${mmss(f.start)}"></button>`),
+    ...d.roshans.map(r => `<i class="tl-rosh ${r.ours ? 'win' : 'loss'}" style="left:${pctT(r.t)}%" title="Рошан ${mmss(r.t)}: ${r.ours ? 'ваш' : 'вражеский'}">R</i>`),
+    ...d.wards.map(w => `<i class="tl-ward ${w.ours ? 'win' : 'loss'}" style="left:${pctT(w.t)}%"></i>`),
+  ].join('');
+  $('dlgBody').innerHTML = `
+    <div class="section"><h3 class="section-title">Карта матча</h3>
+      <p class="note">Двигай ползунок или нажми ▶. Видно варды (с зоной обзора), где герои стояли на линии в первые 10 минут и где умирали в драках. Непрерывного движения героев OpenDota не хранит.</p>
+      <div class="map-wrap">
+        <div class="map-col">
+          <div class="map card"><img src="${MAP_IMG}" alt="Карта Dota 2" width="900" height="900"><svg id="mapSvg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Варды, позиции на линии и смерти на выбранную минуту"></svg></div>
+          <div class="timeline card">
+            <button class="btn small" id="mapPlay" aria-label="Проиграть матч">${icon('play')}</button>
+            <div class="tl-track"><div class="tl-marks">${marks}</div><input type="range" id="mapTime" min="0" max="${dur}" value="0" step="1" aria-label="Время матча"></div>
+            <select id="mapSpeed" class="field tl-speed" aria-label="Скорость"><option value="15">×15</option><option value="30" selected>×30</option><option value="60">×60</option></select>
+          </div>
+        </div>
+        <div class="map-side card">
+          <div class="map-clock" id="mapClock">0:00</div>
+          <div id="mapStats" class="map-stats"></div>
+          <div class="label">События рядом</div>
+          <div id="mapEvents" class="map-events"></div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--good)"></i>ваши</span><span><i style="background:var(--bad)"></i>враги</span>
+        <span>● обс-вард и зона обзора</span><span>◆ сентри</span><span>✕ смерть в драке</span><span>полосы сверху — драки, засечки снизу — варды, R — Рошан</span>
+      </div>
+    </div>`;
+  $('mapTime').addEventListener('input', e => { stopMap(); drawMap(+e.target.value); });
+  $('mapPlay').addEventListener('click', () => (S.mapTimer ? stopMap() : playMap()));
+  $('dlgBody').querySelectorAll('.tl-fight').forEach(b => b.addEventListener('click', () => { stopMap(); setMapTime(+b.dataset.t); }));
+  drawMap(0);
+}
+
+function setMapTime(t) { $('mapTime').value = t; drawMap(t); }
+function stopMap() { clearInterval(S.mapTimer); S.mapTimer = null; const b = $('mapPlay'); if (b) b.innerHTML = icon('play'); }
+function playMap() {
+  const dur = S.map.m.duration;
+  if (+$('mapTime').value >= dur) setMapTime(0);
+  $('mapPlay').innerHTML = icon('pause');
+  S.mapTimer = setInterval(() => {
+    if (!$('mapTime')) return stopMap();
+    const t = Math.min(dur, +$('mapTime').value + +$('mapSpeed').value / 10);
+    setMapTime(t);
+    if (t >= dur) stopMap();
+  }, 100);
+}
+
+function drawMap(t) {
+  const { m, d } = S.map;
+  const col = ours => ours ? 'var(--good)' : 'var(--bad)';
+  const heroImgTag = (p, x, y, ours, size) => `<image href="${heroIconUrl(p.hero_id)}" x="${x - size / 2}" y="${y - size / 2}" width="${size}" height="${size}"/><circle cx="${x}" cy="${y}" r="${size / 2 + .3}" fill="none" stroke="${col(ours)}" stroke-width=".5"/>`;
+  const out = [];
+  for (const w of d.wards) {
+    if (w.t > t || t >= w.end) continue;
+    const c = col(w.ours), tip = `<title>${w.type === 'obs' ? 'Обс' : 'Сентри'}: ${esc(heroName(w.p.hero_id))}, ${mmss(w.t)}${w.killer ? `, сломал ${esc(w.killer.localized_name)} на ${mmss(w.end)}` : ''}</title>`;
+    if (w.type === 'obs') out.push(`<g>${tip}<circle cx="${w.x}" cy="${w.y}" r="9.8" fill="${c}" fill-opacity=".07" stroke="${c}" stroke-opacity=".35" stroke-width=".2"/><circle cx="${w.x}" cy="${w.y}" r="1.1" fill="${c}" stroke="#0a0c10" stroke-width=".35"/></g>`);
+    else out.push(`<g>${tip}<rect x="${w.x - .8}" y="${w.y - .8}" width="1.6" height="1.6" transform="rotate(45 ${w.x} ${w.y})" fill="${c}" stroke="#0a0c10" stroke-width=".3"/></g>`);
+  }
+  if (t <= 600) for (const l of d.lanes) out.push(`<g opacity=".9"><title>${esc(heroName(l.p.hero_id))}: примерно где стоял на линии</title>${heroImgTag(l.p, l.spot.x, l.spot.y, l.ours, 3.6)}</g>`);
+  for (const f of d.fights) {
+    if (t < f.start - 3 || t > f.end + 12) continue;
+    for (const dd of f.deaths) out.push(`<g><title>${esc(heroName(dd.p.hero_id))} погиб в драке на ${mmss(f.start)}</title>${heroImgTag(dd.p, dd.x, dd.y, dd.ours, 4.2)}<path d="M${dd.x - 1.4} ${dd.y - 1.4}l2.8 2.8m0 -2.8l-2.8 2.8" stroke="#fff" stroke-width=".6" stroke-linecap="round"/></g>`);
+  }
+  $('mapSvg').innerHTML = out.join('');
+  $('mapClock').textContent = mmss(Math.floor(t));
+
+  const active = d.wards.filter(w => w.t <= t && t < w.end);
+  const cnt = (ours, type) => active.filter(w => w.ours === ours && w.type === type).length;
+  const adv = m.radiant_gold_adv?.[Math.min(m.radiant_gold_adv.length - 1, Math.floor(t / 60))];
+  $('mapStats').innerHTML = `
+    <div><span class="pos">Ваши варды</span> ${cnt(true, 'obs')} обс · ${cnt(true, 'sen')} сентри</div>
+    <div><span class="neg">Вражеские</span> ${cnt(false, 'obs')} обс · ${cnt(false, 'sen')} сентри</div>
+    ${adv != null ? `<div>Золото: <b class="${signCls(adv * d.sign)}">${adv * d.sign >= 0 ? '+' : '−'}${fmt(Math.abs(adv))}</b></div>` : ''}`;
+
+  const ev = [
+    ...d.wards.map(w => ({ t: w.t, ours: w.ours, html: `${heroIcon(w.p.hero_id)} ставит ${w.type === 'obs' ? 'обс' : 'сентри'}` })),
+    ...d.wards.filter(w => w.killer).map(w => ({ t: w.end, ours: !w.ours, html: `${heroIcon(w.killer.id)} ломает ${w.type === 'obs' ? 'обс' : 'сентри'}` })),
+    ...d.fights.map(f => ({ t: f.start, ours: f.swing >= 0, html: `Драка: ${f.swing >= 0 ? 'выиграна' : 'проиграна'}, ${f.deaths.map(x => heroIcon(x.p.hero_id)).join('') || 'без смертей'}` })),
+    ...d.roshans.map(r => ({ t: r.t, ours: r.ours, html: `Рошан ${r.ours ? 'ваш' : 'вражеский'}` })),
+    ...d.buildings.map(b => ({ t: b.t, ours: b.ours, html: `Разрушено: ${b.name}` })),
+  ].filter(e => Math.abs(e.t - t) <= 90).sort((a, b) => a.t - b.t).slice(0, 14);
+  $('mapEvents').innerHTML = ev.length ? ev.map(e => `<button class="map-ev ${e.ours ? 'win' : 'loss'}" data-t="${e.t}"><span class="num">${mmss(e.t)}</span><span class="map-ev-body">${e.html}</span></button>`).join('') : '<div class="dim">В этот момент ничего не происходит.</div>';
+  $('mapEvents').querySelectorAll('.map-ev').forEach(b => b.addEventListener('click', () => { stopMap(); setMapTime(+b.dataset.t); }));
 }
 
 /* ---------- items ---------- */
