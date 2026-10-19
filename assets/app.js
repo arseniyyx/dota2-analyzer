@@ -720,7 +720,7 @@ function renderOverview(m) {
       <thead><tr><th>Поз.</th><th>Игрок</th><th>Герой</th><th class="num">K/D/A</th><th class="num">GPM</th><th class="num">LH</th><th class="num">Урон</th><th>Предметы</th><th class="num">Оценка</th></tr></thead>
       <tbody>${team.map(p => `<tr class="${p === me ? 'me' : ''}">
         <td>${posBadge(p)}</td>
-        <td>${esc(p.personaname || 'Аноним')} ${p === best ? '<span class="chip pos">MVP</span>' : ''}${p === worst ? '<span class="chip neg">Худший</span>' : ''}<div class="dim rank-line">${p.rank_tier ? rankEmblem(p.rank_tier, 22) + rankName(p.rank_tier) : ''}</div></td>
+        <td>${p.account_id && p !== me ? `<button class="player-link" data-id="${p.account_id}" title="Открыть анализ этого игрока">${esc(p.personaname || 'Без ника')}</button>` : esc(p.personaname || 'Аноним')} ${p === best ? '<span class="chip pos">MVP</span>' : ''}${p === worst ? '<span class="chip neg">Худший</span>' : ''}<div class="dim rank-line">${p.rank_tier ? rankEmblem(p.rank_tier, 22) + rankName(p.rank_tier) : ''}</div></td>
         <td>${heroCell(p.hero_id)}</td><td class="num">${p.kills}/${p.deaths}/${p.assists}</td>
         <td class="num">${p.gold_per_min}</td><td class="num">${p.last_hits}</td><td class="num">${fmt(p.hero_damage)}</td>
         <td><div class="items">${finalItems(p).map(itemIcon).join('')}</div></td>
@@ -753,6 +753,13 @@ function renderOverview(m) {
     <p class="note">Оценка 0–10: сравнение с другими игроками на том же герое по метрикам роли (позиции 1–3 считаются корами, 4–5 саппортами).</p>
     <div class="row note"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a><a href="https://stratz.com/matches/${m.match_id}" target="_blank" rel="noopener">Stratz</a></div>`;
   wireParse(m);
+  $('dlgBody').querySelectorAll('.player-link').forEach(b => b.addEventListener('click', () => {
+    $('matchDlg').close();
+    location.hash = '#player';
+    $('steamId').value = b.dataset.id;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    analyze();
+  }));
 }
 
 function advCell(v) {
