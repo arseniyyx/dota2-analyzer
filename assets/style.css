@@ -94,6 +94,16 @@ a:hover { color: var(--accent-strong); }
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px;
   box-shadow: var(--shadow), 0 0 0 4px rgba(227,176,75,.0); transition: box-shadow .2s, border-color .2s;
 }
+.search-row { position: relative; }
+.history { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 15; padding: 6px; text-align: left; max-height: 380px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow); }
+.history-head { padding: 6px 10px; }
+.history-item { display: flex; align-items: center; gap: 4px; border-radius: 8px; }
+.history-item:hover { background: var(--surface-hover); }
+.history-pick { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: none; background: none; text-align: left; }
+.history-pick > img { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+.history-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-del { width: 32px; height: 32px; flex-shrink: 0; border: none; border-radius: 6px; background: none; color: var(--fg-muted); font-size: 18px; }
+.history-del:hover { background: var(--bad-soft); color: var(--bad); }
 .search-row:focus-within { border-color: var(--accent); box-shadow: var(--shadow), 0 0 0 4px var(--accent-soft); }
 .search-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding-left: 12px; color: var(--fg-dim); }
 .search-field input { flex: 1; min-width: 0; padding: 10px 0; border: none; background: transparent; color: var(--fg); font-size: 16px; }

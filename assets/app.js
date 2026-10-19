@@ -314,7 +314,28 @@ function parseId(input) {
   return num.length >= 17 ? String(BigInt(num) - 76561197960265728n) : num;
 }
 
-$('searchForm').addEventListener('submit', e => { e.preventDefault(); analyze(); });
+$('searchForm').addEventListener('submit', e => { e.preventDefault(); $('history').hidden = true; analyze(); });
+
+const getHistory = () => store.get('history') || [];
+function saveHistory(entry) { store.set('history', [entry, ...getHistory().filter(h => h.id !== entry.id)].slice(0, 8)); }
+function renderHistory() {
+  const list = getHistory();
+  $('history').hidden = !list.length;
+  $('history').innerHTML = '<div class="label history-head">Недавние</div>' + list.map(h => `
+    <div class="history-item">
+      <button type="button" class="history-pick" data-id="${esc(h.id)}"><img src="${esc(h.avatar)}" alt="" width="32" height="32"><span class="history-name">${esc(h.name)}</span><span class="dim">${esc(h.id)}</span>${rankEmblem(h.tier, 26)}</button>
+      <button type="button" class="history-del" data-id="${esc(h.id)}" aria-label="Убрать ${esc(h.name)} из истории">×</button>
+    </div>`).join('');
+}
+$('steamId').addEventListener('focus', renderHistory);
+$('steamId').addEventListener('click', renderHistory);
+$('history').addEventListener('click', e => {
+  const pick = e.target.closest('.history-pick'), del = e.target.closest('.history-del');
+  if (pick) { $('steamId').value = pick.dataset.id; $('history').hidden = true; analyze(); }
+  if (del) { store.set('history', getHistory().filter(h => h.id !== del.dataset.id)); renderHistory(); $('steamId').focus(); }
+});
+document.addEventListener('click', e => { if (!e.target.closest('.search-row')) $('history').hidden = true; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('history').hidden = true; });
 
 async function analyze() {
   const raw = $('steamId').value;
@@ -331,6 +352,7 @@ async function analyze() {
       getJSON(`${API}/players/${id}/matches?limit=100&project=kills&project=deaths&project=assists&project=gold_per_min&project=hero_id`).catch(() => []),
     ]);
     if (!profile.profile) throw new Error('Профиль не найден. Проверь ID или включи в Dota «Открытая история матчей».');
+    saveHistory({ id, name: profile.profile.personaname, avatar: profile.profile.avatarmedium, tier: profile.rank_tier });
     S.playerId = Number(id); S.profile = profile; S.poolHeroes = poolHeroes; S.recent = recent; S.period = period; S.posFilter = 0; S.history = history;
     S.group = groupOfTier(profile.rank_tier);
     await loadGroup(S.group).catch(() => null);
