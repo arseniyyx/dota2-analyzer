@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=19">
+<link rel="stylesheet" href="assets/style.css?v=20">
 </head>
 <body>
 <div class="wrap">
@@ -24,6 +24,7 @@
       <a href="#learn" id="navLearn" data-en="Learn">Обучение</a>
     </nav>
     <span class="updated" id="updated"></span>
+    <button class="lang-btn key-btn" id="keyBtn" type="button" aria-label="Токен Stratz" data-en-aria="Stratz token"><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg></button>
     <button class="lang-btn" id="langBtn" type="button">EN</button>
   </header>
 
@@ -151,6 +152,20 @@
 
 <datalist id="heroList"></datalist>
 
+<dialog id="keyDlg" class="key-dlg">
+  <form method="dialog" class="stack-sm" id="keyForm">
+    <h2 class="section-title">Stratz</h2>
+    <p class="note" data-en="A second data source: exact positions in every game and loading even when OpenDota hits its limit. The token stays in this browser only.">Второй источник данных: точные позиции в каждой игре и загрузка матчей, даже когда OpenDota упирается в лимит. Токен хранится только в этом браузере.</p>
+    <input class="field" id="keyInput" type="password" autocomplete="off" placeholder="Токен со stratz.com/api" data-en-placeholder="Token from stratz.com/api" aria-label="Токен Stratz" data-en-aria="Stratz token">
+    <p class="note" id="keyStatus"></p>
+    <div class="row">
+      <button class="btn small" id="keySave" type="submit" value="save" data-en="Save">Сохранить</button>
+      <button class="btn ghost small" id="keyRemove" type="submit" value="remove" data-en="Remove">Удалить</button>
+      <a class="btn ghost small" href="https://stratz.com/api" target="_blank" rel="noopener" data-en="Get a token">Получить токен</a>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="matchDlg">
   <div class="dlg-head">
     <div class="row"><h2 id="dlgTitle">Матч</h2><button class="btn ghost small" id="dlgClose" data-en="Close">Закрыть</button></div>
@@ -166,6 +181,6 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=19"></script>
+<script src="assets/app.js?v=20"></script>
 </body>
 </html>

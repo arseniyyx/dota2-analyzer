@@ -152,6 +152,38 @@ async function getJSONCached(url, minutes) {
   return d;
 }
 
+/* Stratz: optional second source. The token lives only in this browser's storage. */
+const stratzToken = () => store.get('stratz') || '';
+async function stratzQ(query) {
+  const r = await fetch('https://api.stratz.com/graphql', { method: 'POST', headers: { Authorization: `Bearer ${stratzToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
+  if (!r.ok) throw new Error(`Stratz ${r.status}`);
+  const d = await r.json();
+  if (d.errors?.length && !d.data) throw new Error(d.errors[0].message);
+  return d.data;
+}
+const SZ_P = 'steamAccountId steamAccount { name seasonRank } isRadiant playerSlot heroId position imp kills deaths assists numLastHits numDenies goldPerMinute experiencePerMinute networth heroDamage towerDamage heroHealing item0Id item1Id item2Id item3Id item4Id item5Id neutral0Id';
+async function stratzRecent(id, take = 20) {
+  const d = await stratzQ(`{ player(steamAccountId: ${+id}) { matches(request: { take: ${take} }) { id didRadiantWin durationSeconds startDateTime radiantNetworthLeads players { ${SZ_P} } } } }`);
+  return Object.fromEntries((d.player?.matches || []).map(m => [m.id, m]));
+}
+const szPos = p => +(p.position || '').replace('POSITION_', '') || undefined;
+const sum = a => (a || []).reduce((s, x) => s + x, 0);
+function fromStratz(x) {
+  return {
+    _src: 'stratz', match_id: x.id, radiant_win: x.didRadiantWin, duration: x.durationSeconds, start_time: x.startDateTime,
+    radiant_score: sum(x.players.filter(p => p.isRadiant).map(p => p.kills)), dire_score: sum(x.players.filter(p => !p.isRadiant).map(p => p.kills)), version: null, radiant_gold_adv: x.radiantNetworthLeads || null,
+    teamfights: [], objectives: [], buildings: [],
+    players: x.players.map(p => ({
+      account_id: p.steamAccountId, player_slot: p.playerSlot, hero_id: p.heroId, kills: p.kills, deaths: p.deaths, assists: p.assists,
+      last_hits: p.numLastHits, denies: p.numDenies, gold_per_min: p.goldPerMinute, xp_per_min: p.experiencePerMinute, net_worth: p.networth,
+      hero_damage: p.heroDamage, tower_damage: p.towerDamage, hero_healing: p.heroHealing,
+      item_0: p.item0Id, item_1: p.item1Id, item_2: p.item2Id, item_3: p.item3Id, item_4: p.item4Id, item_5: p.item5Id, item_neutral: p.neutral0Id,
+      personaname: p.steamAccount?.name, rank_tier: p.steamAccount?.seasonRank, position_est: szPos(p), imp: p.imp,
+      purchase_log: [], obs: [], sen: [], obs_left: [], sen_left: [], deaths_t: [], gold_t: null, buyback_t: [],
+    })),
+  };
+}
+
 async function pool(tasks, n, onDone) {
   const out = new Array(tasks.length); let i = 0, done = 0;
   async function worker() {
@@ -294,7 +326,8 @@ const pctOf = (p, k) => p.benchmarks?.[k]?.pct ?? null;
 function scorePlayer(p) {
   const w = WEIGHTS[p._role]; let s = 0, tw = 0;
   for (const k in w) { const v = pctOf(p, k); if (v != null) { s += v * w[k]; tw += w[k]; } }
-  return tw ? s / tw * 10 : 0;
+  if (tw) return s / tw * 10;
+  return p.imp != null ? Math.max(0, Math.min(10, 5 + p.imp / 8)) : 0;
 }
 
 /* ---------- match loading ---------- */
@@ -345,10 +378,21 @@ async function loadMatch(id, force) {
 }
 
 function prepareMatch(m) {
+  const sz = S.sz?.[m.match_id];
+  if (sz) m.players.forEach(p => {
+    const q = sz.players.find(x => x.playerSlot === p.player_slot);
+    if (!q) return;
+    if (q.imp != null) p.imp = q.imp;
+    if (!m.players.every(x => x.position_est) && szPos(q)) p.position_est = szPos(q);
+  });
   m.players.forEach(p => { p.radiant_win = m.radiant_win; p.isRadiant = p.player_slot < 128; });
   const rad = m.players.filter(p => p.isRadiant), dire = m.players.filter(p => !p.isRadiant);
   assignPositions(rad); assignPositions(dire);
   m.players.forEach(p => { p._score = scorePlayer(p); });
+  // no benchmarks and no IMP (fresh Stratz-only match): rank against the other nine players
+  const kda = x => (x.kills + x.assists) / (x.deaths + 1);
+  const rel = (p, f) => m.players.filter(x => f(x) < f(p)).length / 9;
+  m.players.forEach(p => { if (!p.benchmarks && p.imp == null) p._score = (rel(p, x => x.gold_per_min) + rel(p, x => x.hero_damage) + rel(p, kda)) / 3 * 10; });
   m._me = m.players.find(p => p.account_id === S.playerId) || null;
   return m;
 }
@@ -413,9 +457,14 @@ async function analyze() {
     await loadGroup(S.group).catch(() => null);
 
     $('loadingText').textContent = `${L('Загружаю матчи', 'Loading matches')} 0/${recent.length}`;
+    const szP = stratzToken() ? stratzRecent(id).catch(() => null) : null;
     const ms = await pool(recent.map(r => () => loadMatch(r.match_id)), 3, d => { $('loadingText').textContent = `${L('Загружаю матчи', 'Loading matches')} ${d}/${recent.length}`; });
+    S.sz = (await szP) || {};
     S.matches = {};
-    ms.forEach(m => { if (m) S.matches[m.match_id] = prepareMatch(m); });
+    recent.forEach((r, i) => {
+      const m = ms[i] || (S.sz[r.match_id] && fromStratz(S.sz[r.match_id]));
+      if (m) S.matches[m.match_id] = prepareMatch(m);
+    });
 
     renderPeriod();
     renderFlags();
@@ -1590,6 +1639,20 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
+function wireKey() {
+  const dlg = $('keyDlg'), sync = () => $('keyBtn').classList.toggle('on', !!stratzToken());
+  const status = () => { $('keyStatus').textContent = stratzToken() ? L('Токен подключён', 'Token connected') : ''; };
+  sync();
+  $('keyBtn').addEventListener('click', () => { $('keyInput').value = ''; status(); dlg.showModal(); });
+  dlg.addEventListener('close', () => {
+    if (dlg.returnValue === 'remove') localStorage.removeItem('stratz');
+    else if (dlg.returnValue === 'save' && $('keyInput').value.trim()) store.set('stratz', $('keyInput').value.trim());
+    else return;
+    sync();
+    if (S.playerId) analyze();
+  });
+}
+
 function applyStaticLang() {
   document.documentElement.lang = LANG;
   $('langBtn').textContent = EN ? 'RU' : 'EN';
@@ -1603,6 +1666,7 @@ function applyStaticLang() {
 
 (async function boot() {
   applyStaticLang();
+  wireKey();
   try { await loadBase(); } catch (e) { showError(L('Не удалось загрузить список героев: ', 'Couldn\'t load the hero list: ') + e.message); return; }
   route();
   const last = store.get('lastId');
