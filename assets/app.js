@@ -875,7 +875,7 @@ function candidates(G, pos, enemies, allies, exclude) {
 function candRow(c, mineCls) {
   const parts = c.vs.map(([e, v]) => `<span title="${L('против', 'vs')} ${esc(heroName(e))}">${heroImg(e) ? `<img src="${heroImg(e)}" alt="">` : ''}<b class="${signCls(v)}">${pct(v)}</b></span>`)
     .concat(c.wi.map(([a, v]) => `<span title="${L('вместе с', 'with')} ${esc(heroName(a))}">+${heroImg(a) ? `<img src="${heroImg(a)}" alt="">` : ''}<b class="${signCls(v)}">${pct(v)}</b></span>`));
-  return `<div class="cand ${mineCls || ''}">${heroCell(c.h)}<span class="score ${signCls(c.score)}">${pct(c.score)}</span><div class="breakdown">${parts.join('')}<span class="dim">${L('мета', 'meta')} ${pct(c.base)}</span></div></div>`;
+  return `<div class="cand ${mineCls || ''}" data-hero="${c.h}">${heroCell(c.h)}<span class="score ${signCls(c.score)}">${pct(c.score)}</span><div class="breakdown">${parts.join('')}<span class="dim">${L('мета', 'meta')} ${pct(c.base)}</span></div></div>`;
 }
 
 function renderDraft(m, G) {
@@ -1444,7 +1444,7 @@ async function renderMeta() {
     list.map((h, i) => {
       const pr = posPrior(h); const top = pr.map((v, j) => [j + 1, v]).filter(x => x[1] >= 0.18).sort((a, b) => b[1] - a[1]);
       const curve = DUR_LABELS.map((_, b) => durWr(G, h, b)); const bb = curve.indexOf(Math.max(...curve));
-      return `<tr><td class="dim">${i + 1}</td><td>${heroCell(h)}</td><td class="num ${signCls(heroWr(G, h) - .5)}">${(heroWr(G, h) * 100).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${top.map(([p]) => `<span class="posb">${p}</span>`).join(' ')}</td><td class="num muted">${DUR_LABELS[bb]} ${L('мин', 'min')}</td></tr>`;
+      return `<tr class="hero-row" data-hero="${h}" tabindex="0" title="${L('Открыть сборки и гайд', 'Open builds and guide')}"><td class="dim">${i + 1}</td><td>${heroCell(h)}</td><td class="num ${signCls(heroWr(G, h) - .5)}">${(heroWr(G, h) * 100).toFixed(1)}%</td><td class="num muted">${(heroPick(G, h) * 100).toFixed(1)}%</td><td class="num">${top.map(([p]) => `<span class="posb">${p}</span>`).join(' ')}</td><td class="num muted">${DUR_LABELS[bb]} ${L('мин', 'min')}</td></tr>`;
     }).join('') + '</tbody>';
   renderCounterTool(G);
   renderItemHero(G);
@@ -1476,7 +1476,7 @@ function renderItemHero(G) {
   $('itemCounters').innerHTML = rows.length ? rows.map(([k, lift, obs]) => `<div class="item-row">${itemIcon(k)}<div><div class="name">${esc(itemName(k))}</div><div class="why">${esc(itemWhy(k))}</div></div><div class="lift pos" title="${L(`В ${lift.toFixed(1)} раза чаще обычного · ${obs} из ${Math.round(n / 5)} про-игр`, `${lift.toFixed(1)}× more often than usual · ${obs} of ${Math.round(n / 5)} pro games`)}">×${lift.toFixed(1)}</div></div>`).join('')
     : `<div class="empty">${L('Мало про-игр против этого героя в патче.', 'Too few pro games against this hero this patch.')}</div>`;
   const counters = Object.keys(S.heroes).map(Number).filter(x => x !== h && G.idx[x] != null && heroPick(G, x) >= 0.01).map(x => ({ x, v: adv(G, x, h) })).sort((a, b) => b.v - a.v).slice(0, 8);
-  $('heroCounters').innerHTML = counters.map(c => `<div class="item-row"><span>${heroIcon(c.x)}</span><div><div class="name">${esc(heroName(c.x))}</div><div class="why">${L('лучшие позиции', 'best positions')}: ${posPrior(c.x).map((v, j) => [j + 1, v]).filter(z => z[1] >= .18).map(z => z[0]).join(', ')}</div></div><div class="lift pos">${pct(c.v)}</div></div>`).join('');
+  $('heroCounters').innerHTML = counters.map(c => `<div class="item-row" data-hero="${c.x}"><span>${heroIcon(c.x)}</span><div><div class="name">${esc(heroName(c.x))}</div><div class="why">${L('лучшие позиции', 'best positions')}: ${posPrior(c.x).map((v, j) => [j + 1, v]).filter(z => z[1] >= .18).map(z => z[0]).join(', ')}</div></div><div class="lift pos">${pct(c.v)}</div></div>`).join('');
 }
 
 function addHero(input, arr, max) {
@@ -1980,6 +1980,16 @@ $('learnHeroInput').addEventListener('keydown', e => {
 });
 
 /* ---------- router & boot ---------- */
+
+// any hero in the meta view opens its guide (builds, power spikes) on the Learn page
+function openGuide(h) {
+  S.learnHero = h; S.learnHeroPicked = true; S.guidePos = null;
+  location.hash = '#learn';
+  setTimeout(() => $('heroGuide').scrollIntoView({ behavior: motionOn() ? 'smooth' : 'auto', block: 'start' }), 350);
+}
+const metaHero = e => e.target.closest('#viewMeta [data-hero]');
+$('viewMeta').addEventListener('click', e => { const el = metaHero(e); if (el && !e.target.closest('button')) openGuide(+el.dataset.hero); });
+$('viewMeta').addEventListener('keydown', e => { const el = metaHero(e); if (el && e.key === 'Enter') openGuide(+el.dataset.hero); });
 
 const VIEW_TITLES = {
   player: L('Dota 2 Analyzer — разбор игрока и мета патча', 'Dota 2 Analyzer: player analysis and patch meta'),

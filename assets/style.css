@@ -548,3 +548,8 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .site-foot { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 28px 0 36px; font-size: 13px; color: var(--fg-muted); }
 .site-foot a { color: var(--fg-muted); }
 .site-foot a:hover { color: var(--accent-strong); }
+
+#viewMeta [data-hero] { cursor: pointer; transition: background .15s; }
+#viewMeta [data-hero]:hover, #viewMeta .hero-row:focus-visible { background: var(--surface-hover); }
+#viewMeta [data-hero]:hover .hero-cell span { color: var(--accent-strong); }
+#viewMeta .hero-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
