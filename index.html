@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=60">
+<link rel="stylesheet" href="assets/style.css?v=62">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -99,10 +99,10 @@
         <div id="stats" class="stats-grid"></div>
         </div>
         <aside class="top-cal">
+          <p class="cal-note" id="calNote"></p>
           <div class="card pad cal-card"><div id="calendar"></div>
           <div class="legend cal-legend"><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 11 11H1Z" fill="var(--good)"/></svg><span data-en="more wins">больше побед</span></span><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 11 1 1h10Z" fill="var(--bad)"/></svg><span data-en="more losses">больше поражений</span></span><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 11 6 6 11 1 6Z" fill="var(--accent)"/></svg><span data-en="even">поровну</span></span><span data-en="bigger means more games">крупнее — больше игр</span></div>
         </div>
-          <p class="cal-note" id="calNote"></p>
         </aside>
       </div>
 
@@ -112,8 +112,9 @@
         <div id="positions" class="pos-grid"></div>
       </section>
 
-      <section class="section">
-        <h2 class="section-title" data-en="Strengths and weaknesses">Слабые и сильные стороны</h2>
+      <section class="section" id="issuesSection">
+        <h2 class="section-title"><button class="fold-btn" id="issuesFold" type="button" aria-expanded="true" aria-controls="issues"><span data-en="Strengths and weaknesses">Слабые и сильные стороны</span><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2>
+        <div id="issuesBrief" class="issues-brief" hidden></div>
         <div id="issues" class="issue-list"></div>
       </section>
 
@@ -341,10 +342,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=60"></script>
-<script src="assets/grid.js?v=60"></script>
-<script src="assets/gridart.js?v=60"></script>
-<script src="assets/optimize.js?v=60"></script>
-<script src="assets/mods.js?v=60"></script>
+<script src="assets/app.js?v=62"></script>
+<script src="assets/grid.js?v=62"></script>
+<script src="assets/gridart.js?v=62"></script>
+<script src="assets/optimize.js?v=62"></script>
+<script src="assets/mods.js?v=62"></script>
 </body>
 </html>

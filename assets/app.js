@@ -640,7 +640,19 @@ function renderIssues(t, recent, heroes) {
   const order = { bad: 0, warn: 1, good: 2 };
   items.sort((a, b) => order[a.sev] - order[b.sev]);
   $('issues').innerHTML = items.map(i => `<div class="card issue ${i.sev}">${sevIcon(i.sev)}<div class="body"><div class="title">${esc(i.title)}</div><div class="detail">${esc(i.detail)}</div></div><div class="val" style="color:var(--${i.sev})">${i.val}</div></div>`).join('');
+  // folded view: one line of chips, so you still see what's inside
+  $('issuesBrief').innerHTML = items.map(i => `<span class="chip brief-${i.sev}">${esc(i.title)}</span>`).join('');
+  setIssuesFold(store.get('issuesFolded') === true);
 }
+
+function setIssuesFold(folded) {
+  $('issues').hidden = folded;
+  $('issuesBrief').hidden = !folded;
+  $('issuesFold').setAttribute('aria-expanded', String(!folded));
+  store.set('issuesFolded', folded);
+}
+$('issuesFold').addEventListener('click', () => setIssuesFold(!$('issues').hidden));
+$('issuesBrief').addEventListener('click', () => setIssuesFold(false));
 
 document.querySelectorAll('#mineTabs .tab').forEach(b => b.addEventListener('click', () => setMetaTab(b.dataset.tab, S.groups[S.group])));
 
