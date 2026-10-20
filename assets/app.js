@@ -1586,7 +1586,7 @@ async function renderCalendar(id) {
   box.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   let games;
   try {
-    games = await getJSONCached(`${API}/players/${id}/matches?date=366&project=start_time&project=radiant_win&project=player_slot`, 30);
+    games = await getJSONCached(`${API}/players/${id}/matches?date=366&project=start_time&project=radiant_win&project=player_slot&project=hero_id&project=kills&project=deaths&project=assists&project=duration`, 30);
   } catch {
     box.innerHTML = `<div class="empty">${L('Не удалось загрузить игры за год', 'Couldn\'t load the year of games')}</div>`;
     return;
@@ -1596,12 +1596,31 @@ async function renderCalendar(id) {
   for (const g of games) {
     if (g.radiant_win == null || !g.start_time) continue;
     const d = new Date(g.start_time * 1000), k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const v = S.calDays.get(k) || { w: 0, l: 0 };
+    const v = S.calDays.get(k) || { w: 0, l: 0, games: [] };
     isWin(g) ? v.w++ : v.l++;
+    v.games.push(g);
     S.calDays.set(k, v);
   }
   S.calBack = 0;
   drawCalendar();
+}
+
+// the games of one day in a popup; a click on a game opens the full match breakdown
+function openDay(year, month, day) {
+  const v = S.calDays.get(`${year}-${month}-${day}`);
+  if (!v) return;
+  const date = new Date(year, month, day).toLocaleDateString(EN ? 'en-GB' : 'ru-RU', { day: 'numeric', month: 'long', weekday: 'long' });
+  $('dayTitle').textContent = `${date} · ${v.w}–${v.l}`;
+  $('dayList').innerHTML = [...v.games].sort((a, b) => a.start_time - b.start_time).map(g => {
+    const win = isWin(g), t = new Date(g.start_time * 1000).toLocaleTimeString(EN ? 'en-GB' : 'ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return `<button class="day-game ${win ? 'win' : 'loss'}" type="button" data-id="${g.match_id}">
+      <span class="chip ${win ? 'pos' : 'neg'}">${win ? L('Победа', 'Win') : L('Поражение', 'Loss')}</span>
+      ${heroImg(g.hero_id) ? `<img src="${heroImg(g.hero_id)}" alt="">` : ''}<b>${esc(heroName(g.hero_id))}</b>
+      <span class="num">${g.kills} / <span class="neg">${g.deaths}</span> / ${g.assists}</span>
+      <span class="note">${t} · ${mmss(g.duration || 0)}</span></button>`;
+  }).join('');
+  $('dayList').querySelectorAll('.day-game').forEach(b => b.addEventListener('click', () => { $('dayDlg').close(); openMatch(+b.dataset.id); }));
+  $('dayDlg').showModal();
 }
 
 const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
@@ -1624,7 +1643,7 @@ function drawCalendar() {
     const shape = v.w > v.l ? `<path d="M${c} ${c - h}L${c + h} ${c + h}L${c - h} ${c + h}Z" class="cal-w"/>`
       : v.l > v.w ? `<path d="M${c} ${c + h}L${c + h} ${c - h}L${c - h} ${c - h}Z" class="cal-l"/>`
       : `<path d="M${c} ${c - h}L${c + h} ${c}L${c} ${c + h}L${c - h} ${c}Z" class="cal-d"/>`;
-    cells.push(`<div class="cal-cell played ${isToday ? 'today' : ''}" title="${L(`${day} ${monthsOf[month]}`, `${months[month]} ${day}`)}: ${v.w}–${v.l} (${L('побед–поражений', 'wins–losses')})"><span class="cal-n">${day}</span><svg viewBox="0 0 30 30" aria-hidden="true">${shape}</svg><span class="cal-score">${v.w}–${v.l}</span></div>`);
+    cells.push(`<div class="cal-cell played ${isToday ? 'today' : ''}" data-day="${day}" role="button" tabindex="0" title="${L(`${day} ${monthsOf[month]}`, `${months[month]} ${day}`)}: ${v.w}–${v.l} (${L('побед–поражений', 'wins–losses')})"><span class="cal-n">${day}</span><svg viewBox="0 0 30 30" aria-hidden="true">${shape}</svg><span class="cal-score">${v.w}–${v.l}</span></div>`);
   }
   $('calendar').innerHTML = `
     <div class="cal-head"><button class="btn ghost small" id="calPrev" ${S.calBack >= 11 ? 'disabled' : ''} aria-label="${L('Предыдущий месяц', 'Previous month')}">‹</button>
@@ -1633,6 +1652,11 @@ function drawCalendar() {
     <div class="cal-grid">${wd.map(d => `<div class="cal-wd">${d}</div>`).join('')}${cells.join('')}</div>`;
   $('calPrev').addEventListener('click', () => { S.calBack++; drawCalendar(); });
   $('calNext').addEventListener('click', () => { S.calBack--; drawCalendar(); });
+  $('calendar').querySelectorAll('.cal-cell.played').forEach(c => {
+    const open = () => openDay(year, month, +c.dataset.day);
+    c.addEventListener('click', open);
+    c.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
+  });
   $('calNote').textContent = total ? [
     L(`${months[month]}: ${total} ${plural(total, 'игра', 'игры', 'игр')} за ${active} ${plural(active, 'день', 'дня', 'дней')}, ${Math.round(wins / total * 100)}% побед`, `${months[month]}: ${total} games on ${active} days, ${Math.round(wins / total * 100)}% wins`),
     bestDay && bestDay.w > bestDay.l ? L(`лучший день — ${bestDay.day} ${monthsOf[month]} (${bestDay.w}–${bestDay.l})`, `best day: ${months[month]} ${bestDay.day} (${bestDay.w}–${bestDay.l})`) : '',

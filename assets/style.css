@@ -668,3 +668,22 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .brief-warn { color: var(--accent); border-color: rgba(227, 176, 75, .35); }
 .brief-good { color: var(--good); border-color: rgba(79, 210, 134, .35); }
 @media (prefers-reduced-motion: reduce) { .fold-btn .i { transition: none; } }
+.cal-cell.played { cursor: pointer; }
+.cal-cell.played:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.day-dlg { width: min(520px, calc(100vw - 32px)); }
+.day-head { justify-content: space-between; flex-wrap: nowrap; }
+.day-head .section-title { font-size: 15px; }
+.day-head .section-title::after { display: none; }
+.day-list { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.day-game { display: grid; grid-template-columns: 96px 44px minmax(0, 1fr) auto; grid-template-areas: "res img name kda" "res img time time"; gap: 0 10px; align-items: center; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); font: inherit; text-align: left; cursor: pointer; box-shadow: inset 3px 0 0 var(--good); }
+.day-game.loss { box-shadow: inset 3px 0 0 var(--bad); }
+.day-game:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+.day-game .chip { grid-area: res; justify-self: start; }
+.day-game img { grid-area: img; width: 44px; height: 25px; border-radius: 4px; object-fit: cover; }
+.day-game b { grid-area: name; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-game .num { grid-area: kda; font-size: 13px; font-variant-numeric: tabular-nums; }
+.day-game .note { grid-area: time; font-size: 11px; }
+@media (max-width: 520px) {
+  .day-game { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "img name kda" "img time time"; }
+  .day-game .chip { display: none; }
+}
