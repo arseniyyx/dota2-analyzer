@@ -35,7 +35,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.4.1"
+APP_VERSION = "1.4.2"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -55,6 +55,10 @@ PAK_FIRST = 60
 GAME_DIRS = ("particles", "materials", "models", "panorama", "resource", "sounds", "soundevents", "scripts", "maps")
 DATA_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "D2AMods")
 UA = {"User-Agent": f"D2AMods/{APP_VERSION}"}
+
+
+def ver(v):
+    return tuple(int(x) for x in re.findall(r"\d+", v or "0"))
 
 
 # ---------- game ----------
@@ -682,7 +686,8 @@ def run_gui():
             items = (st["d2pfx"] or {}).get(st["cat"], [])
             q = st["query"].strip().lower()
             return [m for m in items if q in m["name"].lower()] if q else items
-        return [m for m in st["catalog"]["mods"] if m.get("tab", "optimize") == st["tab"]]
+        # a mod that needs a newer app stays hidden instead of failing at install
+        return [m for m in st["catalog"]["mods"] if m.get("tab", "optimize") == st["tab"] and ver(m.get("min_app")) <= ver(APP_VERSION)]
 
     def thumb(m, label):
         """Preview images load in the background and are cached on disk."""
@@ -920,8 +925,14 @@ def run_gui():
     newest = st["catalog"].get("app", {}).get("version")
     if offline:
         status.set("Нет интернета: показан сохранённый список модов.")
-    elif newest and tuple(map(int, newest.split("."))) > tuple(map(int, APP_VERSION.split("."))):
+    elif newest and ver(newest) > ver(APP_VERSION):
         status.set(f"Есть новая версия программы {newest}: скачай её на сайте (кнопка «Сайт»).")
+        download = st["catalog"].get("app", {}).get("download")
+
+        def offer():
+            if download and messagebox.askyesno("D2A Mods", f"Вышла новая версия {newest} (у тебя {APP_VERSION}). Скачать сейчас?\n\nПосле скачивания закрой эту программу и запусти новую."):
+                webbrowser.open(download)
+        root.after(400, offer)
     root.after(50, draw)
     root.mainloop()
     pool.shutdown(wait=False, cancel_futures=True)
