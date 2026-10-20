@@ -27,6 +27,13 @@ def load(name):
         return json.load(f)
 
 
+def short(text, limit=158):
+    """Meta description that fits in search results: cut at a word boundary."""
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1].rsplit(" ", 1)[0].rstrip(",.:;—") + "…"
+
+
 def slug(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
@@ -322,9 +329,8 @@ class Page:
       <div class="card pad"><h2 class="section-title">{t('Кто контрит', 'Countered by')} {esc(name)}</h2><ul class="hero-list">{cnt(counters, lambda x: G.adv(x, h), "neg")}</ul></div>
       <div class="card pad"><h2 class="section-title">{t('Кого контрит', 'Counters')} {esc(name)}</h2><ul class="hero-list">{cnt(victims, lambda x: G.adv(h, x), "pos")}</ul></div>
     </div><p class="note">{t('Преимущество в матчапе в пабах Divine–Immortal, с поправкой на общий винрейт героев.', 'Matchup advantage in Divine–Immortal pubs, adjusted for each hero’s overall win rate.')}</p></section>"""
-        title = t(f"{name}: гайд, сборка, пики силы и контрпики — патч {c['patch']} | Dota 2 Analyzer",
-                  f"{name} guide: build, power spikes and counters — patch {c['patch']} | Dota 2 Analyzer")
-        desc = " ".join(summary)[:300]
+        title = t(f"{name}: гайд и сборка, патч {c['patch']} | Dota 2 Analyzer", f"{name} guide and build, patch {c['patch']} | Dota 2 Analyzer")
+        desc = short(" ".join(summary))
         crumbs = [(t("Главная", "Home"), ""), (t("Герои", "Heroes"), "heroes/"), (name, path)]
         art = {"@context": "https://schema.org", "@type": "Article", "headline": title.split(" | ")[0], "inLanguage": self.lang,
                "about": {"@type": "VideoGame", "name": "Dota 2"}, "dateModified": datetime.fromtimestamp(c["updated"], timezone.utc).isoformat(),
@@ -342,7 +348,7 @@ class Page:
             f'<a href="{self.url("hero/" + slug(hs["localized_name"]) + "/")}">{self.hero_img(h)}<span>{esc(hs["localized_name"])}</span></a>'
             for h, hs in sorted(((h, hs) for h, hs in c["heroes"].items() if hs.get("primary_attr") == a), key=lambda x: x[1]["localized_name"]))}</div></section>
 """ for a, label in groups)
-        title = t(f"Гайды по героям Dota 2 — сборки и контрпики, патч {c['patch']} | Dota 2 Analyzer", f"Dota 2 hero guides: builds and counters, patch {c['patch']} | Dota 2 Analyzer")
+        title = t(f"Гайды по героям Dota 2, патч {c['patch']} | Dota 2 Analyzer", f"Dota 2 hero guides, patch {c['patch']} | Dota 2 Analyzer")
         return "heroes/", self.shell("heroes/", title, t("Гайды по всем героям Dota 2: сборки, пики силы, контрпики и игры про. Обновляется каждый день.",
                                                           "Guides for every Dota 2 hero: builds, power spikes, counters and pro games. Updated daily."),
                                      body, [(t("Главная", "Home"), ""), (t("Герои", "Heroes"), "heroes/")])
@@ -362,7 +368,7 @@ class Page:
                       f'The best heroes for each position by win rate in Divine–Immortal pubs over the last {c["days"]} days. Counterpicks and draft help are in the interactive meta.')}</p>
     <p><a class="btn" href="{BASE}{'?lang=en' if self.lang == 'en' else ''}#meta">{t('Интерактивная мета и контрпики', 'Interactive meta and counterpicks')}</a></p>
 {''.join(secs)}"""
-        title = t(f"Мета Dota 2 {c['patch']}: лучшие герои по позициям | Dota 2 Analyzer", f"Dota 2 meta {c['patch']}: best heroes by position | Dota 2 Analyzer")
+        title = t(f"Мета Dota 2 {c['patch']}: лучшие герои | Dota 2 Analyzer", f"Dota 2 meta {c['patch']}: best heroes | Dota 2 Analyzer")
         return "meta/", self.shell("meta/", title, t(f"Сильнейшие герои Dota 2 на каждой позиции в патче {c['patch']}: винрейт и пикрейт в пабах Divine–Immortal, обновляется каждый день.",
                                                      f"The strongest Dota 2 heroes in every position in patch {c['patch']}: win and pick rates in Divine–Immortal pubs, updated daily."),
                                    body, [(t("Главная", "Home"), ""), (t("Мета", "Meta"), "meta/")])

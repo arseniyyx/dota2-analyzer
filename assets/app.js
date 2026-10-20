@@ -1982,9 +1982,9 @@ $('learnHeroInput').addEventListener('keydown', e => {
 /* ---------- router & boot ---------- */
 
 const VIEW_TITLES = {
-  player: L('Dota 2 Analyzer — разбор игрока, мета патча и обучение', 'Dota 2 Analyzer: player analysis, patch meta and coaching'),
-  meta: L('Мета патча Dota 2: сильнейшие герои и контрпики — Dota 2 Analyzer', 'Dota 2 patch meta: strongest heroes and counterpicks | Dota 2 Analyzer'),
-  learn: L('Обучение Dota 2: сборки, пики силы и фарм про-игроков — Dota 2 Analyzer', 'Dota 2 coaching: builds, power spikes and pro farming | Dota 2 Analyzer'),
+  player: L('Dota 2 Analyzer — разбор игрока и мета патча', 'Dota 2 Analyzer: player analysis and patch meta'),
+  meta: L('Мета Dota 2: сильнейшие герои и контрпики', 'Dota 2 meta: strongest heroes and counters'),
+  learn: L('Обучение Dota 2: сборки и пики силы героев', 'Dota 2 coaching: hero builds and power spikes'),
 };
 function route() {
   const view = location.hash === '#meta' ? 'meta' : location.hash === '#learn' ? 'learn' : 'player';
@@ -2036,8 +2036,8 @@ function applyStaticLang() {
     location.href = u.toString();
   });
   if (EN) {  // English copy of the head for the ?lang=en page
-    document.title = 'Dota 2 Analyzer: player analysis, patch meta and coaching';
-    document.querySelector('meta[name="description"]').content = 'Free Dota 2 player analysis by Steam ID: positions, weak spots, draft and counterpicks, an interactive match map, patch meta, hero builds and power spikes, and pro farming patterns.';
+    document.title = 'Dota 2 Analyzer: player analysis and patch meta';
+    document.querySelector('meta[name="description"]').content = 'Dota 2 player analysis by Steam ID: positions, weak spots, draft, match map, patch meta, hero builds and power spikes.';
     document.querySelector('link[rel="canonical"]').href = 'https://arseniyyx.github.io/dota2-analyzer/?lang=en';
   }
   if (!EN) return;
