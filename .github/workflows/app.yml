@@ -1,0 +1,31 @@
+name: Build D2A Mods app
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", ".github/workflows/app.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install vpk==1.4.0 pyinstaller==6.11.1
+      - run: pyinstaller --onefile --windowed --name D2AMods app/d2mods.py
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver=$(python -c "import re; print(re.search(r'APP_VERSION = \"([^\"]+)\"', open('app/d2mods.py', encoding='utf-8').read()).group(1))")
+          tag="app-v$ver"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "D2A Mods $ver" --latest \
+            --notes "Mod manager for Dota 2 from Dota 2 Analyzer: https://arseniyyx.github.io/dota2-analyzer/#mods"
+          gh release upload "$tag" dist/D2AMods.exe --clobber

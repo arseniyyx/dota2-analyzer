@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "app": {
+    "version": "1.0.0",
+    "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
+  },
+  "templates": {
+    "particle": "particles/dev/empty_particle.vpcf_c",
+    "sound": "sounds/null.vsnd_c"
+  },
+  "mods": [
+    {
+      "id": "no-weather",
+      "category": "fps",
+      "name": { "ru": "Без погоды", "en": "No weather" },
+      "desc": {
+        "ru": "Убирает дождь, снег, пепел, листья и другие эффекты погоды из предметов. Самая заметная прибавка FPS в драках на слабых ПК.",
+        "en": "Removes rain, snow, ash, leaves and other weather effects from items. The most noticeable FPS gain in fights on weak PCs."
+      },
+      "rules": [{ "match": "^particles/rain_fx/econ_.*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-map-ambient-fx",
+      "category": "fps",
+      "name": { "ru": "Без фоновых эффектов карты", "en": "No map ambient effects" },
+      "desc": {
+        "ru": "Убирает декоративные частицы ландшафтов: светлячков, пыль, блики, капли в пещерах. На игру не влияет, только на картинку и FPS.",
+        "en": "Removes decorative terrain particles: fireflies, dust, glints, cave drips. No gameplay effect, only visuals and FPS."
+      },
+      "rules": [{ "match": "^(particles/rain_fx/(?!econ_).*|maps/[^/]+_assets/particles/.*)\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-ambient-sounds",
+      "category": "sound",
+      "name": { "ru": "Без фоновых звуков карты", "en": "No map ambient sounds" },
+      "desc": {
+        "ru": "Глушит фон карты и звуки животных. Все игровые звуки остаются: рога, аванпосты, Торментор, Twin Gates, падение деревьев, смена дня и ночи.",
+        "en": "Mutes the map soundscape and animal sounds. Every gameplay sound stays: horns, outposts, Tormentor, Twin Gates, falling trees, day and night."
+      },
+      "rules": [{ "match": "^sounds/ambient/(soundscapes/.*|chicken|pig|sheep|frog|fish\\w*|ambient)\\.vsnd_c$", "template": "sound" }]
+    },
+    {
+      "id": "no-courier-fx",
+      "category": "fps",
+      "name": { "ru": "Без эффектов курьеров", "en": "No courier effects" },
+      "desc": {
+        "ru": "Убирает огонь, свечение и следы у курьеров из сокровищниц. Сами курьеры остаются.",
+        "en": "Removes fire, glow and trails from treasure couriers. The couriers themselves stay."
+      },
+      "rules": [{ "match": "^particles/econ/courier/.*\\.vpcf_c$", "template": "particle" }]
+    }
+  ]
+}

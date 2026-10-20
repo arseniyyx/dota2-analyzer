@@ -614,3 +614,11 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .opt-toggle .chip { min-width: 44px; justify-content: center; }
 .opt-mods { border-color: rgba(240, 84, 74, .3); }
 @media (max-width: 900px) { .opt-wrap { grid-template-columns: 1fr; } }
+
+.mods-hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: linear-gradient(90deg, var(--accent-soft), transparent 70%); }
+.mods-title { font-family: var(--display); font-weight: 400; font-size: 24px; }
+.mods-warn { display: flex; gap: 12px; align-items: flex-start; border-color: rgba(240, 84, 74, .35); }
+.mods-warn .i { color: var(--bad); flex: none; margin-top: 2px; }
+.mods-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.mod .row { justify-content: space-between; margin-bottom: 6px; }
+.mods-hero a.btn { text-decoration: none; }
