@@ -6,7 +6,9 @@ Two kinds of mods:
   * ready mods from the open Dota2PornFx (D2PFX) catalog, downloaded only when ticked, checked by SHA-256
     and copied as they are.
 Everything goes into the folder of the game's voice language (e.g. game/dota_russian, or dota_<x> when Dota's
-launch options have -language <x>) as pakNN_dir.vpk, the way the D2PFX guide installs mods, so game updates don't switch them off. With an English client the files
+launch options have -language <x>) as pakNN_dir.vpk, the way the D2PFX guide installs mods, so game updates don't switch them off.
+Fonts are the one exception: Dota reads them straight from game/dota/panorama/fonts, so a font mod replaces those
+files after copying the originals to our backup, and uninstall puts the originals back. With an English client the files
 go to game/dota_d2a, mounted by one line in gameinfo.gi (backed up first). Uninstall removes only our files.
 
 Usage:  D2AMods.exe                                  window
@@ -30,7 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.3.0"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -38,7 +40,11 @@ D2PFX_CREDITS = "https://github.com/h6rd/Dota2PornFxWeb#credits"
 D2PFX_RAW = "https://raw.githubusercontent.com/h6rd/Dota2PornFxWeb/main/assets/"
 # only categories that neither unlock paid Valve cosmetics nor give an in-game advantage
 D2PFX_CATS = [("shaders", "Шейдеры тумана"), ("cursors", "Курсоры"), ("backgrounds", "Фоны меню"), ("hero-icons", "Иконки героев"),
-              ("item-icons", "Иконки предметов"), ("ranks", "Иконки рангов"), ("pings", "Пинги"), ("creep-deny", "Денай")]
+              ("item-icons", "Иконки предметов"), ("ranks", "Иконки рангов"), ("pings", "Пинги"), ("creep-deny", "Денай"),
+              ("terrains", "Ландшафты"), ("fonts", "Шрифты")]
+# paid Valve terrains, and terrain packs that also swap trees (tree shapes matter for vision)
+D2PFX_SKIP = re.compile(r"^(TI\d+\b|Dota\+|Crownfall|The Kings New Journey)|\btrees?\b", re.I)
+SINGLE_CATS = {"shaders", "terrains", "fonts"}  # mods of these categories replace the same files, so one at a time
 MOD_FOLDER = "dota_d2a"  # English clients only
 MARK = "// D2A mods"
 PAK_FIRST = 60
@@ -231,6 +237,8 @@ def load_d2pfx():
             f = m.get("file") or ""
             if not f or f.startswith("http") or m.get("type") == "guide" or not re.search(r"\.(zip|vpk)$", f, re.I):
                 continue
+            if D2PFX_SKIP.search(m.get("name") or ""):
+                continue
             author = next((l.get("url") for l in m.get("links", []) if l.get("type") == "author"), None)
             prev = m.get("preview") or ""
             out.setdefault(cat, []).append({
@@ -316,6 +324,51 @@ def place_d2pfx(mod, folder, numbers, tmp, log):
     return written, loose
 
 
+def fonts_dir(game):
+    return os.path.join(game, "dota", "panorama", "fonts")
+
+
+def fonts_backup(game):
+    return os.path.join(DATA_DIR, "backup", hashlib.sha1(os.path.normcase(game).encode()).hexdigest()[:10], "fonts")
+
+
+def place_font(mod, game, log):
+    """A D2PFX font: the files from assets/custom/ replace the game's fonts; originals go to our backup first."""
+    path = fetch_file(mod["url"], mod["sha256"], mod["name"], log)
+    dst_dir, bak = fonts_dir(game), fonts_backup(game)
+    os.makedirs(bak, exist_ok=True)
+    written = []
+    with zipfile.ZipFile(path) as z:
+        for info in z.infolist():
+            parts = info.filename.replace("\\", "/").lower().split("/")
+            if info.is_dir() or "custom" not in parts[:-1] or not re.fullmatch(r"[\w.-]+\.(otf|ttf)", parts[-1]):
+                continue
+            dst = os.path.join(dst_dir, parts[-1])
+            if os.path.exists(dst) and not os.path.exists(os.path.join(bak, parts[-1])):
+                shutil.copy2(dst, os.path.join(bak, parts[-1]))
+            with z.open(info) as src, open(dst, "wb") as out:
+                shutil.copyfileobj(src, out)
+            written.append(parts[-1])
+    if not written:
+        raise RuntimeError(f"В шрифте «{mod['name']}» не нашлось файлов шрифта")
+    return written
+
+
+def restore_fonts(game, names):
+    """Puts the original fonts back; a file the game didn't have before is removed."""
+    dst_dir, bak = fonts_dir(game), fonts_backup(game)
+    for name in names:
+        src, dst = os.path.join(bak, name), os.path.join(dst_dir, name)
+        try:
+            if os.path.exists(src):
+                shutil.copy2(src, dst)
+                os.remove(src)
+            elif os.path.exists(dst):
+                os.remove(dst)
+        except OSError:
+            pass
+
+
 def state_path():
     return os.path.join(DATA_DIR, "installed.json")
 
@@ -378,6 +431,7 @@ def remove_ours(game):
                 os.remove(os.path.join(rec["folder"], name))
             except OSError:
                 pass
+        restore_fonts(game, rec.get("fonts", []))
     unmount(game)
     shutil.rmtree(os.path.join(game, MOD_FOLDER), ignore_errors=True)
     save_state(st)
@@ -391,12 +445,16 @@ def install(game, catalog, d2pfx, ids, log=print):
     os.makedirs(folder, exist_ok=True)
     taken = {f.lower() for f in os.listdir(folder)}
     numbers = (n for n in range(PAK_FIRST, 100) if not any(t.startswith(f"pak{n:02d}_") for t in taken))
-    files, total = [], 0
+    files, fonts, total = [], [], 0
     by_id = {m["id"]: m for ms in (d2pfx or {}).values() for m in ms}
     try:
         with tempfile.TemporaryDirectory() as tmp:
             total += build_rules(game, catalog, ids, tmp, log)
             for mid in [i for i in ids if i in by_id]:
+                if by_id[mid]["cat"] == "fonts":
+                    fonts += place_font(by_id[mid], game, log)
+                    total += len(fonts)
+                    continue
                 written, loose = place_d2pfx(by_id[mid], folder, numbers, tmp, log)
                 files += written
                 total += loose + len(written)
@@ -408,11 +466,11 @@ def install(game, catalog, d2pfx, ids, log=print):
         raise RuntimeError("Слишком много модов сразу: в папке закончились свободные номера pak60–pak99")
     finally:
         st = load_state()
-        st[game] = {"folder": folder, "files": files, "mods": sorted(ids), "method": method, "app": APP_VERSION}
+        st[game] = {"folder": folder, "files": files, "fonts": fonts, "mods": sorted(ids), "method": method, "app": APP_VERSION}
         save_state(st)
-    if not files:
+    if not files and not fonts:
         raise RuntimeError("Ни один файл не подошёл под выбранные моды")
-    if method == "gameinfo":
+    if method == "gameinfo" and files:
         mount(game)
     return total
 
@@ -452,6 +510,10 @@ def run_gui():
     F = "Segoe UI"
     root = tk.Tk()
     root.title(f"D2A Mods {APP_VERSION}")
+    try:  # the icon is bundled next to the code (PyInstaller unpacks it into _MEIPASS)
+        root.iconbitmap(os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), "icon.ico"))
+    except Exception:
+        pass
     root.configure(bg=C["bg"])
     root.geometry("1040x700")
     root.minsize(680, 500)
@@ -594,6 +656,8 @@ def run_gui():
 
         def toggle(_e=None):
             if not st["busy"]:
+                if m["id"] not in st["sel"] and m.get("cat") in SINGLE_CATS:  # one fog shader / terrain / font at a time
+                    st["sel"] = {i for i in st["sel"] if not i.startswith(f"d2pfx:{m['cat']}/")}
                 st["sel"].symmetric_difference_update({m["id"]})
                 draw()
 
@@ -665,10 +729,16 @@ def run_gui():
 
     def set_cat(cat):
         st["cat"] = cat
+        if cat == "terrains":
+            status.set("Ландшафты меняют стандартную карту: если в Dota выбран другой ландшафт, верни стандартный.")
+        elif cat == "fonts":
+            status.set("Шрифт заменяет файлы шрифтов игры, оригиналы сохраняются. Не во всех шрифтах есть кириллица.")
         canvas.yview_moveto(0)
         draw()
 
     def select_view(on):
+        if on and st["tab"] == "d2pfx" and st["cat"] in SINGLE_CATS:
+            return status.set("В этой категории можно выбрать только один мод: они меняют одни и те же файлы.")
         ids = {m["id"] for m in view_items()}
         st["sel"] = (st["sel"] | ids) if on else (st["sel"] - ids)
         draw()
