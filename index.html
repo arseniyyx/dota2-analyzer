@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=54">
+<link rel="stylesheet" href="assets/style.css?v=56">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -95,6 +95,14 @@
       <div id="flags" class="issue-list"></div>
       <div class="period"><span class="label" data-en="Stats for">Статистика за</span><div class="tabs" id="periodTabs" role="tablist"></div></div>
       <div id="stats" class="stats-grid"></div>
+
+      <section class="section">
+        <h2 class="section-title" data-en="Games calendar">Календарь игр</h2>
+        <p class="note" id="calNote"></p>
+        <div class="card pad cal-card"><div id="calendar"></div>
+          <div class="legend cal-legend"><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 11 11H1Z" fill="var(--good)"/></svg><span data-en="more wins">больше побед</span></span><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 11 1 1h10Z" fill="var(--bad)"/></svg><span data-en="more losses">больше поражений</span></span><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 11 6 6 11 1 6Z" fill="var(--accent)"/></svg><span data-en="even">поровну</span></span><span data-en="bigger means more games">крупнее — больше игр</span></div>
+        </div>
+      </section>
 
       <section class="section">
         <h2 class="section-title" data-en="Positions">Позиции</h2>
@@ -331,10 +339,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=54"></script>
-<script src="assets/grid.js?v=54"></script>
-<script src="assets/gridart.js?v=54"></script>
-<script src="assets/optimize.js?v=54"></script>
-<script src="assets/mods.js?v=54"></script>
+<script src="assets/app.js?v=56"></script>
+<script src="assets/grid.js?v=56"></script>
+<script src="assets/gridart.js?v=56"></script>
+<script src="assets/optimize.js?v=56"></script>
+<script src="assets/mods.js?v=56"></script>
 </body>
 </html>
