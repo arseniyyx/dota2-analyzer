@@ -7,8 +7,10 @@ Two kinds of mods:
     and copied as they are.
 Everything goes into the folder of the game's voice language (e.g. game/dota_russian, or dota_<x> when Dota's
 launch options have -language <x>) as pakNN_dir.vpk, the way the D2PFX guide installs mods, so game updates don't switch them off.
-Fonts are the one exception: Dota reads them straight from game/dota/panorama/fonts, so a font mod replaces those
-files after copying the originals to our backup, and uninstall puts the originals back. With an English client the files
+Fonts and English texts are the exception: Dota reads fonts straight from game/dota/panorama/fonts and some texts from
+game/core, so those files are replaced in place after copying the originals to our backup; uninstall puts them back.
+English interface: with -language dutch (how D2PFX runs mods on an English client) the game's *_english texts go
+into our VPK under *_dutch names, so the folder works and the text stays English. With an English client the files
 go to game/dota_d2a, mounted by one line in gameinfo.gi (backed up first). Uninstall removes only our files.
 
 Usage:  D2AMods.exe                                  window
@@ -32,7 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -44,7 +46,8 @@ D2PFX_CATS = [("shaders", "Шейдеры тумана"), ("cursors", "Курс�
               ("terrains", "Ландшафты"), ("fonts", "Шрифты")]
 # paid Valve terrains, and terrain packs that also swap trees (tree shapes matter for vision)
 D2PFX_SKIP = re.compile(r"^(TI\d+\b|Dota\+|Crownfall|The Kings New Journey)|\btrees?\b", re.I)
-SINGLE_CATS = {"shaders", "terrains", "fonts"}  # mods of these categories replace the same files, so one at a time
+SINGLE_CATS = {"shaders", "terrains", "fonts"}
+ENGLISH_ID = "english-ui"  # mods of these categories replace the same files, so one at a time
 MOD_FOLDER = "dota_d2a"  # English clients only
 MARK = "// D2A mods"
 PAK_FIRST = 60
@@ -253,7 +256,7 @@ def load_d2pfx():
 
 def build_rules(game, catalog, mod_ids, tmp, log=print):
     """Our rule mods: matching game files replaced by the game's own empty effect / silence, written into tmp."""
-    chosen = [m for m in catalog["mods"] if m["id"] in mod_ids]
+    chosen = [m for m in catalog["mods"] if m["id"] in mod_ids and m.get("rules")]
     if not chosen:
         return 0
     pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
@@ -324,41 +327,26 @@ def place_d2pfx(mod, folder, numbers, tmp, log):
     return written, loose
 
 
-def fonts_dir(game):
-    return os.path.join(game, "dota", "panorama", "fonts")
+def backup_root(game):
+    return os.path.join(DATA_DIR, "backup", hashlib.sha1(os.path.normcase(game).encode()).hexdigest()[:10])
 
 
-def fonts_backup(game):
-    return os.path.join(DATA_DIR, "backup", hashlib.sha1(os.path.normcase(game).encode()).hexdigest()[:10], "fonts")
+def replace_loose(game, rel, data):
+    """Writes a file straight into the game folder (fonts, some texts); the original goes to our backup first."""
+    dst, bak = os.path.join(game, *rel.split("/")), os.path.join(backup_root(game), *rel.split("/"))
+    if os.path.exists(dst) and not os.path.exists(bak):
+        os.makedirs(os.path.dirname(bak), exist_ok=True)
+        shutil.copy2(dst, bak)
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, "wb") as f:
+        f.write(data)
+    return rel
 
 
-def place_font(mod, game, log):
-    """A D2PFX font: the files from assets/custom/ replace the game's fonts; originals go to our backup first."""
-    path = fetch_file(mod["url"], mod["sha256"], mod["name"], log)
-    dst_dir, bak = fonts_dir(game), fonts_backup(game)
-    os.makedirs(bak, exist_ok=True)
-    written = []
-    with zipfile.ZipFile(path) as z:
-        for info in z.infolist():
-            parts = info.filename.replace("\\", "/").lower().split("/")
-            if info.is_dir() or "custom" not in parts[:-1] or not re.fullmatch(r"[\w.-]+\.(otf|ttf)", parts[-1]):
-                continue
-            dst = os.path.join(dst_dir, parts[-1])
-            if os.path.exists(dst) and not os.path.exists(os.path.join(bak, parts[-1])):
-                shutil.copy2(dst, os.path.join(bak, parts[-1]))
-            with z.open(info) as src, open(dst, "wb") as out:
-                shutil.copyfileobj(src, out)
-            written.append(parts[-1])
-    if not written:
-        raise RuntimeError(f"В шрифте «{mod['name']}» не нашлось файлов шрифта")
-    return written
-
-
-def restore_fonts(game, names):
-    """Puts the original fonts back; a file the game didn't have before is removed."""
-    dst_dir, bak = fonts_dir(game), fonts_backup(game)
-    for name in names:
-        src, dst = os.path.join(bak, name), os.path.join(dst_dir, name)
+def restore_loose(game, rels):
+    """Puts the originals back; a file the game didn't have before is removed."""
+    for rel in rels:
+        src, dst = os.path.join(backup_root(game), *rel.split("/")), os.path.join(game, *rel.split("/"))
         try:
             if os.path.exists(src):
                 shutil.copy2(src, dst)
@@ -367,6 +355,46 @@ def restore_fonts(game, names):
                 os.remove(dst)
         except OSError:
             pass
+
+
+def place_font(mod, game, log):
+    """A D2PFX font: the files from assets/custom/ replace the game's fonts."""
+    path = fetch_file(mod["url"], mod["sha256"], mod["name"], log)
+    written = []
+    with zipfile.ZipFile(path) as z:
+        for info in z.infolist():
+            parts = info.filename.replace("\\", "/").lower().split("/")
+            if info.is_dir() or "custom" not in parts[:-1] or not re.fullmatch(r"[\w.-]+\.(otf|ttf)", parts[-1]):
+                continue
+            written.append(replace_loose(game, f"dota/panorama/fonts/{parts[-1]}", z.read(info)))
+    if not written:
+        raise RuntimeError(f"В шрифте «{mod['name']}» не нашлось файлов шрифта")
+    return written
+
+
+def english_ui(game, lang, tmp, log):
+    """English text on a client started with -language <lang>: the game's *_english texts under *_<lang> names,
+    in our VPK for the pak ones and in place (with a backup) for the loose ones in core/ and dota_addons/."""
+    eng = re.compile(r"_english(\.(txt|vtt))$")
+    pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
+    n = 0
+    for p in pak:
+        if eng.search(p):
+            dst = os.path.join(tmp, *eng.sub(rf"_{lang}\1", p).split("/"))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            with open(dst, "wb") as f:
+                f.write(pak.get_file(p).read())
+            n += 1
+    loose = []
+    for sub in ("core", "dota_addons"):
+        for dirpath, _, names in os.walk(os.path.join(game, sub)):
+            for name in names:
+                src = os.path.join(dirpath, re.sub(rf"_{lang}(\.(txt|vtt))$", r"_english\1", name))
+                if src != os.path.join(dirpath, name) and os.path.isfile(src):
+                    with open(src, "rb") as f:
+                        loose.append(replace_loose(game, os.path.relpath(os.path.join(dirpath, name), game).replace("\\", "/"), f.read()))
+    log(f"Английский интерфейс: {n + len(loose)} файлов текста")
+    return n, loose
 
 
 def state_path():
@@ -431,7 +459,12 @@ def remove_ours(game):
                 os.remove(os.path.join(rec["folder"], name))
             except OSError:
                 pass
-        restore_fonts(game, rec.get("fonts", []))
+        legacy = os.path.join(backup_root(game), "fonts")  # 1.3.0 kept font backups in their own folder
+        for name in rec.get("fonts", []):
+            if os.path.exists(os.path.join(legacy, name)):
+                os.makedirs(os.path.join(backup_root(game), "dota", "panorama", "fonts"), exist_ok=True)
+                os.replace(os.path.join(legacy, name), os.path.join(backup_root(game), "dota", "panorama", "fonts", name))
+        restore_loose(game, rec.get("loose", []) + [f"dota/panorama/fonts/{n}" for n in rec.get("fonts", [])])
     unmount(game)
     shutil.rmtree(os.path.join(game, MOD_FOLDER), ignore_errors=True)
     save_state(st)
@@ -440,20 +473,29 @@ def remove_ours(game):
 def install(game, catalog, d2pfx, ids, log=print):
     if dota_running():
         raise RuntimeError("Закрой Dota 2 перед установкой")
-    remove_ours(game)
     method, folder = target(game)
+    lang = os.path.basename(folder)[len("dota_"):] if method == "lang" else "english"
+    if ENGLISH_ID in ids and lang == "english":
+        raise RuntimeError("Чтобы моды работали с английским интерфейсом, поставь в параметрах запуска Dota «-language dutch» "
+                           "(Steam → Dota 2 → Свойства → Параметры запуска) вместо «-language english» и нажми «Установить» ещё раз.")
+    remove_ours(game)
     os.makedirs(folder, exist_ok=True)
     taken = {f.lower() for f in os.listdir(folder)}
     numbers = (n for n in range(PAK_FIRST, 100) if not any(t.startswith(f"pak{n:02d}_") for t in taken))
-    files, fonts, total = [], [], 0
+    files, replaced, total = [], [], 0
     by_id = {m["id"]: m for ms in (d2pfx or {}).values() for m in ms}
     try:
         with tempfile.TemporaryDirectory() as tmp:
             total += build_rules(game, catalog, ids, tmp, log)
+            if ENGLISH_ID in ids:
+                n, texts = english_ui(game, lang, tmp, log)
+                replaced += texts
+                total += n + len(texts)
             for mid in [i for i in ids if i in by_id]:
                 if by_id[mid]["cat"] == "fonts":
-                    fonts += place_font(by_id[mid], game, log)
-                    total += len(fonts)
+                    written = place_font(by_id[mid], game, log)
+                    replaced += written
+                    total += len(written)
                     continue
                 written, loose = place_d2pfx(by_id[mid], folder, numbers, tmp, log)
                 files += written
@@ -466,9 +508,9 @@ def install(game, catalog, d2pfx, ids, log=print):
         raise RuntimeError("Слишком много модов сразу: в папке закончились свободные номера pak60–pak99")
     finally:
         st = load_state()
-        st[game] = {"folder": folder, "files": files, "fonts": fonts, "mods": sorted(ids), "method": method, "app": APP_VERSION}
+        st[game] = {"folder": folder, "files": files, "loose": replaced, "mods": sorted(ids), "method": method, "app": APP_VERSION}
         save_state(st)
-    if not files and not fonts:
+    if not files and not replaced:
         raise RuntimeError("Ни один файл не подошёл под выбранные моды")
     if method == "gameinfo" and files:
         mount(game)
@@ -757,7 +799,7 @@ def run_gui():
             return status.set("Не нашёл Dota 2. Нажми «Папка игры» и укажи ...\\steamapps\\common\\dota 2 beta\\game")
         have = installed_ids(st["game"])
         method, folder = target(st["game"])
-        where = f"моды встанут в папку {os.path.basename(folder)}" if method == "lang" else "английский клиент: моды подключаются через gameinfo.gi"
+        where = f"моды встанут в папку {os.path.basename(folder)}" if method == "lang" else "английский клиент: надёжнее поставить -language dutch и включить «Английский интерфейс»"
         rec = load_state().get(st["game"]) or {}
         if have and rec.get("folder") and os.path.normcase(rec["folder"]) != os.path.normcase(folder):
             status.set(f"Dota сейчас читает папку {os.path.basename(folder)} (язык или параметр -language поменялся). Нажми «Установить выбранные», чтобы перенести моды туда.")

@@ -1,7 +1,7 @@
 {
   "version": 2,
   "app": {
-    "version": "1.3.0",
+    "version": "1.3.1",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
@@ -90,6 +90,11 @@
       "name": { "ru": "Без эффектов насмешек", "en": "No taunt effects" },
       "desc": { "ru": "Частицы от насмешек героев. Сама анимация остаётся.", "en": "Particles from hero taunts. The animation stays." },
       "rules": [{ "match": "^particles/econ/taunts?/.*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "english-ui", "tab": "custom", "category": "visual", "icon": "Aa", "kind": "english", "rules": [],
+      "name": { "ru": "Английский интерфейс", "en": "English interface" },
+      "desc": { "ru": "Для тех, кто играет на английском: поставь в параметрах запуска -language dutch, и моды заработают, а текст останется английским. С русской озвучкой тоже работает.", "en": "For English players: set -language dutch in the launch options, mods will work and the text stays English. Also works with Russian voices." }
     }
   ],
   "packs": []
