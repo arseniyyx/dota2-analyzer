@@ -1624,7 +1624,7 @@ function drawCalendar() {
   $('calNote').textContent = total ? [
     L(`${months[month]}: ${total} ${plural(total, 'игра', 'игры', 'игр')} за ${active} ${plural(active, 'день', 'дня', 'дней')}, ${Math.round(wins / total * 100)}% побед`, `${months[month]}: ${total} games on ${active} days, ${Math.round(wins / total * 100)}% wins`),
     bestDay && bestDay.w > bestDay.l ? L(`лучший день — ${bestDay.day} ${monthsOf[month]} (${bestDay.w}–${bestDay.l})`, `best day: ${months[month]} ${bestDay.day} (${bestDay.w}–${bestDay.l})`) : '',
-  ].filter(Boolean).join(' · ') : L(`${months[month]}: открытых игр нет`, `${months[month]}: no public games`);
+  ].filter(Boolean).join('\n') : L(`${months[month]}: открытых игр нет`, `${months[month]}: no public games`);
 }
 
 /* ---------- learn view ---------- */
