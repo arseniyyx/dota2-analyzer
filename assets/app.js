@@ -2018,6 +2018,8 @@ function route() {
   if (view === 'tools') {
     renderTools();
     if (h === '#grid-meta') $('grid-meta').scrollIntoView({ block: 'center' });
+    renderArt();
+    if (h === '#grid-art') $('grid-art').scrollIntoView({ block: 'start' });
   }
   $('navPlayer').setAttribute('aria-current', view === 'player' ? 'page' : 'false');
   $('navMeta').setAttribute('aria-current', meta ? 'page' : 'false');

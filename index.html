@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=44">
+<link rel="stylesheet" href="assets/style.css?v=45">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -62,6 +62,7 @@
         <button type="button" id="navTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu"><span data-en="Tools">Полезное</span><svg class="i" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="nav-menu" id="toolsMenu" role="menu" hidden>
           <a href="#grid" role="menuitem"><b data-en="Hero grid from a picture">Сетка героев из картинки</b><small data-en="Tier list or screenshot into a Dota 2 grid">Тир-лист или скриншот в сетку Dota 2</small></a>
+          <a href="#grid-art" role="menuitem"><b data-en="Art grid from a photo">Арт-сетка из фото</b><small data-en="A picture drawn with dots and zones for your heroes">Рисунок из точек и зоны для твоих героев</small></a>
           <a href="#grid-meta" role="menuitem"><b data-en="Meta hero grid">Мета-сетка героев</b><small data-en="Strongest heroes by position for your rank">Сильнейшие герои по позициям для твоего ранга</small></a>
         </div>
       </div>
@@ -192,6 +193,40 @@
       <div id="gridPreview"></div>
       <div id="gridEditor" class="stack-sm"></div>
     </section>
+
+    <section class="section" id="grid-art">
+      <h2 class="section-title" data-en="Art grid from a photo">Арт-сетка из фото</h2>
+      <p class="note" data-en="The picture is drawn with hundreds of tiny empty categories, and the zones are real categories: in Dota you drag your heroes into them.">Рисунок собирается из сотен маленьких пустых категорий, а зоны — настоящие категории: в Dota ты сам перетаскиваешь в них героев.</p>
+      <div class="art-wrap">
+        <div class="card pad stack-sm art-controls">
+          <label class="grid-drop small" id="artDrop" for="artFile">
+            <input type="file" id="artFile" accept="image/*" hidden>
+            <b data-en="Drop a photo or pick a file">Перетащи фото или выбери файл</b>
+            <span class="note" data-en="Faces and characters on a plain background work best">Лучше всего выходят лица и персонажи на простом фоне</span>
+          </label>
+          <div class="art-row"><label for="artStyle" data-en="Style">Стиль</label><select class="field" id="artStyle"><option value="edges" data-en="Outlines">Контуры</option><option value="fill" data-en="Dotted fill">Заливка точками</option></select></div>
+          <div class="art-row"><label for="artSpacing" data-en="Density">Плотность</label><input type="range" id="artSpacing" min="5" max="16" step="1"></div>
+          <div class="art-row"><label for="artAmount" data-en="Amount of dots">Количество точек</label><input type="range" id="artAmount" min="6" max="45" step="1"></div>
+          <div class="art-row"><label for="artChar" data-en="Dot">Символ</label><select class="field" id="artChar"><option>.</option><option>·</option><option>•</option><option>:</option><option>*</option><option>'</option><option>°</option></select></div>
+          <label class="art-check"><input type="checkbox" id="artInvert"><span data-en="Invert (for fill)">Инвертировать (для заливки)</span></label>
+          <div class="art-row"><label for="artPreset" data-en="Hero zones">Зоны для героев</label><select class="field" id="artPreset"><option value="right" data-en="5 on the right">5 справа</option><option value="bottom" data-en="5 at the bottom">5 снизу</option><option value="none" data-en="No zones">Без зон</option></select></div>
+          <div class="art-zones" id="artZoneNames"></div>
+          <label class="art-check"><input type="checkbox" id="artFrames"><span data-en="Dotted frames around zones">Рамки из точек вокруг зон</span></label>
+          <label class="art-check"><input type="checkbox" id="artFill"><span data-en="Pre-fill zones with meta heroes">Сразу заполнить зоны мета-героями</span></label>
+          <div class="art-row col"><label for="artText" data-en="Text in the corner">Текст в углу</label><textarea class="field" id="artText" rows="4" placeholder="Можно оставить пустым" data-en-placeholder="Can be left empty"></textarea></div>
+          <div class="art-row"><label for="artScale" data-en="Scale">Масштаб</label><input type="range" id="artScale" min="0.6" max="1.2" step="0.05"></div>
+        </div>
+        <div class="stack-sm">
+          <canvas id="artCanvas" class="art-canvas" aria-label="Предпросмотр сетки" data-en-aria="Grid preview"></canvas>
+          <p class="note" id="artCount"></p>
+          <div class="card pad stack-sm" id="artOut" hidden>
+            <div class="row"><input class="field" id="artName" maxlength="40" aria-label="Название сетки" data-en-aria="Grid name"><button class="btn" id="artDownload" type="button" data-en="Download hero_grid_config.json">Скачать hero_grid_config.json</button>
+              <label class="btn ghost small"><input type="file" id="artMerge" accept=".json,application/json" hidden><span data-en="Add to my file…">Добавить к моему файлу…</span></label></div>
+            <p class="note" id="artMergeNote" data-en="Load your current hero_grid_config.json first so your other grids stay. The file goes to Steam\userdata\&lt;Friend ID&gt;\570\remote\cfg\ while Dota is closed. If the picture doesn't fit the grid, change the scale.">Сначала загрузи свой текущий hero_grid_config.json, чтобы остальные сетки сохранились. Файл кладётся в Steam\userdata\&lt;Friend ID&gt;\570\remote\cfg\ при закрытой Dota. Если рисунок не влезает в сетку, поменяй масштаб.</p>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <main id="viewLearn" class="stack" hidden>
@@ -263,7 +298,8 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=44"></script>
-<script src="assets/grid.js?v=44"></script>
+<script src="assets/app.js?v=45"></script>
+<script src="assets/grid.js?v=45"></script>
+<script src="assets/gridart.js?v=45"></script>
 </body>
 </html>

@@ -583,3 +583,17 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .grid-out code { padding: 1px 6px; border-radius: 4px; background: var(--surface-2); font-size: 12px; word-break: break-all; }
 .grid-steps { margin-top: 10px; }
 @media (max-width: 720px) { .nav-menu { left: auto; right: 0; } }
+
+.art-wrap { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 14px; align-items: start; }
+.art-controls { gap: 12px; }
+.grid-drop.small { min-height: 110px; }
+.art-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; }
+.art-row.col { grid-template-columns: 1fr; }
+.art-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.art-row textarea { resize: vertical; font: inherit; }
+.art-check { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+.art-check input { accent-color: var(--accent); }
+.art-zones { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.art-zones .field { padding: 6px 10px; }
+.art-canvas { width: 100%; aspect-ratio: 2 / 1; border-radius: 12px; border: 1px solid var(--border); background: #121820; display: block; }
+@media (max-width: 900px) { .art-wrap { grid-template-columns: 1fr; } }
