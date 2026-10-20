@@ -205,7 +205,7 @@ def run_gui():
 
     state = {"game": find_dota(), "catalog": None, "vars": {}}
     tk.Label(root, text="D2A Mods", bg=BG, fg=GOLD, font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=18, pady=(14, 0))
-    tk.Label(root, text="Только визуальные и звуковые моды. Изменение файлов игры нарушает правила Steam — на свой риск.",
+    tk.Label(root, text="Только визуальные и звуковые моды, без преимущества в игре. После обновления Dota нажми «Установить» ещё раз.",
              bg=BG, fg=MUTED, font=("Segoe UI", 9), wraplength=580, justify="left").pack(anchor="w", padx=18)
 
     path_row = tk.Frame(root, bg=BG)

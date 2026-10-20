@@ -82,7 +82,7 @@ function renderOptimize() {
       </div>
       <div class="card pad stack-sm opt-mods">
         <h3 class="label">${L('А моды вроде Minify?', 'What about mods like Minify?')}</h3>
-        <p>${L('Minify и похожие программы подменяют файлы игры: убирают погоду, часть эффектов и звуков. Это даёт немного FPS, но изменение файлов клиента нарушает правила Steam и Dota, и Valve может это сломать или наказать. Используй только на свой риск.', 'Minify and similar tools replace game files to strip weather, some effects and sounds. It gains a little FPS, but changing client files breaks the Steam and Dota rules, and Valve can break it or punish it. Use only at your own risk.')}</p>
+        <p>${L('Minify и похожие программы подменяют файлы игры: убирают погоду, часть эффектов и звуков. Это даёт немного FPS. Valve официально такое не поддерживает, и обновления игры иногда отключают моды. У нас есть своя программа — раздел «Моды для Dota 2».', 'Minify and similar tools replace game files to strip weather, some effects and sounds. It gains a little FPS. Valve does not officially support it, and game updates sometimes switch mods off. We have our own app: see Mods for Dota 2.')}</p>
         <p class="note">${L('Всё выше — официальные настройки и команды, их можно использовать спокойно. Моды, которые дают преимущество (убрать туман войны, отдалить камеру сильнее разрешённого), — это читы, мы их не делаем.', 'Everything above is official settings and commands, safe to use. Mods that give an advantage (removing the fog of war, zooming the camera out further than allowed) are cheats, and we don\'t make them.')}</p>
       </div>
     </div>
