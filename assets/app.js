@@ -1708,14 +1708,13 @@ function drawCalendar() {
   const monthsOf = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
   const wd = L(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   const lead = (first.getDay() + 6) % 7; // weeks start on Monday
-  let wins = 0, total = 0, active = 0, bestDay = null;
+  let wins = 0, total = 0, active = 0;
   const cells = Array.from({ length: lead }, () => `<div class="cal-cell out"></div>`);
   for (let day = 1; day <= last; day++) {
     const v = S.calDays.get(`${year}-${month}-${day}`), isToday = S.calBack === 0 && day === now.getDate();
     if (!v) { cells.push(`<div class="cal-cell ${isToday ? 'today' : ''}"><span class="cal-n">${day}</span></div>`); continue; }
     const n = v.w + v.l, s = 9 + Math.min(n, 8) / 8 * 17, h = s / 2, c = 15;
     wins += v.w; total += n; active++;
-    if (!bestDay || v.w - v.l > bestDay.w - bestDay.l) bestDay = { day, ...v };
     const shape = v.w > v.l ? `<path d="M${c} ${c - h}L${c + h} ${c + h}L${c - h} ${c + h}Z" class="cal-w"/>`
       : v.l > v.w ? `<path d="M${c} ${c + h}L${c + h} ${c - h}L${c - h} ${c - h}Z" class="cal-l"/>`
       : `<path d="M${c} ${c - h}L${c + h} ${c}L${c} ${c + h}L${c - h} ${c}Z" class="cal-d"/>`;
@@ -1733,10 +1732,9 @@ function drawCalendar() {
     c.addEventListener('click', open);
     c.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
   });
-  $('calNote').textContent = total ? [
-    L(`${months[month]}: ${total} ${plural(total, 'игра', 'игры', 'игр')} за ${active} ${plural(active, 'день', 'дня', 'дней')}, ${Math.round(wins / total * 100)}% побед`, `${months[month]}: ${total} games on ${active} days, ${Math.round(wins / total * 100)}% wins`),
-    bestDay && bestDay.w > bestDay.l ? L(`лучший день — ${bestDay.day} ${monthsOf[month]} (${bestDay.w}–${bestDay.l})`, `best day: ${months[month]} ${bestDay.day} (${bestDay.w}–${bestDay.l})`) : '',
-  ].filter(Boolean).join('\n') : L(`${months[month]}: открытых игр нет`, `${months[month]}: no public games`);
+  $('calNote').textContent = total
+    ? `${total} ${EN ? 'games' : plural(total, 'игра', 'игры', 'игр')} · ${active} ${EN ? 'days' : plural(active, 'день', 'дня', 'дней')} · ${Math.round(wins / total * 100)}% ${L('побед', 'wins')}`
+    : L('В этом месяце открытых игр нет', 'No public games this month');
 }
 
 /* ---------- learn view ---------- */
