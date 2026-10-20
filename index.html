@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=64">
+<link rel="stylesheet" href="assets/style.css?v=65">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -103,6 +103,10 @@
           <div class="card pad cal-card"><div id="calendar"></div>
           <div class="legend cal-legend"><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 11 11H1Z" fill="var(--good)"/></svg><span data-en="more wins">больше побед</span></span><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 11 1 1h10Z" fill="var(--bad)"/></svg><span data-en="more losses">больше поражений</span></span><span><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 11 6 6 11 1 6Z" fill="var(--accent)"/></svg><span data-en="even">поровну</span></span><span data-en="bigger means more games">крупнее — больше игр</span></div>
         </div>
+          <div class="card mates-card">
+            <div class="mates-head"><span class="label" data-en="Party this week">С кем играл за неделю</span><button class="link-btn" id="cmpOpen" type="button" data-en="Compare">Сравнить</button></div>
+            <div id="mates"></div>
+          </div>
         </aside>
       </div>
 
@@ -311,6 +315,14 @@
   </form>
 </dialog>
 
+<dialog id="cmpDlg" class="key-dlg cmp-dlg">
+  <form method="dialog" class="stack-sm">
+    <div class="row day-head"><h2 class="section-title" data-en="Compare">Сравнение</h2><button class="btn ghost small" type="submit" data-en="Close">Закрыть</button></div>
+    <div class="cmp-search"><input class="field" id="cmpId" placeholder="ID или ссылка на профиль" data-en-placeholder="ID or profile link" autocomplete="off" aria-label="Игрок для сравнения" data-en-aria="Player to compare with"><button class="btn small" id="cmpGo" type="button" data-en="Compare">Сравнить</button></div>
+    <div id="cmpBox"></div>
+  </form>
+</dialog>
+
 <dialog id="supportDlg" class="key-dlg">
   <form method="dialog" class="stack-sm">
     <h2 class="section-title" data-en="Support the project">Поддержать проект</h2>
@@ -349,10 +361,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=64"></script>
-<script src="assets/grid.js?v=64"></script>
-<script src="assets/gridart.js?v=64"></script>
-<script src="assets/optimize.js?v=64"></script>
-<script src="assets/mods.js?v=64"></script>
+<script src="assets/app.js?v=65"></script>
+<script src="assets/grid.js?v=65"></script>
+<script src="assets/gridart.js?v=65"></script>
+<script src="assets/optimize.js?v=65"></script>
+<script src="assets/mods.js?v=65"></script>
 </body>
 </html>

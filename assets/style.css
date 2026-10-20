@@ -687,3 +687,28 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .day-game { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "img name kda" "img time time"; }
   .day-game .chip { display: none; }
 }
+
+.mates-card { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 286px; }
+.mates-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.link-btn { padding: 0; border: none; background: none; color: var(--fg-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.link-btn:hover { color: var(--accent); }
+#mates { display: flex; flex-direction: column; gap: 2px; }
+#mates > .note { font-size: 12px; margin: 0; }
+.mate { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 38px; gap: 8px; align-items: center; padding: 4px 6px; margin: 0 -6px; border: none; border-radius: 6px; background: none; color: var(--fg); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.mate:hover { background: var(--surface-hover); }
+.mate img, .mate-ph { width: 22px; height: 22px; border-radius: 50%; background: var(--border); }
+.mate-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mate .note { font-size: 11px; }
+.mate-wr { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
+.cmp-dlg { width: min(480px, calc(100vw - 32px)); }
+.cmp-search { display: flex; gap: 8px; }
+.cmp-search .field { flex: 1; min-width: 0; }
+.cmp-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px 12px; align-items: center; }
+.cmp-grid > :nth-child(3n+1) { text-align: right; justify-self: end; }
+.cmp-who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; padding-bottom: 6px; }
+.cmp-grid > :nth-child(3n+1).cmp-who { flex-direction: row-reverse; }
+.cmp-who img { width: 28px; height: 28px; border-radius: 50%; }
+.cmp-who b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.cmp-label { font-size: 12px; color: var(--fg-muted); text-align: center; }
+.cmp-grid .num { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.cmp-grid .num.better { color: var(--fg); font-weight: 600; }

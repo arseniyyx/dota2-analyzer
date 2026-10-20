@@ -478,6 +478,7 @@ async function analyze() {
     renderPositions();
     renderMatches();
     renderCalendar(id);
+    renderMates(id);
     $('results').hidden = false;
     revealList($('results').children);
     countUp($('results'));
@@ -1604,6 +1605,81 @@ async function renderCalendar(id) {
   S.calBack = 0;
   drawCalendar();
 }
+
+/* ---------- party mates and comparison ---------- */
+
+// people the player queued with in the last 7 days (2+ games together, so random teammates drop out)
+async function renderMates(id) {
+  const box = $('mates');
+  box.innerHTML = '';
+  const peers = await getJSONCached(`${API}/players/${id}/peers?date=7`, 30).catch(() => []);
+  if (String(S.playerId) !== String(id)) return;
+  const list = peers.filter(p => p.with_games >= 2).sort((a, b) => b.with_games - a.with_games).slice(0, 5);
+  box.innerHTML = list.length ? list.map(p => {
+    const wr = p.with_win / p.with_games;
+    return `<button class="mate" type="button" data-id="${p.account_id}" title="${L('Сравнить', 'Compare')}">
+      ${p.avatar ? `<img src="${esc(p.avatar)}" alt="" loading="lazy">` : '<span class="mate-ph"></span>'}
+      <span class="mate-name">${esc(p.personaname || L('Без имени', 'No name'))}</span>
+      <span class="note">${p.with_games} ${EN ? 'games' : plural(p.with_games, 'игра', 'игры', 'игр')}</span>
+      <span class="mate-wr ${wr > .5 ? 'pos' : wr < .5 ? 'neg' : ''}">${Math.round(wr * 100)}%</span></button>`;
+  }).join('') : `<p class="note">${L('За неделю в пати ни с кем не играл', 'No party games this week')}</p>`;
+  box.querySelectorAll('.mate').forEach(b => b.addEventListener('click', () => openCompare(b.dataset.id)));
+}
+
+function openCompare(other) {
+  $('cmpId').value = other || '';
+  $('cmpBox').innerHTML = '';
+  $('cmpDlg').showModal();
+  if (other) runCompare(); else $('cmpId').focus();
+}
+
+// the same period for both players; the better number is just a bit brighter
+async function runCompare() {
+  const box = $('cmpBox'), fid = parseId($('cmpId').value);
+  if (!fid) { box.innerHTML = `<p class="note">${L('Введи Steam ID, Friend ID или ссылку на профиль.', 'Enter a Steam ID, Friend ID, or profile link.')}</p>`; return; }
+  if (String(fid) === String(S.playerId)) { box.innerHTML = `<p class="note">${L('Это тот же игрок.', 'That is the same player.')}</p>`; return; }
+  box.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  try {
+    const [profile, period, together] = await Promise.all([
+      getJSONCached(`${API}/players/${fid}`, 5), fetchPeriod(fid),
+      getJSONCached(`${API}/players/${S.playerId}/wl?included_account_id=${fid}`, 30).catch(() => null),
+    ]);
+    if ($('cmpId').value && String(parseId($('cmpId').value)) !== String(fid)) return; // another player was asked meanwhile
+    if (!profile.profile) throw new Error(L('Профиль не найден или скрыт.', 'Profile not found or hidden.'));
+    if (!(period.wl.win + period.wl.lose)) throw new Error(L('У этого игрока нет открытых матчей.', 'This player has no public matches.'));
+    const sides = [S.period, period].map(p => {
+      const t = p.totals, k = avgOf(t, 'kills'), d = avgOf(t, 'deaths'), a = avgOf(t, 'assists'), n = p.wl.win + p.wl.lose;
+      return { wr: n ? p.wl.win / n : 0, kda: d ? (k + a) / d : k + a, deaths: d, gpm: avgOf(t, 'gold_per_min'), xpm: avgOf(t, 'xp_per_min'), lh: avgOf(t, 'last_hits'), hd: avgOf(t, 'hero_damage'), td: avgOf(t, 'tower_damage') };
+    });
+    const rows = [
+      [L('Винрейт', 'Win rate'), 'wr', v => `${Math.round(v * 100)}%`],
+      ['KDA', 'kda', v => v.toFixed(2)],
+      [L('Смерти', 'Deaths'), 'deaths', v => v.toFixed(1), true],
+      ['GPM', 'gpm', v => Math.round(v)],
+      ['XPM', 'xpm', v => Math.round(v)],
+      [L('Ластхиты', 'Last hits'), 'lh', v => Math.round(v)],
+      [L('Урон по героям', 'Hero damage'), 'hd', fmt],
+      [L('Урон по башням', 'Tower damage'), 'td', fmt],
+    ];
+    const who = p => `<span class="cmp-who">${p.avatarmedium ? `<img src="${esc(p.avatarmedium)}" alt="">` : ''}<b>${esc(p.personaname || '')}</b></span>`;
+    const tn = together ? together.win + together.lose : 0;
+    box.innerHTML = `
+      <div class="cmp-grid">
+        ${who(S.profile.profile)}<span></span>${who(profile.profile)}
+        ${rows.map(([label, key, f, lower]) => {
+          const [a, b] = [sides[0][key], sides[1][key]], cls = (x, y) => (lower ? x < y : x > y) ? 'better' : '';
+          return `<span class="num ${cls(a, b)}">${f(a)}</span><span class="cmp-label">${label}</span><span class="num ${cls(b, a)}">${f(b)}</span>`;
+        }).join('')}
+      </div>
+      <p class="note">${periodLabel()}${tn ? ` · ${L(`вместе ${tn} ${plural(tn, 'игра', 'игры', 'игр')}, ${Math.round(together.win / tn * 100)}% побед`, `${tn} games together, ${Math.round(together.win / tn * 100)}% won`)}` : ''}</p>`;
+  } catch (e) {
+    box.innerHTML = `<p class="note">${esc(e.message || L('Не удалось загрузить игрока.', 'Couldn\'t load the player.'))}</p>`;
+  }
+}
+
+$('cmpOpen').addEventListener('click', () => openCompare());
+$('cmpGo').addEventListener('click', runCompare);
+$('cmpId').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); runCompare(); } });
 
 // the games of one day in a popup; a click on a game opens the full match breakdown
 function openDay(year, month, day) {
