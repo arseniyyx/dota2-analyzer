@@ -1,100 +1,1574 @@
 {
   "version": 2,
   "app": {
-    "version": "1.3.1",
+    "version": "1.4.0",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
     "particle": "particles/dev/empty_particle.vpcf_c",
-    "sound": "sounds/null.vsnd_c"
+    "sound": "sounds/null.vsnd_c",
+    "model": {
+      "url": "https://raw.githubusercontent.com/Egezenn/dota2-minify/0889860353bd4c4d6dee89ec715e35a7a2923bac/Minify/bin/blank-files/blank.vmdl_c",
+      "sha256": "486322ca84667ff90c47b967f64dbb9e9849229c008e7c9319e0ad0654b0a6b2"
+    },
+    "material": {
+      "url": "https://raw.githubusercontent.com/Egezenn/dota2-minify/0889860353bd4c4d6dee89ec715e35a7a2923bac/Minify/bin/blank-files/blank.vmat_c",
+      "sha256": "b32a0a23a793383c6d1f389fe7260260fac98afc3c92efa76ccf36e20780641f"
+    },
+    "texture": {
+      "url": "https://raw.githubusercontent.com/Egezenn/dota2-minify/0889860353bd4c4d6dee89ec715e35a7a2923bac/Minify/bin/blank-files/blank.vtex_c",
+      "sha256": "104dcc43956f4250c27da84da3ff8109117741d154e7f4ce30112f1c9edf764b"
+    }
   },
   "tabs": [
-    { "id": "optimize", "name": { "ru": "Оптимизация", "en": "Optimisation" } },
-    { "id": "custom", "name": { "ru": "Кастомизация", "en": "Customisation" } }
+    {
+      "id": "optimize",
+      "name": {
+        "ru": "Оптимизация",
+        "en": "Optimisation"
+      }
+    },
+    {
+      "id": "custom",
+      "name": {
+        "ru": "Кастомизация",
+        "en": "Customisation"
+      }
+    }
   ],
   "mods": [
     {
-      "id": "no-weather", "tab": "optimize", "category": "fps", "icon": "☂",
-      "name": { "ru": "Без погоды", "en": "No weather" },
-      "desc": { "ru": "Дождь, снег, пепел, листья и другая погода из предметов. Самая заметная прибавка FPS в драках.", "en": "Rain, snow, ash, leaves and other item weather. The biggest FPS gain in fights." },
-      "rules": [{ "match": "^particles/rain_fx/econ_.*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-weather",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "☂",
+      "name": {
+        "ru": "Без погоды",
+        "en": "No weather"
+      },
+      "desc": {
+        "ru": "Дождь, снег, пепел, листья и другая погода из предметов. Самая заметная прибавка FPS в драках.",
+        "en": "Rain, snow, ash, leaves and other item weather. The biggest FPS gain in fights."
+      },
+      "rules": [
+        {
+          "match": "^particles/rain_fx/econ_.*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-map-ambient-fx", "tab": "optimize", "category": "fps", "icon": "✦",
-      "name": { "ru": "Без фоновых эффектов карты", "en": "No map ambient effects" },
-      "desc": { "ru": "Светлячки, пыль, блики и капли на ландшафтах. На игру не влияет.", "en": "Fireflies, dust, glints and drips on terrains. No gameplay effect." },
-      "rules": [{ "match": "^(particles/rain_fx/(?!econ_).*|maps/[^/]+_assets/particles/.*)\\.vpcf_c$", "template": "particle" }]
+      "id": "no-map-ambient-fx",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "✦",
+      "name": {
+        "ru": "Без фоновых эффектов карты",
+        "en": "No map ambient effects"
+      },
+      "desc": {
+        "ru": "Светлячки, пыль, блики и капли на ландшафтах. На игру не влияет.",
+        "en": "Fireflies, dust, glints and drips on terrains. No gameplay effect."
+      },
+      "rules": [
+        {
+          "match": "^(particles/rain_fx/(?!econ_).*|maps/[^/]+_assets/particles/.*)\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-world-creatures", "tab": "optimize", "category": "fps", "icon": "❦",
-      "name": { "ru": "Без птиц и насекомых", "en": "No birds and bugs" },
-      "desc": { "ru": "Летучие мыши, птицы и мошкара над картой.", "en": "Bats, birds and bugs flying over the map." },
-      "rules": [{ "match": "^particles/world_creature_fx/.*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-world-creatures",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "❦",
+      "name": {
+        "ru": "Без птиц и насекомых",
+        "en": "No birds and bugs"
+      },
+      "desc": {
+        "ru": "Летучие мыши, птицы и мошкара над картой.",
+        "en": "Bats, birds and bugs flying over the map."
+      },
+      "rules": [
+        {
+          "match": "^particles/world_creature_fx/.*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-cosmetic-glow", "tab": "optimize", "category": "fps", "icon": "✧",
-      "name": { "ru": "Без свечения косметики", "en": "No cosmetic glow" },
-      "desc": { "ru": "Постоянные эффекты на предметах героев: огонь, искры, дымка. Способности и их эффекты остаются.", "en": "Idle effects on hero items: fire, sparks, haze. Abilities and their effects stay." },
-      "rules": [{ "match": "^particles/econ/items/.*_ambient[^/]*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-cosmetic-glow",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "✧",
+      "name": {
+        "ru": "Без свечения косметики",
+        "en": "No cosmetic glow"
+      },
+      "desc": {
+        "ru": "Постоянные эффекты на предметах героев: огонь, искры, дымка. Способности и их эффекты остаются.",
+        "en": "Idle effects on hero items: fire, sparks, haze. Abilities and their effects stay."
+      },
+      "rules": [
+        {
+          "match": "^particles/econ/items/.*_ambient[^/]*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-courier-fx", "tab": "optimize", "category": "fps", "icon": "✉",
-      "name": { "ru": "Без эффектов курьеров", "en": "No courier effects" },
-      "desc": { "ru": "Огонь, свечение и следы у курьеров из сокровищниц. Сами курьеры остаются.", "en": "Fire, glow and trails on treasure couriers. The couriers stay." },
-      "rules": [{ "match": "^particles/econ/courier/.*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-courier-fx",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "✉",
+      "name": {
+        "ru": "Без эффектов курьеров",
+        "en": "No courier effects"
+      },
+      "desc": {
+        "ru": "Огонь, свечение и следы у курьеров из сокровищниц. Сами курьеры остаются.",
+        "en": "Fire, glow and trails on treasure couriers. The couriers stay."
+      },
+      "rules": [
+        {
+          "match": "^particles/econ/courier/.*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-emblems", "tab": "optimize", "category": "fps", "icon": "◎",
-      "name": { "ru": "Без эмблем", "en": "No emblems" },
-      "desc": { "ru": "Ауры эмблем из ивентов вокруг героев.", "en": "Event emblem auras around heroes." },
-      "rules": [{ "match": "^particles/econ/events/.*emblem[^/]*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-emblems",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "◎",
+      "name": {
+        "ru": "Без эмблем",
+        "en": "No emblems"
+      },
+      "desc": {
+        "ru": "Ауры эмблем из ивентов вокруг героев.",
+        "en": "Event emblem auras around heroes."
+      },
+      "rules": [
+        {
+          "match": "^particles/econ/events/.*emblem[^/]*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-ward-fx", "tab": "optimize", "category": "fps", "icon": "◉",
-      "name": { "ru": "Без эффектов скинов вардов", "en": "No ward skin effects" },
-      "desc": { "ru": "Свечение и частицы у вардов из сокровищниц. Сами варды видны как обычно.", "en": "Glow and particles on treasure wards. The wards look as usual." },
-      "rules": [{ "match": "^particles/econ/wards/.*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-ward-fx",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "◉",
+      "name": {
+        "ru": "Без эффектов скинов вардов",
+        "en": "No ward skin effects"
+      },
+      "desc": {
+        "ru": "Свечение и частицы у вардов из сокровищниц. Сами варды видны как обычно.",
+        "en": "Glow and particles on treasure wards. The wards look as usual."
+      },
+      "rules": [
+        {
+          "match": "^particles/econ/wards/.*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-building-debris", "tab": "optimize", "category": "fps", "icon": "▣",
-      "name": { "ru": "Без обломков зданий", "en": "No building debris" },
-      "desc": { "ru": "Взрывы и обломки, когда разрушаются башни и статуи.", "en": "Explosions and debris when towers and statues fall." },
-      "rules": [{ "match": "^particles/world_destruction_fx/.*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-building-debris",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "▣",
+      "name": {
+        "ru": "Без обломков зданий",
+        "en": "No building debris"
+      },
+      "desc": {
+        "ru": "Взрывы и обломки, когда разрушаются башни и статуи.",
+        "en": "Explosions and debris when towers and statues fall."
+      },
+      "rules": [
+        {
+          "match": "^particles/world_destruction_fx/.*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-event-decor", "tab": "optimize", "category": "fps", "icon": "✺",
-      "name": { "ru": "Без праздничного декора", "en": "No event decorations" },
-      "desc": { "ru": "Конфетти, фейерверки и украшения фонтанов из ивентов.", "en": "Confetti, fireworks and fountain decorations from events." },
-      "rules": [{ "match": "^particles/econ/events/.*(fountain|pedestal|celebration|confetti)[^/]*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-event-decor",
+      "tab": "optimize",
+      "category": "fps",
+      "icon": "✺",
+      "name": {
+        "ru": "Без праздничного декора",
+        "en": "No event decorations"
+      },
+      "desc": {
+        "ru": "Конфетти, фейерверки и украшения фонтанов из ивентов.",
+        "en": "Confetti, fireworks and fountain decorations from events."
+      },
+      "rules": [
+        {
+          "match": "^particles/econ/events/.*(fountain|pedestal|celebration|confetti)[^/]*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-ambient-sounds", "tab": "optimize", "category": "sound", "icon": "♪",
-      "name": { "ru": "Без фоновых звуков карты", "en": "No map ambient sounds" },
-      "desc": { "ru": "Фон карты и звуки животных. Игровые звуки остаются: рога, аванпосты, Торментор, Twin Gates, деревья, день и ночь.", "en": "Map soundscape and animals. Gameplay sounds stay: horns, outposts, Tormentor, Twin Gates, trees, day and night." },
-      "rules": [{ "match": "^sounds/ambient/(soundscapes/.*|chicken|pig|sheep|frog|fish\\w*|ambient)\\.vsnd_c$", "template": "sound" }]
+      "id": "no-ambient-sounds",
+      "tab": "optimize",
+      "category": "sound",
+      "icon": "♪",
+      "name": {
+        "ru": "Без фоновых звуков карты",
+        "en": "No map ambient sounds"
+      },
+      "desc": {
+        "ru": "Фон карты и звуки животных. Игровые звуки остаются: рога, аванпосты, Торментор, Twin Gates, деревья, день и ночь.",
+        "en": "Map soundscape and animals. Gameplay sounds stay: horns, outposts, Tormentor, Twin Gates, trees, day and night."
+      },
+      "rules": [
+        {
+          "match": "^sounds/ambient/(soundscapes/.*|chicken|pig|sheep|frog|fish\\w*|ambient)\\.vsnd_c$",
+          "template": "sound"
+        }
+      ]
     },
     {
-      "id": "mute-chatwheel", "tab": "custom", "category": "sound", "icon": "⊘",
-      "name": { "ru": "Без звуков чат-колеса", "en": "Mute chat wheel sounds" },
-      "desc": { "ru": "Глушит саундборд: «Ой-ой-ой», «Ехехе» и прочие звуки, которыми спамят в чате.", "en": "Mutes the soundboard lines people spam in chat." },
-      "rules": [{ "match": "^sounds/misc/soundboard/.*\\.vsnd_c$", "template": "sound" }]
+      "id": "mute-chatwheel",
+      "tab": "custom",
+      "category": "sound",
+      "icon": "⊘",
+      "name": {
+        "ru": "Без звуков чат-колеса",
+        "en": "Mute chat wheel sounds"
+      },
+      "desc": {
+        "ru": "Глушит саундборд: «Ой-ой-ой», «Ехехе» и прочие звуки, которыми спамят в чате.",
+        "en": "Mutes the soundboard lines people spam in chat."
+      },
+      "rules": [
+        {
+          "match": "^sounds/misc/soundboard/.*\\.vsnd_c$",
+          "template": "sound"
+        }
+      ]
     },
     {
-      "id": "no-high-five", "tab": "custom", "category": "visual", "icon": "✋",
-      "name": { "ru": "Без эффектов «Дай пять»", "en": "No high five effects" },
-      "desc": { "ru": "Вспышки и картинки над героями при «Дай пять».", "en": "Bursts and overhead pictures from high fives." },
-      "rules": [{ "match": "high_?five[^/]*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-high-five",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "✋",
+      "name": {
+        "ru": "Без эффектов «Дай пять»",
+        "en": "No high five effects"
+      },
+      "desc": {
+        "ru": "Вспышки и картинки над героями при «Дай пять».",
+        "en": "Bursts and overhead pictures from high fives."
+      },
+      "rules": [
+        {
+          "match": "high_?five[^/]*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "no-taunt-fx", "tab": "custom", "category": "visual", "icon": "☺",
-      "name": { "ru": "Без эффектов насмешек", "en": "No taunt effects" },
-      "desc": { "ru": "Частицы от насмешек героев. Сама анимация остаётся.", "en": "Particles from hero taunts. The animation stays." },
-      "rules": [{ "match": "^particles/econ/taunts?/.*\\.vpcf_c$", "template": "particle" }]
+      "id": "no-taunt-fx",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "☺",
+      "name": {
+        "ru": "Без эффектов насмешек",
+        "en": "No taunt effects"
+      },
+      "desc": {
+        "ru": "Частицы от насмешек героев. Сама анимация остаётся.",
+        "en": "Particles from hero taunts. The animation stays."
+      },
+      "rules": [
+        {
+          "match": "^particles/econ/taunts?/.*\\.vpcf_c$",
+          "template": "particle"
+        }
+      ]
     },
     {
-      "id": "english-ui", "tab": "custom", "category": "visual", "icon": "Aa", "kind": "english", "rules": [],
-      "name": { "ru": "Английский интерфейс", "en": "English interface" },
-      "desc": { "ru": "Для тех, кто играет на английском: поставь в параметрах запуска -language dutch, и моды заработают, а текст останется английским. С русской озвучкой тоже работает.", "en": "For English players: set -language dutch in the launch options, mods will work and the text stays English. Also works with Russian voices." }
+      "id": "minify-dark-terrain",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "◐",
+      "credit": "https://github.com/Egezenn/dota2-minify",
+      "excludes": [
+        "d2pfx:terrains/",
+        "d2pfx:shaders/"
+      ],
+      "name": {
+        "ru": "Тёмный ландшафт (Minify)",
+        "en": "Dark terrain (Minify)"
+      },
+      "desc": {
+        "ru": "Серые тайлы карты, линии тумана вместо дымки, тёмная вода. Нужен стандартный ландшафт. Вместо шейдеров тумана и ландшафтов D2PFX. Мод из Minify.",
+        "en": "Gray map tiles, fog lines instead of haze, dark water. Needs the default terrain. Replaces D2PFX fog shaders and terrains. A Minify mod."
+      },
+      "files": {
+        "base": "https://raw.githubusercontent.com/Egezenn/dota2-minify/0889860353bd4c4d6dee89ec715e35a7a2923bac/Minify/mods/Dark%20Terrain/files/",
+        "list": [
+          [
+            "materials/blends/mod_dire_000.vmat_c",
+            "cab3a96d5b022209b1acc4866b0bb52f5af4ff23"
+          ],
+          [
+            "materials/blends/mod_dire_000_vmat_g_tspecular0_83163e7b_png_d3f7b418.vtex_c",
+            "3234efbeede4f285ccc6ce471e5f8adeed45569c"
+          ],
+          [
+            "materials/blends/mod_dire_000_vmat_g_tspecular3_3e7b8f16_png_a1f774e.vtex_c",
+            "07e13f9219995a4abb9f5baa9f6a1d140257535f"
+          ],
+          [
+            "materials/blends/mod_dire_path_000.vmat_c",
+            "3e65764ed8aac8b8d10f000f91c0941ee18f181b"
+          ],
+          [
+            "materials/blends/mod_dire_path_cracked_000.vmat_c",
+            "97b4a3895af2479f65cb89aad82d9e89e1f4e41c"
+          ],
+          [
+            "materials/blends/mod_dire_riverbed_path_000.vmat_c",
+            "8ac54c88f98e9d6c287c902b3a099835a9146abe"
+          ],
+          [
+            "materials/blends/mod_dire_riverbed_path_000_vmat_g_tspecular1_3e7b8f16.vtex_c",
+            "af6690ddd916089efa0e05143dd039732bc5b26a"
+          ],
+          [
+            "materials/blends/mod_dire_riverbed_path_000_vmat_g_tspecular1_3e7b8f16_png_f5916667.vtex_c",
+            "dafa8240fe8348070480e7a2e8d7933e106ca787"
+          ],
+          [
+            "materials/blends/mod_dire_riverbed_path_000_vmat_g_tspecular3_52d5f79.vtex_c",
+            "44c185f263848bda5fdd42095d6d6d3f8bdfa091"
+          ],
+          [
+            "materials/blends/mod_radiant_000.vmat_c",
+            "861909c42883db2fe758e38004483de0b04daf71"
+          ],
+          [
+            "materials/blends/mod_radiant_000_vmat_g_tspecular3_52d5f79_png_e32d4887.vtex_c",
+            "bf756994621208d3297b81cbcc05960f8ad136da"
+          ],
+          [
+            "materials/blends/mod_radiant_base_angled_000.vmat_c",
+            "ad59573e09416908a0e9e5298c4508fe6224136a"
+          ],
+          [
+            "materials/blends/mod_radiant_dire_000.vmat_c",
+            "39cf842a73add83434664272a4fe4fea8a1feaad"
+          ],
+          [
+            "materials/blends/mod_radiant_dire_000_vmat_g_tspecular0_83163e7b_png_dc66b57c.vtex_c",
+            "0441c0515c1584a9c7ff4200738736c25935171e"
+          ],
+          [
+            "materials/blends/mod_radiant_dire_000_vmat_g_tspecular3_52d5f79_png_c96f4e0f.vtex_c",
+            "47f89eabd9b70c63681a501f292f3e7b7660719c"
+          ],
+          [
+            "materials/blends/mod_radiant_dire_path_000.vmat_c",
+            "d502adcbb1ebd17331177d6976e26f8d9e361e7b"
+          ],
+          [
+            "materials/blends/mod_radiant_path_000.vmat_c",
+            "01d48b3b999987963010f938d34ca1dd0ccc4bf6"
+          ],
+          [
+            "materials/blends/mod_radiant_riverbed_path_000.vmat_c",
+            "202691ae92f7bd4468d6d2090cbaa05c1b833bbf"
+          ],
+          [
+            "materials/blends/mod_radiant_riverbed_path_000_vmat_g_tspecular1_3e7b8f16.vtex_c",
+            "af6690ddd916089efa0e05143dd039732bc5b26a"
+          ],
+          [
+            "materials/blends/mod_radiant_riverbed_path_000_vmat_g_tspecular1_3e7b8f16_3e7b8f16_bloom_png_e5b2b05e.vtex_c",
+            "51393dc628027c5f76c7b4d9ba5aeb3222044c66"
+          ],
+          [
+            "materials/blends/mod_radiant_riverbed_path_000_vmat_g_tspecular1_3e7b8f16_png_6d35c519.vtex_c",
+            "a7621c2d23f29ec61f72b465ec6f76a982957e11"
+          ],
+          [
+            "materials/blends/mod_radiant_riverbed_path_000_vmat_g_tspecular3_52d5f79_52d5f79_bloom_png_cbc41fe9.vtex_c",
+            "8ea3e33159f6bcb5b67efdc060361ca6a24e380e"
+          ],
+          [
+            "materials/blends/mod_radiant_riverbed_path_000_vmat_g_tspecular3_52d5f79_png_afda8154.vtex_c",
+            "b8d6f1f1551357c415b7a8ccc90c64f4f5033b6a"
+          ],
+          [
+            "materials/default/default_color_tga_519582ca.vtex_c",
+            "58c3cbacc21b8b1b84e8d22a50913a444497d8bf"
+          ],
+          [
+            "materials/default/default_normal_tga_7652cb.vtex_c",
+            "f128deca64a4f981cec06e4e8737c0c50d12533f"
+          ],
+          [
+            "materials/default/default_refl_tga_3b807e51.vtex_c",
+            "161b9666a4f8d809ef90cba2279b579d4117de60"
+          ],
+          [
+            "materials/default/default_tga_c23e38fb.vtex_c",
+            "247957914b557c49d89e8b393078688e9ce771f8"
+          ],
+          [
+            "materials/dev/deferred_post_process.vmat_c",
+            "a0fdbce565e6d3e11429f7a5fe863abb9066a046"
+          ],
+          [
+            "materials/dev/deferred_post_process_vmat_g_tfog_9ea98ee9.vtex_c",
+            "4073c632da3f5babc85c71ac4014f4d6bfa78581"
+          ],
+          [
+            "materials/effects/light_clouds_00.vtex_c",
+            "1504e350bd47a9f97b9075bc8b78e9af1da615b3"
+          ],
+          [
+            "materials/models/effects/mist_00_color_png_e946f983.vtex_c",
+            "728fb35ffd65b500ca9d32a62aebf83c67bc58f9"
+          ],
+          [
+            "materials/models/props_nature/cliff_wall001.vmat_c",
+            "3ecb057768e9266e316f352e82bd4798a1adbfe5"
+          ],
+          [
+            "materials/models/props_structures/temple_stairs001_color_psd_2cbf7888.vtex_c",
+            "69195e0974cc21c58939a51ab0499deb0a4059d1"
+          ],
+          [
+            "materials/models/props_structures/temple_stairs_blocks001_color_psd_f5cd9411.vtex_c",
+            "4c6ed4be10b98dceaaac3e0d00a7c8a77fa93991"
+          ],
+          [
+            "materials/models/props_structures/temple_stairs_blocks002_color_psd_fd634981.vtex_c",
+            "80033f9a356d3a73fbc02dc9a9ff44ae43046556"
+          ],
+          [
+            "materials/models/props_teams/team_logo_dire.vmat_c",
+            "236907676c25c1e0e497f5fab41d7b7b18403ff8"
+          ],
+          [
+            "materials/models/props_teams/team_logo_radiant.vmat_c",
+            "048b3964fa93fd03d1d0dfd5d350b65ce6842e8a"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_blend_png_322f91a2.vtex_c",
+            "cc6a20264eac8d8d42332cf95f32f4eca25c620f"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_blend_png_8783fe43.vtex_c",
+            "64aea3939ac6bc3f1dfc076f1ce3a5fe1a4265c0"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_blend_png_9d6b3a5b.vtex_c",
+            "521d7352a457a7d405d1a8420955b7ae608429fd"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_mask_png_2a8a37eb.vtex_c",
+            "106f679b229c7170a285251b4707af940c652629"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_mask_png_89941271.vtex_c",
+            "01b393c71d5d46d90288ab7b6ed83781bd42e2b5"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_mask_png_af982322.vtex_c",
+            "1be7aa33ab00323608676e655941fc151fca5758"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_normal_png_651caf22.vtex_c",
+            "8847a1506ba617a10ab4996cf5032b2cd6507c81"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_png_36fda9c8.vtex_c",
+            "db036bb0685c03519513f0bbe5e209b24ddcb5ab"
+          ],
+          [
+            "materials/nature/dirt_cracked_patchy_00_refl_png_5fb61ef8.vtex_c",
+            "ff8deb016a2e51d59793e871b905c8be873fdcce"
+          ],
+          [
+            "materials/nature/grass_long_00_color_png_7faa461d.vtex_c",
+            "3d59720b9730354778ccad859fb5e749471d2cdb"
+          ],
+          [
+            "materials/nature/grass_long_00_mask_png_405ba075.vtex_c",
+            "d64ba461caa528e11f7a72fb189e22cae0a4282d"
+          ],
+          [
+            "materials/nature/grass_long_00_mask_png_7618c462.vtex_c",
+            "a3c7b1d73408b1fa9ae341aa1e6bb8d7ec7faf38"
+          ],
+          [
+            "materials/nature/grass_long_00_normal_png_e2c3d39e.vtex_c",
+            "791fb0ce1abb5983d7a1ee454a0e959b8c33dfbd"
+          ],
+          [
+            "materials/nature/grass_long_00b_refl_png_ae5c20c7.vtex_c",
+            "89df7abeddc27585fa0ad8fd9d63a7dfed29b1d6"
+          ],
+          [
+            "materials/nature/grass_long_00b_refl_png_d2981f2c.vtex_c",
+            "d2420f9d85efed6618a5aebd9b3697f1fd955448"
+          ],
+          [
+            "materials/nature/grass_long_00b_refl_png_fee4df94.vtex_c",
+            "e0680cab4580dc07cd38b53c0676a3531dd1eb5d"
+          ],
+          [
+            "materials/nature/grass_long_01_color_png_68f4fa93.vtex_c",
+            "14058b85afad7580127907566638482f418fd42c"
+          ],
+          [
+            "materials/nature/grass_long_01b_normal_png_a116e631.vtex_c",
+            "260b4b4bfc82fbf568e6694c857121a4c583a2c8"
+          ],
+          [
+            "materials/nature/grass_long_01b_refl_png_7e0e586d.vtex_c",
+            "9f9028d61decff03899c41b38bfd08c5cd8257db"
+          ],
+          [
+            "materials/nature/river_rock001_c9440393_selfillum_png_b5c33136.vtex_c",
+            "ddf5146265d8e6c319cab6e01e32d44c740f3811"
+          ],
+          [
+            "materials/nature/river_rock001_color_png_b5fba657.vtex_c",
+            "272b0cc6deebaa5ad2770141a16d1e7411f57060"
+          ],
+          [
+            "materials/nature/river_rock001_normal_png_1ec09532.vtex_c",
+            "7e6d3cea43bf7fb7a582ef9e3c9236b3d7c7a9ee"
+          ],
+          [
+            "materials/nature/river_rock001_refl_png_e88c48b7.vtex_c",
+            "57a671c5ebecae29de82b7da05a3381e7d54201a"
+          ],
+          [
+            "materials/nature/sand_cracked001_color_png_8b53cf75.vtex_c",
+            "74cfc10ae1543dbf900c6e34854148d47215def4"
+          ],
+          [
+            "materials/nature/sand_cracked001_normal_png_5a08ab65.vtex_c",
+            "3aac1217de282968b775606531c886486cb1b17c"
+          ],
+          [
+            "materials/nature/sand_cracked001_refl_png_e4675d63.vtex_c",
+            "51b0a08958e4d1e08be9f83137cfd493f804e97d"
+          ],
+          [
+            "materials/nature/sand_path001_color_png_8a254ba5.vtex_c",
+            "3bb3f875ff7ad950b8250383b4bd4b0bbab7592a"
+          ],
+          [
+            "materials/nature/sand_path001_height_png_45c3c860.vtex_c",
+            "6e40c9cec14d38855245793b9add4753e59190b6"
+          ],
+          [
+            "materials/nature/sand_path001_height_png_60884e79.vtex_c",
+            "5770c234cfd0f70ae70d34b07b74cd8ff527d53b"
+          ],
+          [
+            "materials/nature/sand_path001_height_png_cfb94b77.vtex_c",
+            "4cbd8514970d82128be8a1a6608b6b9be37d7410"
+          ],
+          [
+            "materials/nature/sand_path001_normal_png_9a10af96.vtex_c",
+            "0a57fb1c5281e8555cfaed6993fabbfe071736c6"
+          ],
+          [
+            "materials/nature/sand_path001_refl_png_8a0df1cc.vtex_c",
+            "f9602fd63480917165a7ba1e185ce297e76badde"
+          ],
+          [
+            "materials/nature/sand_path001_refl_png_d803fc84.vtex_c",
+            "48161b30c3c90d70cb5ebcff09cbf30514e89d6b"
+          ],
+          [
+            "materials/nature/sand_path001b_refl_png_8b58b698.vtex_c",
+            "a73641eb302285b15f896e293c18f7a6812c71b1"
+          ],
+          [
+            "materials/nature/sand_path002_mask_png_128692e7.vtex_c",
+            "7b90affb6289ecd16c59db4fbf432a1c9c03bfd1"
+          ],
+          [
+            "materials/nature/sand_path002_mask_png_983eb856.vtex_c",
+            "beef0a190f490a442d74fdc6a931ddfc535bf6e7"
+          ],
+          [
+            "materials/nature/sand_path002_mask_png_a07e048d.vtex_c",
+            "19d46735d71a89e93e4a68359d640249e4ead3c5"
+          ],
+          [
+            "materials/nature/sand_path002_mask_png_c71f03a9.vtex_c",
+            "3dcf594e8db3a0fdcc2d3ed8e54689357ccf0386"
+          ],
+          [
+            "materials/nature/sand_path009_color_png_62a9dcac.vtex_c",
+            "1b7f4cd1eed36ca251d949baf2c225c7cde35a7b"
+          ],
+          [
+            "materials/nature/sand_path009_color_png_70ee59c7.vtex_c",
+            "53eb2538c1d085007f05223230180e666f0be133"
+          ],
+          [
+            "materials/nature/sand_path009_color_png_e48da3a.vtex_c",
+            "9141e7d14312fc2599063cb87464a5170d8a5a2b"
+          ],
+          [
+            "materials/nature/sand_path009_color_png_e9a91a47.vtex_c",
+            "75b0d05dfc439feabf6aeb4b7552fc88d95db479"
+          ],
+          [
+            "materials/overlays/aegis/ti01_color_psd_e99c677a.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/aegis/ti01_normal_psd_8093eaf9.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/aegis/ti01_refl_psd_8c815d24.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/aegis_motif_front_000_color_psd_a5cd3857.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/aegis_motif_front_000_normal_psd_c1628177.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/aegis_motif_front_000_vmat_g_tspecular_ae81057.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile001_color_psd_5d2f0f00.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile001_normal_psd_e1abc7f8.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile001_tint_psd_523f13ff.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile001b_color_psd_376f7854.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile001b_normal_psd_cf587959.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile001b_refl_psd_d338ea80.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile002_color_psd_67603e4d.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile002_normal_psd_472aa2b3.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile002_normal_psd_fffb9217.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile002_tint_psd_85690500.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile002b_color_psd_8dd4c468.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile002b_refl_psd_a8257ec9.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile003_color_psd_1bd67b70.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile003_normal_psd_b82bbb19.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile003_refl_psd_968be7e7.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile003_tint_psd_b6e0b585.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile003b_color_psd_31a8c25a.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile003b_normal_psd_aec459b0.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile004_color_psd_bd87e298.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile004_normal_psd_4a48c380.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile004_normal_psd_4b049fe4.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile004_tint_psd_29f25f7.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile004b_color_psd_19402358.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ancient_serpent_tile004b_color_psd_9306126e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/armadillo_crest_trans_psd_f2e36cb4.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/armadillo_crest_vmat_g_tspecular_9d3f05ac.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_base_stone001_height_psd_bbf22645.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_base_stone001_normal_psd_d7c05f9d.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_base_stone001_refl_psd_3fcaaf23.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_base_stone_tintable_000_color_psd_1623f737.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_00_color_psd_da8651cb.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_00_normal_psd_98b14fda.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_00_refl_psd_3bf3d339.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_00_refl_tga_d02ab2c9.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_01_color_psd_bf87bfe0.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_01_tint_psd_da93447a.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_blue_00_color_psd_774ffa34.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_puddle_lava_green_00_color_psd_98da3b7e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_sigil_tower001_color_tga_e7e225c2.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/bad_stone_inlay001_color_tga_f3e87282.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/blood001_color_psd_8d52d31e.vtex_c",
+            "a00f55e7b8312093c430f51b4565c1272c3197a7"
+          ],
+          [
+            "materials/overlays/blood002_color_psd_27076626.vtex_c",
+            "a00f55e7b8312093c430f51b4565c1272c3197a7"
+          ],
+          [
+            "materials/overlays/camp_fire_pit001_color_psd_4f346bc4.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/camp_marking003_color_psd_c8fa9b35.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/chest001_color_psd_17734c6f.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/chest001_normal_psd_854181ab.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/circle_daggers_01_trans_psd_a14176fa.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/circle_daggers_01_vmat_g_tspecular_2052e76c.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/crackle_green_000_color_psd_dbe13ee4.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/cracks_energy_01_trans_psd_37ca8e30.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/cracks_energy_01_trans_psd_3b36d454.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/cracks_energy_01_vmat_g_tspecular_2ece6386.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/drift_sand001_color_tga_56607f4e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/drift_sand001_normal_psd_da180509.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/drift_sand001_refl_psd_f021c1a3.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/drift_snow_00_color_psd_67ddbae6.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/drift_snow_00_refl_tga_ff6d6e9c.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/earth001_color_psd_8c51b1bf.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/earth001_normal_psd_4ebb5c96.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/fire001_color_psd_51a9fc35.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/fire001_normal_psd_a99d58e0.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/fungus001_color_psd_992fb932.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/fungus001_normal_psd_9b5ffa90.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone001_height_psd_633d302d.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone001_normal_psd_3d56d11d.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone001_normal_psd_aef70294.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone001_refl_psd_5aa327a7.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone002_color_psd_e1282c5b.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone002_normal_psd_5e1ec0dd.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone002_refl_psd_31b1b42e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone_tintable_000_color_psd_23d04080.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone_tintable_000_color_psd_8a68c4ee.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/good_base_stone_tintable_000_color_psd_d570670.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ground_edge001_color_psd_3e0db426.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ground_edge001_normal_psd_b6e7f851.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/ground_edge001_refl_psd_bd12d96.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/keys_01_trans_psd_6431cc69.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/keys_01_vmat_g_tspecular_39888860.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/leaves_fall000_color_psd_76e2c111.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/leaves_fall000_refl_tga_166088af.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/leaves_fall001_color_psd_6a2c58e2.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/leaves_fallen_00_color_psd_7b7dd07c.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/leaves_white000_color_psd_2e440edb.vtex_c",
+            "a00f55e7b8312093c430f51b4565c1272c3197a7"
+          ],
+          [
+            "materials/overlays/leaves_white000_color_psd_a8889817.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/leaves_white000_normal_psd_3b708f76.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/metal001_color_psd_b7312116.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/metal001_normal_psd_1850820d.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/palm_debris000_color_psd_d438c9cc.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/palm_debris000_normal_psd_82c8d0ac.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border001_color_psd_b556f4df.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border001_snow_color_psd_f59ea4cb.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border002_color_psd_654e3e60.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border002_snow_color_psd_588ffd.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border003_color_psd_a40fde93.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border003b_color_psd_a091a6e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border003b_refl_tga_70e19a4c.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border004_color_psd_1b1999bd.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border004b_color_psd_15dbc1ec.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border004b_trans_tga_d596719.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border005_color_psd_b25728f2.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border006_color_psd_f0dfd5da.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border007_color_psd_a7be985b.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border008_color_psd_abd0f32c.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_dire_000_normal_psd_948fab2c.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_000_color_psd_289184cd.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_000_color_psd_328f3a2a.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_000_color_psd_c80c82f1.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_000_color_psd_f3c4b148.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_002_color_psd_44af9a56.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_002_refl_psd_e10af0e2.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_003_color_psd_71c55f0b.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/path_border_tintable_003_refl_psd_3b7730ec.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/petals_blueyellow000_color_psd_3222c526.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/petals_pink000_color_psd_600bb459.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/petals_pink000_snow_color_psd_7f888d08.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/petals_plumblossom_00_color_psd_8d69c807.vtex_c",
+            "a00f55e7b8312093c430f51b4565c1272c3197a7"
+          ],
+          [
+            "materials/overlays/petals_plumblossom_01_color_psd_7fae8bdf.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/petals_redblossom_00_color_psd_f62ba363.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddle001_color_psd_f962b6fe.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddle001_normal_psd_5a957750.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddle001_refl_psd_3557785.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddle001_refl_psd_affc3034.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddles_rock_00_color_psd_f02945b6.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddles_rock_00_refl_tga_ce7842a2.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddles_rock_01_color_psd_64036ba0.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/puddles_rock_01_refl_tga_d55ad40b.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/rune001_color_psd_31abb.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/rune001_normal_psd_11cd4097.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/sand_sigil001_color_tga_6349afba.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/scrape_01_color_psd_d222f865.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/scrape_01_normal_psd_634c1adf.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/scrape_01_trans_psd_ba247322.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints001_color_psd_3656c026.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints001_color_psd_a52be0f3.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints001_normal_psd_9763ac73.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints001_refl_psd_ced17714.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints002_color_psd_b7c73b88.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints_greevil001_color_psd_60a59e01.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints_greevil002_color_psd_c3d8251e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_footprints_greevil002_refl_tga_18d20c4b.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_path003a_color_psd_c578649e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/snow_snowangel_color_psd_5747e7f0.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/stone_cut_00_color_psd_59599f64.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/stone_cut_00_height_psd_22173028.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/stone_cut_00_normal_psd_9fa592a9.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/stone_cut_00_refl_psd_123f34be.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/stone_stain001_color_psd_a560853b.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/tentacle_motif_00_color_psd_b7bcec0d.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/tentacle_motif_00_refl_tga_433f371b.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/tile_ground_stone_tile03_vmat_g_tspecular_2ece6386.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/travel001_color_psd_a81c1ba5.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/travel001_normal_psd_50744ad0.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path001_color_psd_faaa5b17.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path001_refl_tga_115a52ec.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path001_refl_tga_6392f3d9.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path001_refl_tga_6fb91504.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path001b_color_psd_6df9d4fc.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path001b_refl_tga_70d6e136.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path002_color_psd_f406eda2.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path002_refl_psd_862614c5.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path002b_color_psd_ab6a3ed0.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003a_color_psd_35eff4cc.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003a_height_tga_f22ba159.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003a_normal_psd_59889063.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003a_normal_psd_842dece7.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003a_normal_psd_d7957c04.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003a_normal_psd_e166b277.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003b_color_psd_ab737fe3.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003b_height_psd_786a14c7.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path003b_trans_tga_a27df1c7.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path004a_color_psd_88715dcc.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path004b_color_psd_4303af39.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path_tintable_000_color_psd_91067d23.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path_tintable_000_color_psd_942eceb2.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path_tintable_000_color_psd_e0d2762e.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wagon_path_tintable_001_color_psd_b870faad.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/water001_color_psd_94bb8c45.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/water001_normal_psd_58b73bc6.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wood001_color_psd_d76b4500.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/overlays/wood001_normal_psd_f9d462ad.vtex_c",
+            "a91177d88a59709a5185eb36ef82d4d4b9ab7ff4"
+          ],
+          [
+            "materials/particle/basic_glow.vtex_c",
+            "6e31c1b30dc1e8aa35dc6e80b49294f132cda1dd"
+          ],
+          [
+            "materials/particle/basic_rope.vtex_c",
+            "568184937c126cefa3420c41afa3a92c146dda21"
+          ],
+          [
+            "materials/particle/basic_rope_energy.vtex_c",
+            "57d8b13646415ac14a00392d2b0ef0b3a8f867e1"
+          ],
+          [
+            "materials/particle/basic_smoke.vtex_c",
+            "da5b98172790faf89751e3f1a4014c7f9afb9dde"
+          ],
+          [
+            "materials/particle/basic_trail.vtex_c",
+            "404cd65a9257c3fec0cf92cd15f600847f9351b2"
+          ],
+          [
+            "materials/rock/cliff_wall001_normal_png_dddd1f95.vtex_c",
+            "d0caf0bc5daf4bb713df1ebaa07a3531ef325b36"
+          ],
+          [
+            "materials/rock/cliff_wall002_color_png_4cca3519.vtex_c",
+            "9c2678766d1167b6ee81344a0af27753ae307a78"
+          ],
+          [
+            "materials/rock/cliff_wall002_color_png_5d83bbb.vtex_c",
+            "4f17870483fe6628319b67befba214d8b20f3468"
+          ],
+          [
+            "materials/rock/cliff_wall002_color_png_89db3dc4.vtex_c",
+            "fc0f2f33b1e8b179fb4c91de4b683657d1e5c80b"
+          ],
+          [
+            "materials/stone/stone_path001_angled_color_png_bfaa1439.vtex_c",
+            "d0e4f913ccd6492b64333e4b6071c9c3a7409edd"
+          ],
+          [
+            "materials/stone/stone_path001_angled_normal_png_6c9ebe49.vtex_c",
+            "88ceef7bc868d9f87b08e1efe38fbdb36e9c6f4d"
+          ],
+          [
+            "materials/stone/stone_path001_refl_png_9a5addf3.vtex_c",
+            "ae98b8bb6cab9439e3b2e38eaf2700d5be1cd6d1"
+          ],
+          [
+            "materials/stone/stone_path006_refl_png_43b8f607.vtex_c",
+            "bd1fe212e995a090e8e8289c177af63d6159a1c2"
+          ],
+          [
+            "materials/stone/stone_path007_normal_png_7b924afd.vtex_c",
+            "3d1022e9b560549375fb0ba17966b0e4339e87a7"
+          ],
+          [
+            "materials/stone/stone_path007_refl_png_7260d38c.vtex_c",
+            "a849f79a3c5f11f3afbbe1fd580b9b95c5de3579"
+          ],
+          [
+            "materials/stone/stone_path007_refl_png_7a05ee47.vtex_c",
+            "3328a6a5ebe67505d20bdc6f6bfb67004fa5f539"
+          ],
+          [
+            "materials/stone/stone_path007_tintable_png_34173e55.vtex_c",
+            "1a66b88f2886e1daa5a27e5fc637daddbc571283"
+          ],
+          [
+            "materials/stone/stone_path007_tintable_png_41fd710d.vtex_c",
+            "020258ba258b27d6b6a4d66714d6b6a4ee4fed96"
+          ],
+          [
+            "materials/stone/stone_path008_normal_png_5773b6b1.vtex_c",
+            "afead99be6ec861d6a99c9545a471a7e49ee57fe"
+          ],
+          [
+            "materials/stone/stone_path008_refl_png_b36f2091.vtex_c",
+            "6bfd4fa7e50e27430ec86b3b93a31b0bd2d0c062"
+          ],
+          [
+            "materials/stone/stone_path009_color_png_ace8899b.vtex_c",
+            "2614a44241a31dec8db93766dba50524ee4996a9"
+          ],
+          [
+            "materials/stone/stone_path_cracked_desert_color_png_8f858056.vtex_c",
+            "d03c877289cbb66305c1278f7e992d3b81f80688"
+          ],
+          [
+            "materials/textures/team_logo_radiant_color_psd_75b68508_png_44d95697.vtex_c",
+            "6789a3408ce0baa58e82109759db0428741f173b"
+          ],
+          [
+            "materials/textures/team_logo_radiant_normal_psd_e4231e77_png_7bea66c0.vtex_c",
+            "d22fea995557ecfedb3703dd33d8a927a1831bdf"
+          ],
+          [
+            "materials/textures/team_logo_radiant_refl_tga_7a85b4e6_png_23481caa.vtex_c",
+            "b06210b76f7c48b4e7380c35268f139aa8e8002c"
+          ],
+          [
+            "materials/textures/team_logo_radiant_refl_tga_7a85b4e6_png_ad425c66.vtex_c",
+            "e3d40f8d055218b84e8ab4fe69a284ad3de306f0"
+          ],
+          [
+            "materials/textures/team_logo_tintable_color_psd_439fd899_png_41f45d97.vtex_c",
+            "4266ded61e4ff0325acce7b53407358d8c1add4e"
+          ],
+          [
+            "materials/textures/team_logo_tintable_normal_psd_439fd899_png_353a3abd.vtex_c",
+            "d18790b392d270f44dd83cde7f3ec730b0d0b547"
+          ],
+          [
+            "materials/textures/team_logo_tintable_refl_psd_439fd899_png_a24e038c.vtex_c",
+            "0c0e2aacfdaf21b5d7841b1eba1d63111f96b7f8"
+          ],
+          [
+            "materials/water/water_flow.vmat_c",
+            "c9ea4f93dfaccfc6a533014487028f7ece3efc0e"
+          ],
+          [
+            "materials/water/water_generic_000.vmat_c",
+            "c9ea4f93dfaccfc6a533014487028f7ece3efc0e"
+          ],
+          [
+            "materials/water/water_generic_000_slope.vmat_c",
+            "c9ea4f93dfaccfc6a533014487028f7ece3efc0e"
+          ],
+          [
+            "materials/water/water_generic_000_vmat_g_tflow_fc1edd6d.vtex_c",
+            "ae194c8e5a18686a8af93ce956284b2bef93d734"
+          ],
+          [
+            "materials/water/water_noise_000_png_6d2375f1.vtex_c",
+            "7f1d7c21fdb05cff0cf49a808f00f4270a2320f7"
+          ],
+          [
+            "materials/water/water_river_normal_sharp_temp_normal_png_d333d9aa.vtex_c",
+            "5b6dd3cecc06a08f6e159b68e7223d1043536d52"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "minify-remove-foliage",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "❀",
+      "credit": "https://github.com/Egezenn/dota2-minify",
+      "name": {
+        "ru": "Без кустов и декора (Minify)",
+        "en": "No bushes and props (Minify)"
+      },
+      "desc": {
+        "ru": "Убирает кусты, цветы, камни и мелкий декор на земле, остаются только тайлы. Деревья не трогает. Нужен стандартный ландшафт. Мод из Minify.",
+        "en": "Removes bushes, flowers, rocks and small ground props, leaving only tiles. Trees stay. Needs the default terrain. A Minify mod."
+      },
+      "rules": [
+        {
+          "match": "^(maps/journey_assets/props/foliage/bush_journey_00\\.vmdl_c|maps/journey_assets/props/foliage/bush_journey_01\\.vmdl_c|maps/journey_assets/props/foliage/plant_journey_002\\.vmdl_c|maps/jungle_assets/bushes/bush_jungle_00\\.vmdl_c|maps/jungle_assets/bushes/bush_jungle_01\\.vmdl_c|maps/jungle_assets/bushes/bush_palm_01\\.vmdl_c|maps/summer_assets/bushes/bush_dire_summer_01\\.vmdl_c|maps/summer_assets/bushes/bush_dire_summer_02\\.vmdl_c|models/effects/fountain_dire_00\\.vmdl_c|models/effects/fountain_radiant_00\\.vmdl_c|models/effects/fountain_waterfall\\.vmdl_c|models/effects/glow_00\\.vmdl_c|models/effects/lily_pads_edge_00\\.vmdl_c|models/effects/liquid_pour_00\\.vmdl_c|models/effects/radiant_lightrays\\.vmdl_c|models/effects/southriver_exit_water_00\\.vmdl_c|models/effects/water_edges_00\\.vmdl_c|models/effects/water_edges_00b\\.vmdl_c|models/effects/water_edges_01\\.vmdl_c|models/effects/water_edges_01b\\.vmdl_c|models/effects/water_edges_02\\.vmdl_c|models/effects/water_edges_02b\\.vmdl_c|models/effects/water_edges_03\\.vmdl_c|models/effects/water_edges_03b\\.vmdl_c|models/effects/waterfall_02\\.vmdl_c|models/effects/waterfall_contact_radial_00\\.vmdl_c|models/effects/web_dire_00\\.vmdl_c|models/effects/web_dire_01\\.vmdl_c|models/effects/web_dire_02\\.vmdl_c|models/items/huskar/sacred_bones_spear/sacred_bones_spear\\.vmdl_c|models/props_bones/badside_bones001\\.vmdl_c|models/props_bones/badside_bones002\\.vmdl_c|models/props_bones/badside_bones003\\.vmdl_c|models/props_bones/badside_bones004\\.vmdl_c|models/props_bones/badside_bones005\\.vmdl_c|models/props_bones/bone001\\.vmdl_c|models/props_bones/bone002\\.vmdl_c|models/props_bones/bones001_set_tintable\\.vmdl_c|models/props_bones/bones001_tintable\\.vmdl_c|models/props_bones/bones002_set_tintable\\.vmdl_c|models/props_bones/bones002_tintable\\.vmdl_c|models/props_bones/bones003_set_tintable\\.vmdl_c|models/props_bones/bones003_tintable\\.vmdl_c|models/props_bones/bones004_set_tintable\\.vmdl_c|models/props_bones/bones004_tintable\\.vmdl_c|models/props_bones/bones005_tintable\\.vmdl_c|models/props_bones/bones006_tintable\\.vmdl_c|models/props_bones/bones007_tintable\\.vmdl_c|models/props_bones/bones008_tintable\\.vmdl_c|models/props_bones/bones_ribcage001\\.vmdl_c|models/props_bones/bones_tintable_001\\.vmdl_c|models/props_bones/bones_tintable_002\\.vmdl_c|models/props_bones/bones_tintable_003\\.vmdl_c|models/props_bones/bones_tintable_004\\.vmdl_c|models/props_bones/rib_cage001\\.vmdl_c|models/props_bones/skeleton_design001\\.vmdl_c|models/props_bones/skeleton_design002\\.vmdl_c|models/props_bones/skeleton_design003\\.vmdl_c|models/props_bones/skull_bull001\\.vmdl_c|models/props_bones/skull_moose001\\.vmdl_c|models/props_bones/skull_ram001\\.vmdl_c|models/props_bones/skull_rope001\\.vmdl_c|models/props_bones/whale_skeleton\\.vmdl_c|models/props_debris/bad_chains001\\.vmdl_c|models/props_debris/bad_chains002\\.vmdl_c|models/props_debris/bad_sticks001\\.vmdl_c|models/props_debris/bad_sticks002\\.vmdl_c|models/props_debris/bad_sticks003\\.vmdl_c|models/props_debris/bad_sticks004\\.vmdl_c|models/props_debris/battle_debris10\\.vmdl_c|models/props_debris/battle_debris11\\.vmdl_c|models/props_debris/battle_debris12\\.vmdl_c|models/props_debris/battle_debris13\\.vmdl_c|models/props_debris/battle_debris1\\.vmdl_c|models/props_debris/battle_debris2\\.vmdl_c|models/props_debris/battle_debris3\\.vmdl_c|models/props_debris/battle_debris4\\.vmdl_c|models/props_debris/battle_debris5\\.vmdl_c|models/props_debris/battle_debris6\\.vmdl_c|models/props_debris/battle_debris7\\.vmdl_c|models/props_debris/battle_debris8\\.vmdl_c|models/props_debris/battle_debris9\\.vmdl_c|models/props_debris/camp_fire001\\.vmdl_c|models/props_debris/camp_fire002\\.vmdl_c|models/props_debris/candle_wax001\\.vmdl_c|models/props_debris/candle_wax002\\.vmdl_c|models/props_debris/candle_wax003\\.vmdl_c|models/props_debris/candle_wax004\\.vmdl_c|models/props_debris/candles001\\.vmdl_c|models/props_debris/candles002\\.vmdl_c|models/props_debris/candles003\\.vmdl_c|models/props_debris/candles004\\.vmdl_c|models/props_debris/candles005\\.vmdl_c|models/props_debris/creep_camp001a\\.vmdl_c|models/props_debris/creep_camp001b\\.vmdl_c|models/props_debris/creep_camp001c\\.vmdl_c|models/props_debris/creep_camp001d\\.vmdl_c|models/props_debris/creep_camp001e\\.vmdl_c|models/props_debris/creep_camp001e_snow\\.vmdl_c|models/props_debris/creep_camp001f\\.vmdl_c|models/props_debris/creep_camp001g\\.vmdl_c|models/props_debris/creep_camp001h\\.vmdl_c|models/props_debris/creep_camp001i\\.vmdl_c|models/props_debris/creep_camp001j\\.vmdl_c|models/props_debris/creep_camp001k\\.vmdl_c|models/props_debris/creep_camp001l\\.vmdl_c|models/props_debris/creep_camp001m\\.vmdl_c|models/props_debris/creep_camp001n\\.vmdl_c|models/props_debris/creep_camp001o\\.vmdl_c|models/props_debris/creep_camp001p\\.vmdl_c|models/props_debris/creep_camp002a\\.vmdl_c|models/props_debris/creep_camp002b\\.vmdl_c|models/props_debris/creep_camp002c\\.vmdl_c|models/props_debris/dead_head001a\\.vmdl_c|models/props_debris/dead_head002a\\.vmdl_c|models/props_debris/dire_chain001_tint\\.vmdl_c|models/props_debris/dire_chain002_tint\\.vmdl_c|models/props_debris/fish001\\.vmdl_c|models/props_debris/fish002\\.vmdl_c|models/props_debris/fish003\\.vmdl_c|models/props_debris/fish004\\.vmdl_c|models/props_debris/flag001\\.vmdl_c|models/props_debris/flag002\\.vmdl_c|models/props_debris/glass_bottle001\\.vmdl_c|models/props_debris/glass_bottle002\\.vmdl_c|models/props_debris/goldcoins_01\\.vmdl_c|models/props_debris/neutral_creep_camp001a\\.vmdl_c|models/props_debris/neutral_creep_camp001b\\.vmdl_c|models/props_debris/neutral_creep_camp001c\\.vmdl_c|models/props_debris/neutral_creep_camp001e\\.vmdl_c|models/props_debris/neutral_creep_camp001h\\.vmdl_c|models/props_debris/neutral_creep_camp001i\\.vmdl_c|models/props_debris/neutral_creep_camp001j\\.vmdl_c|models/props_debris/neutral_creep_camp001l\\.vmdl_c|models/props_debris/neutral_creep_camp001m\\.vmdl_c|models/props_debris/neutral_creep_camp001n\\.vmdl_c|models/props_debris/neutral_creep_camp001o\\.vmdl_c|models/props_debris/neutral_creep_camp002a\\.vmdl_c|models/props_debris/neutral_creep_camp002b\\.vmdl_c|models/props_debris/neutral_creep_camp002c\\.vmdl_c|models/props_debris/neutral_creep_camp003a\\.vmdl_c|models/props_debris/riveredge_rocks_small001_snow\\.vmdl_c|models/props_debris/riveredge_rocks_small002_snow\\.vmdl_c|models/props_debris/riveredge_rocks_small003_snow\\.vmdl_c|models/props_debris/riveredge_rocks_small005_snow\\.vmdl_c|models/props_debris/rock_debris001\\.vmdl_c|models/props_debris/rope001\\.vmdl_c|models/props_debris/rope002\\.vmdl_c|models/props_debris/skull001\\.vmdl_c|models/props_debris/skull001b\\.vmdl_c|models/props_debris/smallprops/smallprops_mushrooms01\\.vmdl_c|models/props_debris/spike001b\\.vmdl_c|models/props_debris/spike004\\.vmdl_c|models/props_debris/wood_fence001b_tintable\\.vmdl_c|models/props_debris/wood_fence001c_tintable\\.vmdl_c|models/props_debris/wood_fence001d_tintable\\.vmdl_c|models/props_gameplay/neutral_stash_rocks\\.vmdl_c|models/props_magic/vapors_white_001\\.vmdl_c|models/props_magic/vapors_white_002\\.vmdl_c|models/props_mines/mines_rocks_nsew_01a\\.vmdl_c|models/props_mines/mines_rocks_nsew_01b\\.vmdl_c|models/props_mines/wood_wall001\\.vmdl_c|models/props_mines/wood_wall002\\.vmdl_c|models/props_mines/wood_wall004\\.vmdl_c|models/props_nature/bad_barracks_roots001\\.vmdl_c|models/props_nature/bad_barracks_roots002\\.vmdl_c|models/props_nature/bad_barracks_roots003\\.vmdl_c|models/props_nature/badside_roots_path001\\.vmdl_c|models/props_nature/badside_roots_path002\\.vmdl_c|models/props_nature/badside_roots_path003\\.vmdl_c|models/props_nature/branches001\\.vmdl_c|models/props_nature/branches002\\.vmdl_c|models/props_nature/bush_00\\.vmdl_c|models/props_nature/bush_00_sfm\\.vmdl_c|models/props_nature/bush_01\\.vmdl_c|models/props_nature/bush_01_sfm\\.vmdl_c|models/props_nature/bush_autumn_00\\.vmdl_c|models/props_nature/bush_autumn_01\\.vmdl_c|models/props_nature/bush_spring_00\\.vmdl_c|models/props_nature/bush_spring_01\\.vmdl_c|models/props_nature/bush_tintable_00\\.vmdl_c|models/props_nature/bush_tintable_01\\.vmdl_c|models/props_nature/campfire_rocks001\\.vmdl_c|models/props_nature/campfire_rocks002\\.vmdl_c|models/props_nature/campfire_rocks003\\.vmdl_c|models/props_nature/campfire_rocks004\\.vmdl_c|models/props_nature/campfire_rocks005\\.vmdl_c|models/props_nature/cattails001\\.vmdl_c|models/props_nature/cattails002\\.vmdl_c|models/props_nature/cattails003\\.vmdl_c|models/props_nature/chipped_rocks001\\.vmdl_c|models/props_nature/chipped_rocks002\\.vmdl_c|models/props_nature/chipped_rocks003\\.vmdl_c|models/props_nature/chipped_rocks004\\.vmdl_c|models/props_nature/chipped_rocks005\\.vmdl_c|models/props_nature/classical_column001_ivy001\\.vmdl_c|models/props_nature/classical_column001_ivy002\\.vmdl_c|models/props_nature/classical_column001_ivy003\\.vmdl_c|models/props_nature/classical_column001_ivy004\\.vmdl_c|models/props_nature/classical_ivy001\\.vmdl_c|models/props_nature/classical_ivy002\\.vmdl_c|models/props_nature/classical_ivy003\\.vmdl_c|models/props_nature/classical_ivy004\\.vmdl_c|models/props_nature/classical_ivy005\\.vmdl_c|models/props_nature/classical_ivy006\\.vmdl_c|models/props_nature/cropcircle_rocks001\\.vmdl_c|models/props_nature/cropcircle_rocks002\\.vmdl_c|models/props_nature/cropcircle_rocks003\\.vmdl_c|models/props_nature/fern001\\.vmdl_c|models/props_nature/fern002\\.vmdl_c|models/props_nature/fern003\\.vmdl_c|models/props_nature/flowers001\\.vmdl_c|models/props_nature/flowers002\\.vmdl_c|models/props_nature/flowers003\\.vmdl_c|models/props_nature/grass_clump_00a\\.vmdl_c|models/props_nature/grass_clump_00b\\.vmdl_c|models/props_nature/grass_clump_00c\\.vmdl_c|models/props_nature/grass_clump_00d\\.vmdl_c|models/props_nature/grass_clump_00e\\.vmdl_c|models/props_nature/grass_clump_00f\\.vmdl_c|models/props_nature/grass_clump_02b\\.vmdl_c|models/props_nature/grass_clump_02c\\.vmdl_c|models/props_nature/grass_clump_02d\\.vmdl_c|models/props_nature/grass_clump_02e\\.vmdl_c|models/props_nature/grass_clump_02f\\.vmdl_c|models/props_nature/grass_clump_snow_00a\\.vmdl_c|models/props_nature/grass_clump_tintable_00a\\.vmdl_c|models/props_nature/grass_clump_tintable_00b\\.vmdl_c|models/props_nature/grass_clump_tintable_00c\\.vmdl_c|models/props_nature/grass_clump_tintable_00d\\.vmdl_c|models/props_nature/grass_clump_tintable_00e\\.vmdl_c|models/props_nature/grass_clump_tintable_00f\\.vmdl_c|models/props_nature/grass_clump_tintable_01a\\.vmdl_c|models/props_nature/grass_clump_tintable_01b\\.vmdl_c|models/props_nature/grass_clump_tintable_01d\\.vmdl_c|models/props_nature/grass_clump_tintable_01e\\.vmdl_c|models/props_nature/grass_clump_tintable_01f\\.vmdl_c|models/props_nature/ivy001\\.vmdl_c|models/props_nature/ivy002\\.vmdl_c|models/props_nature/ivy003\\.vmdl_c|models/props_nature/ivy004\\.vmdl_c|models/props_nature/ivy_128a\\.vmdl_c|models/props_nature/ivy_128b\\.vmdl_c|models/props_nature/ivy_256\\.vmdl_c|models/props_nature/ivy_512\\.vmdl_c|models/props_nature/leaf_pile\\.vmdl_c|models/props_nature/leaves001\\.vmdl_c|models/props_nature/leaves_00\\.vmdl_c|models/props_nature/leaves_01\\.vmdl_c|models/props_nature/leaves_02\\.vmdl_c|models/props_nature/leaves_03\\.vmdl_c|models/props_nature/leaves_04\\.vmdl_c|models/props_nature/leaves_bamboo00\\.vmdl_c|models/props_nature/lily_pads001\\.vmdl_c|models/props_nature/log001\\.vmdl_c|models/props_nature/log002\\.vmdl_c|models/props_nature/mushroom_wild001\\.vmdl_c|models/props_nature/mushroom_wild002\\.vmdl_c|models/props_nature/mushroom_wild003\\.vmdl_c|models/props_nature/mushroom_wild_00\\.vmdl_c|models/props_nature/mushroom_wild_01\\.vmdl_c|models/props_nature/mushroom_wild_02\\.vmdl_c|models/props_nature/petals_00\\.vmdl_c|models/props_nature/petals_01\\.vmdl_c|models/props_nature/plant002\\.vmdl_c|models/props_nature/river_rocks001\\.vmdl_c|models/props_nature/river_rocks002\\.vmdl_c|models/props_nature/river_rocks003\\.vmdl_c|models/props_nature/river_rocks004\\.vmdl_c|models/props_nature/river_rocks005\\.vmdl_c|models/props_nature/rock_ground001\\.vmdl_c|models/props_nature/rock_ground002\\.vmdl_c|models/props_rock/badside_debris_rocks001\\.vmdl_c|models/props_rock/badside_debris_rocks002\\.vmdl_c|models/props_rock/badside_rocks001\\.vmdl_c|models/props_rock/badside_rocks002\\.vmdl_c|models/props_rock/badside_rocks003\\.vmdl_c|models/props_rock/badside_rocks004\\.vmdl_c|models/props_rock/badside_rocks005\\.vmdl_c|models/props_rock/badside_rocks006\\.vmdl_c|models/props_rock/river_rock001a\\.vmdl_c|models/props_rock/river_rock002a\\.vmdl_c|models/props_rock/river_rock003a\\.vmdl_c|models/props_rock/riveredge_rocks\\.vmdl_c|models/props_rock/riveredge_rocks_small001\\.vmdl_c|models/props_rock/riveredge_rocks_small002\\.vmdl_c|models/props_rock/riveredge_rocks_small003\\.vmdl_c|models/props_rock/riveredge_rocks_small004\\.vmdl_c|models/props_rock/riveredge_rocks_small005\\.vmdl_c|models/props_rock/riveredge_rocks_small006\\.vmdl_c|models/props_rock/riveredge_rocks_small007\\.vmdl_c|models/props_rock/riveredge_rocks_small008\\.vmdl_c|models/props_rock/riveredge_rocks_small009\\.vmdl_c|models/props_rock/riveredge_rocks_small_solid\\.vmdl_c|models/props_rock/riveredge_rocks_small_solid_001\\.vmdl_c|models/props_rock/riveredge_rocks_small_solid_002\\.vmdl_c|models/props_rock/riveredge_rocks_small_solid_003\\.vmdl_c|models/props_rock/rubble_small_02a\\.vmdl_c|models/props_rock/rubble_small_02b\\.vmdl_c|models/props_rock/rubble_small_02c\\.vmdl_c|models/props_rock/small_rock_cluster_01\\.vmdl_c|models/props_rock/small_rock_cluster_02\\.vmdl_c|models/props_rock/small_rock_cluster_03\\.vmdl_c|models/props_structures/ancient_giant_skeleton\\.vmdl_c|models/props_structures/crop_circle001\\.vmdl_c|models/props_structures/crop_circle003\\.vmdl_c|models/props_structures/crop_circle004\\.vmdl_c|models/props_structures/dark_statue/dark_statue_vines\\.vmdl_c|models/props_structures/dead_fish\\.vmdl_c|models/props_structures/dead_fish_b\\.vmdl_c|models/props_structures/dead_fish_b_c\\.vmdl_c|models/props_structures/dead_fish_skele\\.vmdl_c|models/props_structures/good_base_wall001\\.vmdl_c|models/props_structures/good_base_wall001b\\.vmdl_c|models/props_structures/good_base_wall002\\.vmdl_c|models/props_structures/good_base_wall002b\\.vmdl_c|models/props_structures/good_base_wall002c\\.vmdl_c|models/props_structures/good_base_wall002d\\.vmdl_c|models/props_structures/good_base_wall003\\.vmdl_c|models/props_structures/good_base_wall003b\\.vmdl_c|models/props_structures/good_base_wall003c\\.vmdl_c|models/props_structures/good_base_wall004\\.vmdl_c|models/props_structures/good_base_wall005\\.vmdl_c|models/props_structures/good_stonewall008\\.vmdl_c|models/props_structures/m2_fence_01\\.vmdl_c|models/props_structures/m2_fence_02\\.vmdl_c|models/props_structures/m2_fence_03\\.vmdl_c|models/props_structures/m2_fence_04\\.vmdl_c|models/props_structures/radiant_barracks_pool001\\.vmdl_c|models/props_structures/radiant_wall001\\.vmdl_c|models/props_structures/radiant_wall002\\.vmdl_c|models/props_structures/ramp_mod_urn000a\\.vmdl_c|models/props_structures/ramp_mod_urn000b\\.vmdl_c|models/props_structures/roots/radiant_meleebarracks_roots_01\\.vmdl_c|models/props_structures/roots/radiant_rangedbarracks_roots_01\\.vmdl_c|models/props_structures/roots/radiant_statue_crystal_roots\\.vmdl_c|models/props_structures/roots/radiant_statue_cup_roots\\.vmdl_c|models/props_structures/roots/radiant_tower_roots_01\\.vmdl_c|models/props_structures/skeleton001\\.vmdl_c|models/props_structures/stair_block001\\.vmdl_c|models/props_structures/stair_block002\\.vmdl_c|models/props_structures/stair_block003\\.vmdl_c|models/props_structures/stair_step001\\.vmdl_c|models/props_structures/stair_step002\\.vmdl_c|models/props_structures/stair_step003\\.vmdl_c|models/props_structures/stair_step004\\.vmdl_c|models/props_structures/stair_step005\\.vmdl_c|models/props_structures/stair_step006\\.vmdl_c|models/props_structures/stair_step007\\.vmdl_c|models/props_structures/stair_step008\\.vmdl_c|models/props_structures/stair_urn001\\.vmdl_c|models/props_structures/stair_urn002\\.vmdl_c|models/props_structures/stone_block005\\.vmdl_c|models/props_structures/torch001\\.vmdl_c|models/props_structures/urn001\\.vmdl_c|models/props_structures/urn001_base001\\.vmdl_c|models/props_structures/urn001b\\.vmdl_c|models/props_structures/urn001c\\.vmdl_c|models/props_structures/urn002\\.vmdl_c|models/props_structures/urn002b\\.vmdl_c|models/props_structures/vines_sidewall001a\\.vmdl_c|models/props_structures/vines_sidewall001b\\.vmdl_c|models/props_structures/vines_sidewall001c\\.vmdl_c|models/props_structures/vines_sidewall001d\\.vmdl_c|models/props_structures/vines_sidewall001f\\.vmdl_c|models/props_structures/vines_wall001\\.vmdl_c|models/props_structures/vines_wall002\\.vmdl_c|models/props_structures/vines_wall003\\.vmdl_c|models/props_structures/waterfall_stone_block\\.vmdl_c|models/props_structures/wood_entry_001\\.vmdl_c|models/props_structures/wood_entry_002\\.vmdl_c|models/props_structures/wood_plank001\\.vmdl_c|models/props_structures/wood_plank002\\.vmdl_c|models/props_structures/wood_plank003\\.vmdl_c|models/props_structures/wood_plank004\\.vmdl_c|models/props_structures/wood_wall001\\.vmdl_c|models/props_structures/wood_wall002\\.vmdl_c|models/props_structures/wood_wall003\\.vmdl_c|models/props_structures/wood_wall004\\.vmdl_c|models/props_teams/banner_dire_small\\.vmdl_c|models/props_teams/banner_radiant\\.vmdl_c|models/props_wildlife/badside_hands001\\.vmdl_c|models/props_wildlife/crow001\\.vmdl_c|models/props_wildlife/wildlife_birdsmall003\\.vmdl_c|models/props_wildlife/wildlife_birdsmall004\\.vmdl_c|models/props_wildlife/wildlife_birdsmall005\\.vmdl_c|models/props_wildlife/wildlife_caterpillar001\\.vmdl_c|models/props_wildlife/wildlife_fish001\\.vmdl_c|models/props_wildlife/wildlife_fish003\\.vmdl_c|models/props_wildlife/wildlife_fish004\\.vmdl_c|models/props_wildlife/wildlife_fish005\\.vmdl_c|models/props_wildlife/wildlife_frog001\\.vmdl_c|models/props_wildlife/wildlife_frog003\\.vmdl_c|models/props_wildlife/wildlife_hercules_beetle001\\.vmdl_c|models/props_wildlife/wildlife_ladybug001\\.vmdl_c|models/props_wildlife/wildlife_millipede001\\.vmdl_c|models/props_wildlife/wildlife_rat001\\.vmdl_c|models/props_wildlife/wildlife_snake001\\.vmdl_c|models/props_wildlife/wildlife_spider001\\.vmdl_c|models/props_wildlife/wildlife_turtle001\\.vmdl_c|models/props_wildlife/wildlife_varmint003\\.vmdl_c|models/props_winter/present\\.vmdl_c)$",
+          "template": "model"
+        },
+        {
+          "match": "^(materials/models/effects/fountain_dire_00\\.vmat_c|materials/models/effects/fountain_dire_blue_00\\.vmat_c|materials/models/effects/fountain_dire_green_00\\.vmat_c|materials/models/effects/liquid_pour_00\\.vmat_c|materials/models/effects/riverflow\\.vmat_c|materials/models/effects/water_edges_mod_00\\.vmat_c|materials/models/effects/waterfall_00\\.vmat_c|materials/models/effects/waterfall_mod_000a\\.vmat_c|materials/models/props_bones/badside_bones001\\.vmat_c|materials/models/props_bones/bones_tintable_001\\.vmat_c|materials/models/props_bones/bones_tintable_002\\.vmat_c|materials/models/props_bones/whale_skeleton\\.vmat_c|materials/models/props_debris/bad_chains001\\.vmat_c|materials/models/props_debris/bad_chains002\\.vmat_c|materials/models/props_debris/bad_sticks001\\.vmat_c|materials/models/props_debris/basket001\\.vmat_c|materials/models/props_debris/campfire001\\.vmat_c|materials/models/props_debris/campfire002\\.vmat_c|materials/models/props_debris/campfire003\\.vmat_c|materials/models/props_debris/campfire004\\.vmat_c|materials/models/props_debris/campfire005\\.vmat_c|materials/models/props_debris/campfire006\\.vmat_c|materials/models/props_debris/campfire007\\.vmat_c|materials/models/props_debris/campfire008\\.vmat_c|materials/models/props_debris/campfire009\\.vmat_c|materials/models/props_debris/campfire010\\.vmat_c|materials/models/props_debris/campfire011\\.vmat_c|materials/models/props_debris/candle_wax001\\.vmat_c|materials/models/props_debris/candle_wax002\\.vmat_c|materials/models/props_debris/candles001\\.vmat_c|materials/models/props_debris/candles002\\.vmat_c|materials/models/props_debris/candles003\\.vmat_c|materials/models/props_debris/clay_bowl001\\.vmat_c|materials/models/props_debris/clay_cup001\\.vmat_c|materials/models/props_debris/clay_cup002\\.vmat_c|materials/models/props_debris/clay_pot001\\.vmat_c|materials/models/props_debris/clay_pot001_survivors\\.vmat_c|materials/models/props_debris/clay_pot002\\.vmat_c|materials/models/props_debris/clay_pot002_survivors\\.vmat_c|materials/models/props_debris/clay_pot002b\\.vmat_c|materials/models/props_debris/clay_pot003\\.vmat_c|materials/models/props_debris/clay_pot004\\.vmat_c|materials/models/props_debris/clay_pot004_survivors\\.vmat_c|materials/models/props_debris/clay_pot005\\.vmat_c|materials/models/props_debris/clay_pot005_survivors\\.vmat_c|materials/models/props_debris/clay_pots001\\.vmat_c|materials/models/props_debris/clay_pots_broken001\\.vmat_c|materials/models/props_debris/clay_pots_broken002\\.vmat_c|materials/models/props_debris/clay_pots_broken003\\.vmat_c|materials/models/props_debris/clay_pots_broken004\\.vmat_c|materials/models/props_debris/creep_camps001\\.vmat_c|materials/models/props_debris/neutral_creep_camp001\\.vmat_c|materials/models/props_debris/rock_debris001\\.vmat_c|materials/models/props_debris/skeleton001\\.vmat_c|materials/models/props_debris/skull001\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_fish_trap\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_fish_trap_dire\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_huts\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_huts_dire\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_lily_pads\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_lily_pads_b\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_lily_pads_b_dire\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_lily_pads_dire\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_torch\\.vmat_c|materials/models/props_debris/water_creep_camp/water_creep_camp_torch_dire\\.vmat_c|materials/models/props_debris/wood_001a\\.vmat_c|materials/models/props_debris/wood_fence001\\.vmat_c|materials/models/props_debris/wood_fence001_tintable\\.vmat_c|materials/models/props_debris/wood_fence002\\.vmat_c|materials/models/props_debris/wood_fence003\\.vmat_c|materials/models/props_debris/wood_fence004\\.vmat_c|materials/models/props_debris/wood_fence005\\.vmat_c|materials/models/props_debris/wood_fence006\\.vmat_c|materials/models/props_debris/wood_fence007\\.vmat_c|materials/models/props_debris/wooden_debris001\\.vmat_c|materials/models/props_debris/wooden_debris002\\.vmat_c|materials/models/props_debris/wooden_debris003\\.vmat_c|materials/models/props_debris/wooden_debris004\\.vmat_c|materials/models/props_debris/wooden_debris005a\\.vmat_c|materials/models/props_debris/wooden_debris005b\\.vmat_c|materials/models/props_debris/wooden_debris005ba\\.vmat_c|materials/models/props_debris/wooden_debris005c\\.vmat_c|materials/models/props_gameplay/fountain_of_life/fountain_of_life_algae\\.vmat_c|materials/models/props_gameplay/fountain_of_life/fountain_of_life_plants_dire\\.vmat_c|materials/models/props_gameplay/fountain_of_life/fountain_of_life_plants_radiant\\.vmat_c|materials/models/props_gameplay/fountain_of_life/radiant/fountain_plants_lilypads/fountain_of_life_plants\\.vmat_c|materials/models/props_magic/vapor_white_001\\.vmat_c|materials/models/props_magic/vapor_white_002\\.vmat_c|materials/models/props_mines/wood_walls001\\.vmat_c|materials/models/props_nature/arid_plant_001\\.vmat_c|materials/models/props_nature/badside_roots001\\.vmat_c|materials/models/props_nature/branches001\\.vmat_c|materials/models/props_nature/bush_00\\.vmat_c|materials/models/props_nature/bush_desert_00\\.vmat_c|materials/models/props_nature/bush_snow_00\\.vmat_c|materials/models/props_nature/bush_spring_00\\.vmat_c|materials/models/props_nature/bush_spring_01\\.vmat_c|materials/models/props_nature/bush_spring_02\\.vmat_c|materials/models/props_nature/bush_tintable_00\\.vmat_c|materials/models/props_nature/bush_tintable_01\\.vmat_c|materials/models/props_nature/campfire_rocks001\\.vmat_c|materials/models/props_nature/cattails001\\.vmat_c|materials/models/props_nature/chipped_rocks001\\.vmat_c|materials/models/props_nature/classical_column001_ivy001\\.vmat_c|materials/models/props_nature/classical_column001_ivy002\\.vmat_c|materials/models/props_nature/fern001\\.vmat_c|materials/models/props_nature/flowers_00\\.vmat_c|materials/models/props_nature/flowers_00_shadow\\.vmat_c|materials/models/props_nature/flowers_00_spec\\.vmat_c|materials/models/props_nature/flowers_01\\.vmat_c|materials/models/props_nature/flowers_02\\.vmat_c|materials/models/props_nature/flowers_02_snow\\.vmat_c|materials/models/props_nature/flowers_02_spec\\.vmat_c|materials/models/props_nature/flowers_03\\.vmat_c|materials/models/props_nature/grass_clump_00a_brown\\.vmat_c|materials/models/props_nature/grass_clump_00a_gold\\.vmat_c|materials/models/props_nature/grass_clump_00a_green\\.vmat_c|materials/models/props_nature/grass_clump_00a_green_nospec\\.vmat_c|materials/models/props_nature/grass_clump_00a_snow\\.vmat_c|materials/models/props_nature/grass_clump_cliffedge_green\\.vmat_c|materials/models/props_nature/grass_clump_nospec_tintable_00\\.vmat_c|materials/models/props_nature/grass_clump_tintable_00\\.vmat_c|materials/models/props_nature/grass_clump_tintable_01\\.vmat_c|materials/models/props_nature/grass_clump_tintable_02\\.vmat_c|materials/models/props_nature/ground_rock001\\.vmat_c|materials/models/props_nature/ivy_branch001\\.vmat_c|materials/models/props_nature/ivy_branch002\\.vmat_c|materials/models/props_nature/ivy_leaf001\\.vmat_c|materials/models/props_nature/leaf_pile\\.vmat_c|materials/models/props_nature/leaves_00\\.vmat_c|materials/models/props_nature/leaves_01\\.vmat_c|materials/models/props_nature/leaves_02\\.vmat_c|materials/models/props_nature/leaves_bamboo00\\.vmat_c|materials/models/props_nature/lily_flower_00\\.vmat_c|materials/models/props_nature/lily_pad001\\.vmat_c|materials/models/props_nature/log001\\.vmat_c|materials/models/props_nature/log002\\.vmat_c|materials/models/props_nature/mushroom_wild001\\.vmat_c|materials/models/props_nature/mushroom_wild002\\.vmat_c|materials/models/props_nature/mushroom_wild003\\.vmat_c|materials/models/props_nature/mushroom_wild004\\.vmat_c|materials/models/props_nature/mushrooms_morels_00\\.vmat_c|materials/models/props_nature/mushrooms_wild_00\\.vmat_c|materials/models/props_nature/mushrooms_wild_02\\.vmat_c|materials/models/props_nature/petals_pink001\\.vmat_c|materials/models/props_nature/plants001\\.vmat_c|materials/models/props_nature/river_rocks001\\.vmat_c|materials/models/props_rock/badside_debris_rocks001\\.vmat_c|materials/models/props_rock/badside_rocks001\\.vmat_c|materials/models/props_rock/river_rock001a\\.vmat_c|materials/models/props_rock/river_rock002a\\.vmat_c|materials/models/props_rock/river_rock003a\\.vmat_c|materials/models/props_rock/riveredge_rock002a\\.vmat_c|materials/models/props_rock/riveredge_rocks_small2\\.vmat_c|materials/models/props_rock/riveredge_rocks_small3\\.vmat_c|materials/models/props_rock/riveredge_rocks_small\\.vmat_c|materials/models/props_rock/riveredge_rocks_small_02\\.vmat_c|materials/models/props_structures/ancient_giant_skeleton\\.vmat_c|materials/models/props_structures/bad_stairs002\\.vmat_c|materials/models/props_structures/barrel_fish\\.vmat_c|materials/models/props_structures/dead_fish\\.vmat_c|materials/models/props_structures/good_base_wall001\\.vmat_c|materials/models/props_structures/good_base_wall003\\.vmat_c|materials/models/props_structures/good_base_wall004\\.vmat_c|materials/models/props_structures/good_stairs002\\.vmat_c|materials/models/props_structures/leanto_fur_color\\.vmat_c|materials/models/props_structures/m2_fence_01_color\\.vmat_c|materials/models/props_structures/m2_fence_02_color\\.vmat_c|materials/models/props_structures/m2_fence_03_color\\.vmat_c|materials/models/props_structures/props_generic_00\\.vmat_c|materials/models/props_structures/radiant_wall001\\.vmat_c|materials/models/props_structures/ramp_mod_000b\\.vmat_c|materials/models/props_structures/roots/roots_outpost\\.vmat_c|materials/models/props_structures/roots/roots_outpost_leaves\\.vmat_c|materials/models/props_structures/roots/roots_radiant\\.vmat_c|materials/models/props_structures/roots/roots_radiant_leaves\\.vmat_c|materials/models/props_structures/skeleton001\\.vmat_c|materials/models/props_structures/team_portal_base_dire_tree\\.vmat_c|materials/models/props_structures/team_portal_base_radiant_tree\\.vmat_c|materials/models/props_structures/temple_stairs001\\.vmat_c|materials/models/props_structures/torch001\\.vmat_c|materials/models/props_structures/universal_vines001\\.vmat_c|materials/models/props_structures/universal_vines_fade_001\\.vmat_c|materials/models/props_structures/urn001\\.vmat_c|materials/models/props_structures/urn002\\.vmat_c|materials/models/props_structures/urn002b\\.vmat_c|materials/models/props_structures/waterfall_stone_block_color\\.vmat_c|materials/models/props_structures/wood_wall001\\.vmat_c|materials/models/props_structures/wood_wall001b\\.vmat_c|materials/models/props_wildlife/badside_hands001\\.vmat_c|materials/water/water_flow\\.vmat_c)$",
+          "template": "material"
+        },
+        {
+          "match": "^(materials/models/props_rock/river_rock002a\\.vtex_c)$",
+          "template": "texture"
+        },
+        {
+          "match": "^materials/nature/card_grass.*\\.vmat_c$",
+          "template": "material"
+        }
+      ]
+    },
+    {
+      "id": "english-ui",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "Aa",
+      "kind": "english",
+      "rules": [],
+      "name": {
+        "ru": "Английский интерфейс",
+        "en": "English interface"
+      },
+      "desc": {
+        "ru": "Для тех, кто играет на английском: поставь в параметрах запуска -language dutch, и моды заработают, а текст останется английским. С русской озвучкой тоже работает.",
+        "en": "For English players: set -language dutch in the launch options, mods will work and the text stays English. Also works with Russian voices."
+      }
     }
   ],
   "packs": []

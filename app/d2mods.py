@@ -1,8 +1,9 @@
 """D2A Mods: a small mod manager for Dota 2 by Dota 2 Analyzer.
 
-Two kinds of mods:
+Kinds of mods:
   * our own rules from the site catalog ("replace these game files with an empty effect or silence"),
-    built on the player's PC from the game's own files into one VPK;
+    built on the player's PC from the game's own files (or a blank from Minify) into one VPK;
+  * file mods from the catalog (Minify's dark terrain): files from a pinned GitHub commit, each checked by its git hash;
   * ready mods from the open Dota2PornFx (D2PFX) catalog, downloaded only when ticked, checked by SHA-256
     and copied as they are.
 Everything goes into the folder of the game's voice language (e.g. game/dota_russian, or dota_<x> when Dota's
@@ -34,7 +35,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.3.1"
+APP_VERSION = "1.4.0"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -265,19 +266,59 @@ def build_rules(game, catalog, mod_ids, tmp, log=print):
     for m in chosen:
         before = count
         for rule in m["rules"]:
-            tpl = catalog["templates"][rule["template"]]
-            if tpl not in blank:
-                blank[tpl] = pak.get_file(tpl).read()
+            name = rule["template"]
+            tpl = catalog["templates"][name]
+            if name not in blank:  # a game file, or a blank downloaded by URL and checked by SHA-256
+                if isinstance(tpl, dict):
+                    with open(fetch_file(tpl["url"], tpl["sha256"], f"blank {name}", log), "rb") as f:
+                        blank[name] = f.read()
+                else:
+                    blank[name] = pak.get_file(tpl).read()
             rx = re.compile(rule["match"])
             for p in paths:
                 if rx.search(p) and p != tpl:
                     dst = os.path.join(tmp, *p.split("/"))
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     with open(dst, "wb") as f:
-                        f.write(blank[tpl])
+                        f.write(blank[name])
                     count += 1
         log(f"{m['name']['ru']}: {count - before} файлов")
     return count
+
+
+def git_blob_ok(data, sha):
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest() == sha
+
+
+def place_files(mod, tmp, log):
+    """A file mod: every file from the pinned commit, cached on disk and checked against its git hash."""
+    base, items = mod["files"]["base"], mod["files"]["list"]
+    cache = os.path.join(DATA_DIR, "files", "git")
+    os.makedirs(cache, exist_ok=True)
+    log(f"Скачиваю «{mod['name']['ru']}» ({len(items)} файлов)…")
+
+    def one(item):
+        rel, sha = item
+        if ".." in rel.split("/") or not re.fullmatch(r"[0-9a-f]{40}", sha):
+            raise RuntimeError(f"Странный путь в моде: {rel}")
+        path = os.path.join(cache, sha)
+        data = None
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                data = f.read()
+        if data is None or not git_blob_ok(data, sha):
+            data = http_get(base + urllib.parse.quote(rel), 120)
+            if not git_blob_ok(data, sha):
+                raise RuntimeError(f"Файл «{rel}» скачался с ошибкой, попробуй ещё раз")
+            with open(path, "wb") as f:
+                f.write(data)
+        dst = os.path.join(tmp, *rel.split("/"))
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, "wb") as f:
+            f.write(data)
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        list(ex.map(one, items))
+    return len(items)
 
 
 def loose_path(name):
@@ -487,6 +528,9 @@ def install(game, catalog, d2pfx, ids, log=print):
     try:
         with tempfile.TemporaryDirectory() as tmp:
             total += build_rules(game, catalog, ids, tmp, log)
+            for m in catalog["mods"]:
+                if m["id"] in ids and m.get("files"):
+                    total += place_files(m, tmp, log)
             if ENGLISH_ID in ids:
                 n, texts = english_ui(game, lang, tmp, log)
                 replaced += texts
@@ -698,8 +742,13 @@ def run_gui():
 
         def toggle(_e=None):
             if not st["busy"]:
-                if m["id"] not in st["sel"] and m.get("cat") in SINGLE_CATS:  # one fog shader / terrain / font at a time
-                    st["sel"] = {i for i in st["sel"] if not i.startswith(f"d2pfx:{m['cat']}/")}
+                if m["id"] not in st["sel"]:
+                    drop = []
+                    if m.get("cat") in SINGLE_CATS:  # one fog shader / terrain / font at a time
+                        drop.append(f"d2pfx:{m['cat']}/")
+                    drop += m.get("excludes", [])  # our mods that replace the same files as whole D2PFX categories
+                    clash = {o["id"] for o in st["catalog"]["mods"] if any(f"d2pfx:{m.get('cat')}/".startswith(x) for x in o.get("excludes", []))}
+                    st["sel"] = {i for i in st["sel"] if not any(i.startswith(x) for x in drop) and i not in clash}
                 st["sel"].symmetric_difference_update({m["id"]})
                 draw()
 
