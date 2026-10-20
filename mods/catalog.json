@@ -1,7 +1,7 @@
 {
   "version": 2,
   "app": {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
