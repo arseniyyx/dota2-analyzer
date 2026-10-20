@@ -447,6 +447,7 @@ async function analyze() {
   const id = parseId(raw);
   if (!id) return showError(L('Введи Steam ID, Friend ID или ссылку на профиль.', 'Enter a Steam ID, Friend ID, or profile link.'));
   store.set('lastId', id);
+  S.autoAnalyzed = true;
   $('searchBtn').disabled = true; $('results').hidden = true; $('error').hidden = true; $('loading').hidden = false;
   $('loadingText').textContent = L('Загружаю профиль…', 'Loading profile…');
   try {
@@ -1996,6 +1997,7 @@ const VIEW_TITLES = {
   meta: L('Мета Dota 2: сильнейшие герои и контрпики', 'Dota 2 meta: strongest heroes and counters'),
   learn: L('Обучение Dota 2: сборки и пики силы героев', 'Dota 2 coaching: hero builds and power spikes'),
   tools: L('Арт-сетка героев для Dota 2', 'Art hero grid for Dota 2'),
+  optimize: L('Оптимизация Dota 2: больше FPS', 'Dota 2 optimisation: more FPS'),
 };
 
 // "Полезное" dropdown in the top bar
@@ -2009,11 +2011,15 @@ document.addEventListener('click', e => { if (!e.target.closest('.nav-drop')) cl
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTools(); });
 function route() {
   const h = location.hash;
-  const view = h === '#meta' ? 'meta' : h === '#learn' ? 'learn' : h.startsWith('#grid') ? 'tools' : 'player';
+  const view = h === '#meta' ? 'meta' : h === '#learn' ? 'learn' : h.startsWith('#grid') ? 'tools' : h === '#optimize' ? 'optimize' : 'player';
   document.title = VIEW_TITLES[view];
   const meta = view === 'meta';
-  $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn'; $('viewTools').hidden = view !== 'tools';
-  $('navTools').setAttribute('aria-current', view === 'tools' ? 'page' : 'false');
+  $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn'; $('viewTools').hidden = view !== 'tools'; $('viewOptimize').hidden = view !== 'optimize';
+  $('navTools').setAttribute('aria-current', view === 'tools' || view === 'optimize' ? 'page' : 'false');
+  if (view === 'optimize') renderOptimize();
+  // the last analysed profile loads on the first visit to a page that needs it, not on the tools pages
+  const last = store.get('lastId');
+  if ((view === 'player' || view === 'learn') && last && !S.autoAnalyzed) { S.autoAnalyzed = true; $('steamId').value = last; analyze(); }
   closeTools();
   if (view === 'tools') {
     renderTools();
@@ -2077,7 +2083,8 @@ function applyStaticLang() {
   document.querySelectorAll('[data-en-aria]').forEach(el => { el.setAttribute('aria-label', el.dataset.enAria); });
 }
 
-(async function boot() {
+// start once every script on the page (grid, art, optimisation tools) has loaded
+async function boot() {
   applyStaticLang();
   wireKey();
   try { await loadBase(); } catch (e) { showError(L('Не удалось загрузить список героев: ', 'Couldn\'t load the hero list: ') + e.message); return; }
@@ -2086,6 +2093,5 @@ function applyStaticLang() {
   route();
   const linkMatch = +new URLSearchParams(location.search).get('match');
   if (linkMatch) openMatch(linkMatch);
-  const last = store.get('lastId');
-  if (last && location.hash !== '#meta') { $('steamId').value = last; analyze(); }
-})();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

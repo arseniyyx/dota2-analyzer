@@ -602,3 +602,15 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .art-mode .tab { flex: 1; justify-content: center; }
 .art-btns { flex-wrap: wrap; gap: 6px; }
 .art-canvas.drawing { cursor: crosshair; touch-action: none; }
+
+.opt-wrap { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 14px; align-items: start; }
+.opt-wrap .tabs { flex-wrap: wrap; }
+.code-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.code-row code, .opt-wrap p code { padding: 6px 10px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; word-break: break-all; }
+.code-row code { flex: 1; min-width: 0; }
+.code-block { margin: 0; padding: 12px 14px; border-radius: 10px; background: #0a0d12; border: 1px solid var(--border); font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; color: var(--fg); }
+.opt-toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 14px; }
+.opt-toggle { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.opt-toggle .chip { min-width: 44px; justify-content: center; }
+.opt-mods { border-color: rgba(240, 84, 74, .3); }
+@media (max-width: 900px) { .opt-wrap { grid-template-columns: 1fr; } }
