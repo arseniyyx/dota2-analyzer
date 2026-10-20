@@ -622,3 +622,4 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .mods-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .mod .row { justify-content: space-between; margin-bottom: 6px; }
 .mods-hero a.btn { text-decoration: none; }
+.mod-ic { color: var(--accent); margin-right: 8px; }

@@ -1,53 +1,96 @@
 {
-  "version": 1,
+  "version": 2,
   "app": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
     "particle": "particles/dev/empty_particle.vpcf_c",
     "sound": "sounds/null.vsnd_c"
   },
+  "tabs": [
+    { "id": "optimize", "name": { "ru": "Оптимизация", "en": "Optimisation" } },
+    { "id": "custom", "name": { "ru": "Кастомизация", "en": "Customisation" } }
+  ],
   "mods": [
     {
-      "id": "no-weather",
-      "category": "fps",
+      "id": "no-weather", "tab": "optimize", "category": "fps", "icon": "☂",
       "name": { "ru": "Без погоды", "en": "No weather" },
-      "desc": {
-        "ru": "Убирает дождь, снег, пепел, листья и другие эффекты погоды из предметов. Самая заметная прибавка FPS в драках на слабых ПК.",
-        "en": "Removes rain, snow, ash, leaves and other weather effects from items. The most noticeable FPS gain in fights on weak PCs."
-      },
+      "desc": { "ru": "Дождь, снег, пепел, листья и другая погода из предметов. Самая заметная прибавка FPS в драках.", "en": "Rain, snow, ash, leaves and other item weather. The biggest FPS gain in fights." },
       "rules": [{ "match": "^particles/rain_fx/econ_.*\\.vpcf_c$", "template": "particle" }]
     },
     {
-      "id": "no-map-ambient-fx",
-      "category": "fps",
+      "id": "no-map-ambient-fx", "tab": "optimize", "category": "fps", "icon": "✦",
       "name": { "ru": "Без фоновых эффектов карты", "en": "No map ambient effects" },
-      "desc": {
-        "ru": "Убирает декоративные частицы ландшафтов: светлячков, пыль, блики, капли в пещерах. На игру не влияет, только на картинку и FPS.",
-        "en": "Removes decorative terrain particles: fireflies, dust, glints, cave drips. No gameplay effect, only visuals and FPS."
-      },
+      "desc": { "ru": "Светлячки, пыль, блики и капли на ландшафтах. На игру не влияет.", "en": "Fireflies, dust, glints and drips on terrains. No gameplay effect." },
       "rules": [{ "match": "^(particles/rain_fx/(?!econ_).*|maps/[^/]+_assets/particles/.*)\\.vpcf_c$", "template": "particle" }]
     },
     {
-      "id": "no-ambient-sounds",
-      "category": "sound",
+      "id": "no-world-creatures", "tab": "optimize", "category": "fps", "icon": "❦",
+      "name": { "ru": "Без птиц и насекомых", "en": "No birds and bugs" },
+      "desc": { "ru": "Летучие мыши, птицы и мошкара над картой.", "en": "Bats, birds and bugs flying over the map." },
+      "rules": [{ "match": "^particles/world_creature_fx/.*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-cosmetic-glow", "tab": "optimize", "category": "fps", "icon": "✧",
+      "name": { "ru": "Без свечения косметики", "en": "No cosmetic glow" },
+      "desc": { "ru": "Постоянные эффекты на предметах героев: огонь, искры, дымка. Способности и их эффекты остаются.", "en": "Idle effects on hero items: fire, sparks, haze. Abilities and their effects stay." },
+      "rules": [{ "match": "^particles/econ/items/.*_ambient[^/]*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-courier-fx", "tab": "optimize", "category": "fps", "icon": "✉",
+      "name": { "ru": "Без эффектов курьеров", "en": "No courier effects" },
+      "desc": { "ru": "Огонь, свечение и следы у курьеров из сокровищниц. Сами курьеры остаются.", "en": "Fire, glow and trails on treasure couriers. The couriers stay." },
+      "rules": [{ "match": "^particles/econ/courier/.*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-emblems", "tab": "optimize", "category": "fps", "icon": "◎",
+      "name": { "ru": "Без эмблем", "en": "No emblems" },
+      "desc": { "ru": "Ауры эмблем из ивентов вокруг героев.", "en": "Event emblem auras around heroes." },
+      "rules": [{ "match": "^particles/econ/events/.*emblem[^/]*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-ward-fx", "tab": "optimize", "category": "fps", "icon": "◉",
+      "name": { "ru": "Без эффектов скинов вардов", "en": "No ward skin effects" },
+      "desc": { "ru": "Свечение и частицы у вардов из сокровищниц. Сами варды видны как обычно.", "en": "Glow and particles on treasure wards. The wards look as usual." },
+      "rules": [{ "match": "^particles/econ/wards/.*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-building-debris", "tab": "optimize", "category": "fps", "icon": "▣",
+      "name": { "ru": "Без обломков зданий", "en": "No building debris" },
+      "desc": { "ru": "Взрывы и обломки, когда разрушаются башни и статуи.", "en": "Explosions and debris when towers and statues fall." },
+      "rules": [{ "match": "^particles/world_destruction_fx/.*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-event-decor", "tab": "optimize", "category": "fps", "icon": "✺",
+      "name": { "ru": "Без праздничного декора", "en": "No event decorations" },
+      "desc": { "ru": "Конфетти, фейерверки и украшения фонтанов из ивентов.", "en": "Confetti, fireworks and fountain decorations from events." },
+      "rules": [{ "match": "^particles/econ/events/.*(fountain|pedestal|celebration|confetti)[^/]*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-ambient-sounds", "tab": "optimize", "category": "sound", "icon": "♪",
       "name": { "ru": "Без фоновых звуков карты", "en": "No map ambient sounds" },
-      "desc": {
-        "ru": "Глушит фон карты и звуки животных. Все игровые звуки остаются: рога, аванпосты, Торментор, Twin Gates, падение деревьев, смена дня и ночи.",
-        "en": "Mutes the map soundscape and animal sounds. Every gameplay sound stays: horns, outposts, Tormentor, Twin Gates, falling trees, day and night."
-      },
+      "desc": { "ru": "Фон карты и звуки животных. Игровые звуки остаются: рога, аванпосты, Торментор, Twin Gates, деревья, день и ночь.", "en": "Map soundscape and animals. Gameplay sounds stay: horns, outposts, Tormentor, Twin Gates, trees, day and night." },
       "rules": [{ "match": "^sounds/ambient/(soundscapes/.*|chicken|pig|sheep|frog|fish\\w*|ambient)\\.vsnd_c$", "template": "sound" }]
     },
     {
-      "id": "no-courier-fx",
-      "category": "fps",
-      "name": { "ru": "Без эффектов курьеров", "en": "No courier effects" },
-      "desc": {
-        "ru": "Убирает огонь, свечение и следы у курьеров из сокровищниц. Сами курьеры остаются.",
-        "en": "Removes fire, glow and trails from treasure couriers. The couriers themselves stay."
-      },
-      "rules": [{ "match": "^particles/econ/courier/.*\\.vpcf_c$", "template": "particle" }]
+      "id": "mute-chatwheel", "tab": "custom", "category": "sound", "icon": "⊘",
+      "name": { "ru": "Без звуков чат-колеса", "en": "Mute chat wheel sounds" },
+      "desc": { "ru": "Глушит саундборд: «Ой-ой-ой», «Ехехе» и прочие звуки, которыми спамят в чате.", "en": "Mutes the soundboard lines people spam in chat." },
+      "rules": [{ "match": "^sounds/misc/soundboard/.*\\.vsnd_c$", "template": "sound" }]
+    },
+    {
+      "id": "no-high-five", "tab": "custom", "category": "visual", "icon": "✋",
+      "name": { "ru": "Без эффектов «Дай пять»", "en": "No high five effects" },
+      "desc": { "ru": "Вспышки и картинки над героями при «Дай пять».", "en": "Bursts and overhead pictures from high fives." },
+      "rules": [{ "match": "high_?five[^/]*\\.vpcf_c$", "template": "particle" }]
+    },
+    {
+      "id": "no-taunt-fx", "tab": "custom", "category": "visual", "icon": "☺",
+      "name": { "ru": "Без эффектов насмешек", "en": "No taunt effects" },
+      "desc": { "ru": "Частицы от насмешек героев. Сама анимация остаётся.", "en": "Particles from hero taunts. The animation stays." },
+      "rules": [{ "match": "^particles/econ/taunts?/.*\\.vpcf_c$", "template": "particle" }]
     }
-  ]
+  ],
+  "packs": []
 }
