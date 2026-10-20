@@ -1995,7 +1995,7 @@ const VIEW_TITLES = {
   player: L('Dota 2 Analyzer — разбор игрока и мета патча', 'Dota 2 Analyzer: player analysis and patch meta'),
   meta: L('Мета Dota 2: сильнейшие герои и контрпики', 'Dota 2 meta: strongest heroes and counters'),
   learn: L('Обучение Dota 2: сборки и пики силы героев', 'Dota 2 coaching: hero builds and power spikes'),
-  tools: L('Сетка героев Dota 2 из картинки', 'Dota 2 hero grid from a picture'),
+  tools: L('Арт-сетка героев для Dota 2', 'Art hero grid for Dota 2'),
 };
 
 // "Полезное" dropdown in the top bar

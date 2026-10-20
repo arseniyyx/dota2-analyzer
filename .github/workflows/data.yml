@@ -28,8 +28,6 @@ jobs:
         run: python scripts/build_data.py
         env:
           STRATZ_TOKEN: ${{ secrets.STRATZ_TOKEN }}
-      - name: Hero portrait fingerprints for the grid tool
-        run: python scripts/build_hero_feats.py
       - name: Build static pages
         run: python scripts/build_pages.py
       - name: Commit data

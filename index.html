@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=45">
+<link rel="stylesheet" href="assets/style.css?v=47">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -61,7 +61,6 @@
       <div class="nav-drop">
         <button type="button" id="navTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu"><span data-en="Tools">Полезное</span><svg class="i" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="nav-menu" id="toolsMenu" role="menu" hidden>
-          <a href="#grid" role="menuitem"><b data-en="Hero grid from a picture">Сетка героев из картинки</b><small data-en="Tier list or screenshot into a Dota 2 grid">Тир-лист или скриншот в сетку Dota 2</small></a>
           <a href="#grid-art" role="menuitem"><b data-en="Art grid from a photo">Арт-сетка из фото</b><small data-en="A picture drawn with dots and zones for your heroes">Рисунок из точек и зоны для твоих героев</small></a>
           <a href="#grid-meta" role="menuitem"><b data-en="Meta hero grid">Мета-сетка героев</b><small data-en="Strongest heroes by position for your rank">Сильнейшие герои по позициям для твоего ранга</small></a>
         </div>
@@ -170,45 +169,40 @@
   </main>
 
   <main id="viewTools" class="stack" hidden>
-    <section class="section">
-      <h1 class="section-title" data-en="Hero grid for Dota 2">Сетка героев для Dota 2</h1>
-      <div class="two-col">
-        <div class="card pad stack-sm">
-          <h2 class="label" data-en="From a picture">Из картинки</h2>
-          <label class="grid-drop" id="gridDrop" for="gridFile">
-            <input type="file" id="gridFile" accept="image/*" hidden>
-            <svg class="i" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
-            <b data-en="Drop a picture, paste it or pick a file">Перетащи картинку, вставь Ctrl+V или выбери файл</b>
-            <span class="note" data-en="Tier list with hero portraits or a screenshot of a hero grid">Тир-лист с портретами героев или скриншот сетки</span>
-          </label>
-          <p class="note" id="gridStatus"></p>
-        </div>
-        <div class="card pad stack-sm" id="grid-meta">
-          <h2 class="label" data-en="Meta grid">Мета-сетка</h2>
-          <p class="note" data-en="Five categories by position, strongest heroes first, from the last days of pubs.">Пять категорий по позициям, сильнейшие герои первыми, по пабам последних дней.</p>
-          <div class="row"><select class="field" id="metaGridGroup" aria-label="Ранг" data-en-aria="Rank"></select><button class="btn" id="metaGridBtn" type="button" data-en="Build">Собрать</button></div>
-          <button class="btn ghost small" id="emptyGridBtn" type="button" data-en="Start an empty grid">Начать пустую сетку</button>
-        </div>
-      </div>
-      <div id="gridPreview"></div>
-      <div id="gridEditor" class="stack-sm"></div>
-    </section>
-
     <section class="section" id="grid-art">
-      <h2 class="section-title" data-en="Art grid from a photo">Арт-сетка из фото</h2>
+      <h1 class="section-title" data-en="Art hero grid for Dota 2">Арт-сетка героев для Dota 2</h1>
       <p class="note" data-en="The picture is drawn with hundreds of tiny empty categories, and the zones are real categories: in Dota you drag your heroes into them.">Рисунок собирается из сотен маленьких пустых категорий, а зоны — настоящие категории: в Dota ты сам перетаскиваешь в них героев.</p>
       <div class="art-wrap">
         <div class="card pad stack-sm art-controls">
+          <div class="tabs art-mode" id="artMode" role="tablist">
+            <button class="tab" type="button" data-m="photo" data-en="From a photo">Из фото</button>
+            <button class="tab" type="button" data-m="draw" data-en="Draw it myself">Рисовать самому</button>
+          </div>
+          <div class="stack-sm" id="artDrawCtl" hidden>
+            <div class="tabs" id="artTool" role="tablist">
+              <button class="tab" type="button" data-t="brush" data-en="Brush">Кисть</button>
+              <button class="tab" type="button" data-t="eraser" data-en="Eraser">Ластик</button>
+            </div>
+            <div class="art-row"><label for="artBrush" data-en="Brush size">Размер кисти</label><input type="range" id="artBrush" min="1" max="5" step="1"></div>
+            <div class="row art-btns">
+              <button class="btn ghost small" id="artUndo" type="button" data-en="Undo">Отменить</button>
+              <button class="btn ghost small" id="artClear" type="button" data-en="Clear">Очистить</button>
+              <button class="btn ghost small" id="artFromPhoto" type="button" data-en="Copy the photo drawing">Перенести рисунок с фото</button>
+            </div>
+            <p class="note" data-en="Draw on the preview with a mouse or a finger. Dots never go into the hero zones.">Рисуй мышкой или пальцем прямо по превью. В зоны для героев точки не попадают.</p>
+          </div>
+          <div class="stack-sm" id="artPhotoCtl">
           <label class="grid-drop small" id="artDrop" for="artFile">
             <input type="file" id="artFile" accept="image/*" hidden>
             <b data-en="Drop a photo or pick a file">Перетащи фото или выбери файл</b>
             <span class="note" data-en="Faces and characters on a plain background work best">Лучше всего выходят лица и персонажи на простом фоне</span>
           </label>
           <div class="art-row"><label for="artStyle" data-en="Style">Стиль</label><select class="field" id="artStyle"><option value="edges" data-en="Outlines">Контуры</option><option value="fill" data-en="Dotted fill">Заливка точками</option></select></div>
-          <div class="art-row"><label for="artSpacing" data-en="Density">Плотность</label><input type="range" id="artSpacing" min="5" max="16" step="1"></div>
           <div class="art-row"><label for="artAmount" data-en="Amount of dots">Количество точек</label><input type="range" id="artAmount" min="6" max="45" step="1"></div>
-          <div class="art-row"><label for="artChar" data-en="Dot">Символ</label><select class="field" id="artChar"><option>.</option><option>·</option><option>•</option><option>:</option><option>*</option><option>'</option><option>°</option></select></div>
           <label class="art-check"><input type="checkbox" id="artInvert"><span data-en="Invert (for fill)">Инвертировать (для заливки)</span></label>
+          </div>
+          <div class="art-row"><label for="artSpacing" data-en="Density">Плотность</label><input type="range" id="artSpacing" min="5" max="16" step="1"></div>
+          <div class="art-row"><label for="artChar" data-en="Dot">Символ</label><select class="field" id="artChar"><option>.</option><option>·</option><option>•</option><option>:</option><option>*</option><option>'</option><option>°</option></select></div>
           <div class="art-row"><label for="artPreset" data-en="Hero zones">Зоны для героев</label><select class="field" id="artPreset"><option value="right" data-en="5 on the right">5 справа</option><option value="bottom" data-en="5 at the bottom">5 снизу</option><option value="none" data-en="No zones">Без зон</option></select></div>
           <div class="art-zones" id="artZoneNames"></div>
           <label class="art-check"><input type="checkbox" id="artFrames"><span data-en="Dotted frames around zones">Рамки из точек вокруг зон</span></label>
@@ -226,6 +220,18 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title" data-en="Meta hero grid">Мета-сетка героев</h2>
+      <div class="tools-grid">
+        <div class="card pad stack-sm" id="grid-meta">
+          <p class="note" data-en="Five categories by position, strongest heroes first, from the last days of pubs.">Пять категорий по позициям, сильнейшие герои первыми, по пабам последних дней.</p>
+          <div class="row"><select class="field" id="metaGridGroup" aria-label="Ранг" data-en-aria="Rank"></select><button class="btn" id="metaGridBtn" type="button" data-en="Build">Собрать</button></div>
+          <button class="btn ghost small" id="emptyGridBtn" type="button" data-en="Start an empty grid">Начать пустую сетку</button>
+        </div>
+      </div>
+      <div id="gridEditor" class="stack-sm"></div>
     </section>
   </main>
 
@@ -298,8 +304,8 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=45"></script>
-<script src="assets/grid.js?v=45"></script>
-<script src="assets/gridart.js?v=45"></script>
+<script src="assets/app.js?v=47"></script>
+<script src="assets/grid.js?v=47"></script>
+<script src="assets/gridart.js?v=47"></script>
 </body>
 </html>

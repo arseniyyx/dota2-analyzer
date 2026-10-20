@@ -597,3 +597,8 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .art-zones .field { padding: 6px 10px; }
 .art-canvas { width: 100%; aspect-ratio: 2 / 1; border-radius: 12px; border: 1px solid var(--border); background: #121820; display: block; }
 @media (max-width: 900px) { .art-wrap { grid-template-columns: 1fr; } }
+
+.art-mode { width: 100%; }
+.art-mode .tab { flex: 1; justify-content: center; }
+.art-btns { flex-wrap: wrap; gap: 6px; }
+.art-canvas.drawing { cursor: crosshair; touch-action: none; }

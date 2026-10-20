@@ -9,7 +9,7 @@ const ZONE_PRESETS = {
   none: { art: [0, 0, 1200, 600], zones: [] },
 };
 
-S.art = S.art || { img: null, style: 'edges', spacing: 8, amount: 22, char: '.', invert: false, preset: 'right', names: ['POS 1', 'POS 2', 'POS 3', 'POS 4', 'POS 5'], frames: true, fill: false, text: '', scale: 1, name: 'Art grid' };
+S.art = S.art || { mode: 'photo', tool: 'brush', brush: 2, manual: new Set(), history: [], img: null, style: 'edges', spacing: 8, amount: 22, char: '.', invert: false, preset: 'right', names: ['POS 1', 'POS 2', 'POS 3', 'POS 4', 'POS 5'], frames: true, fill: false, text: '', scale: 1, name: 'Art grid' };
 
 // where the dots go: Sobel edges (outlines) or Floyd-Steinberg dithering (fill), on a grid of `spacing` units
 function artDots(img, [ax, ay, aw, ah], o) {
@@ -57,7 +57,7 @@ function artLayout() {
   const lines = o.text.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 14);
   const textBox = lines.length ? { x: 16, y: ART_H - 14 - lines.length * 22, w: Math.max(...lines.map(l => l.length)) * 9 + 10, h: lines.length * 22 + 8 } : null;
   const inside = (x, y, b, pad) => x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad && y < b.y + b.h + pad;
-  let dots = o.img ? artDots(o.img, pre.art, o) : [];
+  let dots = o.mode === 'draw' ? [...o.manual].map(k => k.split(',').map(Number)) : o.img ? artDots(o.img, pre.art, o) : [];
   dots = dots.filter(([x, y]) => !zones.some(z => inside(x, y, z, 12)) && !(textBox && inside(x, y, textBox, 6)));
   if (o.frames) for (const z of zones) { // dotted frame around every hero zone, like hand-made grids
     for (let x = z.x - 6; x <= z.x + z.w + 6; x += o.spacing) dots.push([x, z.y - 8], [x, z.y + z.h + 4]);
@@ -87,6 +87,10 @@ function drawArt() {
   cv.width = px; cv.height = px / 2;
   const ctx = cv.getContext('2d'), k = px / ART_W;
   ctx.fillStyle = '#121820'; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (o.mode === 'draw') { // faint canvas of the points you can paint
+    ctx.fillStyle = 'rgba(255,255,255,.07)';
+    for (let y = 0; y < ART_H; y += o.spacing) for (let x = 0; x < ART_W; x += o.spacing) ctx.fillRect(x * k, y * k, Math.max(1, k), Math.max(1, k));
+  }
   ctx.fillStyle = '#d5dbe3'; ctx.font = `${Math.max(7, 13 * k)}px "Exo 2", sans-serif`; ctx.textBaseline = 'top';
   for (const [x, y] of dots) ctx.fillText(o.char, x * k, (y - 6) * k);
   ctx.strokeStyle = 'rgba(227,176,75,.35)'; ctx.lineWidth = 1;
@@ -98,16 +102,43 @@ function drawArt() {
     + (dots.length > 4000 ? L(' — много, Dota может тормозить: уменьши плотность', ' — a lot, Dota may lag: lower the density') : '');
 }
 
+function paintAt(e) {
+  const o = S.art, cv = $('artCanvas'), r = cv.getBoundingClientRect();
+  const gx = Math.round((e.clientX - r.left) / r.width * ART_W / o.spacing), gy = Math.round((e.clientY - r.top) / r.height * ART_H / o.spacing);
+  const rad = o.brush - 1;
+  for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+    if (dx * dx + dy * dy > rad * rad + 0.5) continue;
+    const x = (gx + dx) * o.spacing, y = (gy + dy) * o.spacing;
+    if (x < 0 || y < 0 || x > ART_W - o.spacing || y > ART_H - o.spacing) continue;
+    if (o.tool === 'eraser') o.manual.delete(`${x},${y}`); else o.manual.add(`${x},${y}`);
+  }
+}
+let artFrame = 0;
+const redrawSoon = () => { if (!artFrame) artFrame = requestAnimationFrame(() => { artFrame = 0; drawArt(); }); };
+
+function setArtMode(m) {
+  const o = S.art;
+  o.mode = m;
+  $('artMode').querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.m === m)));
+  $('artTool').querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.t === o.tool)));
+  $('artDrawCtl').hidden = m !== 'draw'; $('artPhotoCtl').hidden = m === 'draw';
+  $('artFromPhoto').hidden = !o.img;
+  $('artCanvas').classList.toggle('drawing', m === 'draw');
+  if (m === 'draw') $('artOut').hidden = false;
+  drawArt();
+}
+
 function renderArt() {
   const o = S.art;
+  $('artBrush').value = o.brush;
   $('artPreset').value = o.preset; $('artStyle').value = o.style; $('artChar').value = o.char;
   $('artSpacing').value = o.spacing; $('artAmount').value = o.amount; $('artScale').value = o.scale;
   $('artInvert').checked = o.invert; $('artFrames').checked = o.frames; $('artFill').checked = o.fill;
   $('artText').value = o.text; $('artName').value = o.name;
   $('artZoneNames').innerHTML = ZONE_PRESETS[o.preset].zones.map(z => z[4]).sort().map(p => `<input class="field" data-p="${p}" value="${esc(o.names[p - 1])}" aria-label="${L('Зона', 'Zone')} ${p}">`).join('');
   $('artZoneNames').querySelectorAll('input').forEach(i => i.addEventListener('input', () => { o.names[+i.dataset.p - 1] = i.value; drawArt(); }));
-  $('artOut').hidden = !o.img && !o.text && o.preset === 'none';
-  drawArt();
+  $('artOut').hidden = !o.img && !o.text && o.preset === 'none' && o.mode !== 'draw';
+  setArtMode(o.mode);
 }
 
 function wireArt() {
@@ -115,7 +146,7 @@ function wireArt() {
   const read = async file => {
     if (!file || !file.type.startsWith('image/')) return;
     const img = new Image(); img.src = URL.createObjectURL(file); await img.decode();
-    o.img = img; $('artOut').hidden = false; drawArt();
+    o.img = img; $('artOut').hidden = false; setArtMode(o.mode);
   };
   $('artFile').addEventListener('change', e => read(e.target.files[0]));
   const drop = $('artDrop');
@@ -144,5 +175,26 @@ function wireArt() {
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
   window.addEventListener('resize', () => { if (!$('viewTools').hidden) drawArt(); });
+
+  // drawing by hand
+  $('artMode').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setArtMode(b.dataset.m)));
+  $('artTool').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { o.tool = b.dataset.t; setArtMode('draw'); }));
+  $('artBrush').addEventListener('input', e => { o.brush = +e.target.value; });
+  const snapshot = () => { o.history.push(new Set(o.manual)); if (o.history.length > 40) o.history.shift(); };
+  $('artUndo').addEventListener('click', () => { if (o.history.length) { o.manual = o.history.pop(); drawArt(); } });
+  $('artClear').addEventListener('click', () => { snapshot(); o.manual.clear(); drawArt(); });
+  $('artFromPhoto').addEventListener('click', () => {
+    snapshot();
+    o.manual = new Set(artDots(o.img, ZONE_PRESETS[o.preset].art, o).map(([x, y]) => `${x},${y}`));
+    setArtMode('draw');
+  });
+  const cv = $('artCanvas');
+  let painting = false;
+  cv.addEventListener('pointerdown', e => {
+    if (o.mode !== 'draw') return;
+    painting = true; cv.setPointerCapture(e.pointerId); snapshot(); paintAt(e); redrawSoon();
+  });
+  cv.addEventListener('pointermove', e => { if (painting) { paintAt(e); redrawSoon(); } });
+  ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, () => { painting = false; }));
 }
 wireArt();
