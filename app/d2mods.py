@@ -35,7 +35,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.4.1"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -274,9 +274,9 @@ def build_rules(game, catalog, mod_ids, tmp, log=print):
                         blank[name] = f.read()
                 else:
                     blank[name] = pak.get_file(tpl).read()
-            rx = re.compile(rule["match"])
+            hit = set(rule["paths"]).__contains__ if "paths" in rule else re.compile(rule["match"]).search  # long exact lists
             for p in paths:
-                if rx.search(p) and p != tpl:
+                if hit(p) and p != tpl:
                     dst = os.path.join(tmp, *p.split("/"))
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     with open(dst, "wb") as f:
