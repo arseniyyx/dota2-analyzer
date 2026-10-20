@@ -13,7 +13,7 @@ from build_data import OUT, sql, stratz  # noqa: E402
 
 ACCOUNTS = int(os.environ.get("FARM_ACCOUNTS", "120"))
 PER_ACCOUNT = int(os.environ.get("FARM_MATCHES", "60"))
-TRACKS = int(os.environ.get("FARM_TRACKS", "30"))  # replays per lane result for the map, rebuilt one at a time
+TRACKS = int(os.environ.get("FARM_TRACKS", "60"))  # replays per lane result for the map, rebuilt one at a time
 
 # Stratz MapLocationEnums
 R_BASE, R_OFF, R_MID, R_SAFE, D_BASE, D_OFF, D_MID, D_SAFE, RIVER, ROSH, ROAM, R_FOUNT, D_FOUNT = range(13)
@@ -21,11 +21,12 @@ OWN_T1 = {True: 18, False: 26}  # goodguys tower1_bot, badguys tower1_top
 CATS = ["lane", "push", "mid", "other", "jungle", "ancients"]
 
 
-def carries(patch):
+def carries(patch, only=None):
+    where = f"AND account_id IN ({','.join(map(str, only))})" if only else ""
     return sql(f"""SELECT account_id, count(*) n, array_agg(match_id ORDER BY match_id DESC) ids FROM (
  SELECT pm.account_id, pm.match_id, row_number() OVER (PARTITION BY pm.match_id, pm.player_slot < 128 ORDER BY pm.net_worth DESC) rk
  FROM player_matches pm JOIN match_patch mp ON mp.match_id = pm.match_id WHERE mp.patch = '{patch}' AND pm.lane_role = 1
-) t WHERE rk = 1 AND account_id IS NOT NULL GROUP BY account_id HAVING count(*) >= 8 ORDER BY max(match_id) DESC LIMIT {ACCOUNTS}""")
+) t WHERE rk = 1 AND account_id IS NOT NULL {where} GROUP BY account_id HAVING count(*) >= 8 ORDER BY max(match_id) DESC LIMIT {ACCOUNTS}""")
 
 
 FIELDS = """id didRadiantWin durationSeconds bottomLaneOutcome topLaneOutcome towerDeaths { time npcId }
@@ -94,36 +95,71 @@ def fetch_games(rows):
     return games
 
 
-def tracks(games):
-    """Carry positions 10:00-20:00 from a small sample of replays, seen from the Radiant side, on a 24x24 grid."""
-    pick = []
+GRID = 32
+WINDOWS = {"10-20": (600, 1200), "20-30": (1200, 1800)}
+PLAYER_TRACKS = int(os.environ.get("FARM_PLAYER_TRACKS", "15"))
+
+
+def track(g):
+    """Where the carry was in each time window, in real map coordinates on a GRID x GRID grid (seconds per cell)."""
+    if g.get("cells") is not None:
+        return
+    d = stratz(f"{{ player(steamAccountId: {g['acc']}) {{ matches(request: {{ matchIds: [{g['match']}], take: 1 }}) {{ "
+               f"players(steamAccountId: {g['acc']}) {{ playbackData {{ playerUpdatePositionEvents {{ time x y }} }} }} }} }} }}", TOKEN)
+    time.sleep(2)  # Stratz rebuilds each replay on request: one at a time, gently
+    try:
+        ev = d["player"]["matches"][0]["players"][0]["playbackData"]["playerUpdatePositionEvents"]
+    except (TypeError, KeyError, IndexError):
+        g["cells"] = {}
+        return
+    cells = {w: defaultdict(int) for w in WINDOWS}
+    last = None
+    for e in ev:  # weight each point by how long the hero stayed there
+        if last:
+            for w, (a, b) in WINDOWS.items():
+                if a <= last["time"] < b:
+                    cx = min(GRID - 1, max(0, int((last["x"] - 64) / 128 * GRID)))
+                    cy = min(GRID - 1, max(0, int((192 - last["y"]) / 128 * GRID)))
+                    cells[w][cy * GRID + cx] += min(30, e["time"] - last["time"])
+        last = e
+    g["cells"] = {w: dict(c) for w, c in cells.items() if c}
+
+
+def tracks(games, per_lane):
     recent = sorted(games, key=lambda g: -g["match"])  # replays expire after about two weeks
+    pick = []
     for lane in ("won", "tie", "lost"):
-        pick += [g for g in recent if g["lane"] == lane][:TRACKS]
+        pick += [g for g in recent if g["lane"] == lane][:per_lane]
     for n, g in enumerate(pick):
-        d = stratz(f"{{ player(steamAccountId: {g['acc']}) {{ matches(request: {{ matchIds: [{g['match']}], take: 1 }}) {{ "
-                   f"players(steamAccountId: {g['acc']}) {{ playbackData {{ playerUpdatePositionEvents {{ time x y }} }} }} }} }} }}", TOKEN)
-        time.sleep(2)
-        try:
-            ev = d["player"]["matches"][0]["players"][0]["playbackData"]["playerUpdatePositionEvents"]
-        except (TypeError, KeyError, IndexError):
-            continue
-        cells = defaultdict(int)
-        last = None
-        for e in ev:  # weight each point by how long the hero stayed there
-            if last and 600 <= last["time"] < 1200:
-                x, y = (last["x"], last["y"]) if g["rad"] else (256 - last["x"], 256 - last["y"])
-                cx, cy = min(23, max(0, int((x - 64) / 128 * 24))), min(23, max(0, int((192 - y) / 128 * 24)))
-                cells[cy * 24 + cx] += min(30, e["time"] - last["time"])
-            last = e
-        g["cells"] = dict(cells)
-        if n % 15 == 0:
+        track(g)
+        if n % 20 == 0:
             print(f"  tracks {n}/{len(pick)}")
-    return [g for g in pick if g.get("cells")]
 
 
-def summarize(gs, all_games):
-    if len(gs) < 15:
+def heat_of(tracked):
+    """Normalised time share per cell, per side and window. "both" puts Dire games on the Radiant side."""
+    out = {}
+    for side, sel, need in (("both", tracked, 8), ("rad", [g for g in tracked if g["rad"]], 5), ("dire", [g for g in tracked if not g["rad"]], 5)):
+        per = {"n": len(sel)}
+        for w in WINDOWS:
+            gs = [g for g in sel if g["cells"].get(w)]
+            if len(gs) < need:
+                continue
+            h = defaultdict(float)
+            for g in gs:
+                tot = sum(g["cells"][w].values())
+                for c, v in g["cells"][w].items():
+                    if side == "both" and not g["rad"]:
+                        c = (GRID - 1 - c // GRID) * GRID + (GRID - 1 - c % GRID)
+                    h[c] += v / tot / len(gs)
+            per[w] = {str(c): round(v, 4) for c, v in h.items() if v >= 0.0008}
+        if len(per) > 1:
+            out[side] = per
+    return out or None
+
+
+def summarize(gs, all_games, min_n=15):
+    if len(gs) < min_n:
         return None
     gpms = sorted(g["gpm"] for g in gs)
     q = gpms[int(len(gpms) * 0.75)]
@@ -143,37 +179,52 @@ def summarize(gs, all_games):
     pats = defaultdict(list)
     for g in gs:
         pats[pattern(g)].append(g)
-    heat = defaultdict(float)
     tracked = [g for g in gs if g.get("cells")]
-    for g in tracked:
-        tot = sum(g["cells"].values())
-        for c, v in g["cells"].items():
-            heat[int(c)] += v / tot / len(tracked)
     return {
         "n": len(gs), "wr": round(100 * sum(g["win"] for g in gs) / len(gs)), "gpm": round(median(gpms)),
         "share": {k: round(avg(gs, k), 3) for k in CATS},
-        "best": {k: round(avg(best, k) - avg(rest, k), 3) for k in CATS}, "best_gpm": round(median(g["gpm"] for g in best)),
-        "patterns": {p: [len(v), round(100 * sum(g["win"] for g in v) / len(v)), round(median(g["gpm"] for g in v))] for p, v in pats.items() if len(v) >= 5},
-        "heat": {str(c): round(v, 4) for c, v in heat.items() if v >= 0.002} if len(tracked) >= 8 else None, "tracked": len(tracked),
+        "best": {k: round(avg(best, k) - avg(rest, k), 3) for k in CATS} if rest else {k: 0 for k in CATS},
+        "patterns": {p: [len(v), round(100 * sum(g["win"] for g in v) / len(v)), round(median(g["gpm"] for g in v))] for p, v in pats.items() if len(v) >= max(3, min_n // 3)},
+        "heat": heat_of(tracked), "tracked": len(tracked),
     }
+
+
+def by_situation(games, min_n):
+    return {key: {v: summarize([g for g in games if g[key] == v], games, min_n) for v in values}
+            for key, values in (("lane", ("won", "tie", "lost")), ("tower", ("alive", "fallen")), ("mid", ("free", "held")))}
 
 
 def main():
     patch = sql("SELECT patch FROM match_patch ORDER BY match_id DESC LIMIT 1")[0]["patch"]
+    with open(os.path.join(OUT, "pros.json"), encoding="utf-8") as f:
+        stars = [p for p in json.load(f)["players"] if p["pos"] == 1]
     rows = carries(patch)
+    have = {r["account_id"] for r in rows}
+    extra = [p["account_id"] for p in stars if p["account_id"] not in have]
+    if extra:
+        rows += carries(patch, extra)
     print(f"Carry farm patterns, patch {patch}: {len(rows)} carries")
     games = fetch_games(rows)
     shares = sorted(g["mid_share"] for g in games if g["mid_share"] is not None)
     cut = shares[len(shares) // 2] if shares else 0.5  # "free mid": the mid player took less of the mid lane than usual
     for g in games:
         g["mid"] = None if g["mid_share"] is None else "free" if g["mid_share"] < cut else "held"
-    tracked = tracks(games)
-    print(f"  {len(games)} games, {len(tracked)} tracked")
-    out = {"patch": patch, "generated_at": int(time.time()), "games": len(games), "all": summarize(games, games), "by": {}}
-    for key, values in (("lane", ("won", "tie", "lost")), ("tower", ("alive", "fallen")), ("mid", ("free", "held"))):
-        out["by"][key] = {v: summarize([g for g in games if g[key] == v], games) for v in values}
+    tracks(games, TRACKS)
+    players = []
+    for p in stars:
+        pg = [g for g in games if g["acc"] == p["account_id"]]
+        for g in sorted(pg, key=lambda g: -g["match"])[:PLAYER_TRACKS]:
+            track(g)
+        summary = summarize(pg, games, 8)
+        if summary:
+            players.append({"account_id": p["account_id"], "name": p["name"], "team": p["team"], "avatar": p.get("avatar"),
+                            "all": summary, "by": by_situation(pg, 8)})
+        print(f"  {p['name']}: {len(pg)} games")
+    print(f"  {len(games)} games, {sum(1 for g in games if g.get('cells'))} tracked")
+    out = {"patch": patch, "generated_at": int(time.time()), "games": len(games), "grid": GRID, "windows": list(WINDOWS),
+           "all": summarize(games, games), "by": by_situation(games, 15), "players": players}
     with open(os.path.join(OUT, "farm.json"), "w", encoding="utf-8") as f:
-        json.dump(out, f, separators=(",", ":"))
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     print("Done.")
 
 

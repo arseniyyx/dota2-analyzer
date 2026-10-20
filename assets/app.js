@@ -1848,45 +1848,107 @@ const FARM_CATS = {
   other: L('Другие линии', 'Other lanes'), jungle: L('Лес', 'Jungle'), ancients: L('Древние', 'Ancients'),
 };
 const FARM_PATS = { lane: L('Линия', 'Lane'), jungle: L('Лес и древние', 'Jungle and ancients'), rotate: L('Мид и другие линии', 'Mid and other lanes'), mixed: L('Смешанный', 'Mixed') };
-// where each lane category sits on the map, seen from the Radiant side (map %)
-const FARM_SPOTS = { lane: [44, 93], push: [92, 44], mid: [50, 50], other: [8, 30] };
+// where each lane category sits on the map, for a Radiant carry (map %); Dire mirrors through the centre
+const FARM_SPOTS = { lane: [42, 93], push: [92, 38], mid: [50, 50], other: [8, 26] };
+const FARM_SPOT_NAMES = { lane: L('Своя линия', 'Own lane'), push: L('У вражеской вышки', 'At enemy tower'), mid: L('Мид', 'Mid'), other: L('Другие линии', 'Other lanes') };
+const HEAT_RAMP = (() => {  // transparent blue -> green -> gold -> red
+  const stops = [[0, [59, 142, 194]], [0.35, [79, 210, 134]], [0.68, [227, 176, 75]], [1, [240, 84, 74]]];
+  return Array.from({ length: 256 }, (_, i) => {
+    const t = i / 255, k = stops.findIndex(([x]) => x >= t), [x1, c1] = stops[Math.max(0, k - 1)], [x2, c2] = stops[Math.max(0, k)];
+    const f = x2 === x1 ? 0 : (t - x1) / (x2 - x1);
+    return c1.map((v, n) => Math.round(v + (c2[n] - v) * f));
+  });
+})();
+
+function drawHeat(cv, heat, grid) {
+  const px = Math.round(cv.clientWidth * (devicePixelRatio || 1));
+  if (!px) return;
+  cv.width = cv.height = px;
+  const ctx = cv.getContext('2d');
+  const entries = Object.entries(heat || {});
+  if (!entries.length) return;
+  const vals = entries.map(([, v]) => v).sort((a, b) => a - b);
+  const top = vals[Math.floor(vals.length * 0.97)] || vals.at(-1); // clip the fountain so the farm areas stay visible
+  const cell = px / grid, r = cell * 1.9;
+  for (const [c, v] of entries) {
+    const x = (c % grid + 0.5) * cell, y = (Math.floor(c / grid) + 0.5) * cell, a = Math.min(1, v / top) * 0.85;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(0,0,0,${a.toFixed(3)})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  const img = ctx.getImageData(0, 0, px, px), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3];
+    if (!a) continue;
+    const [cr, cg, cb] = HEAT_RAMP[a];
+    if (a < 18) { d[i + 3] = 0; continue; } // drop the faint haze so the real farm areas stand out
+    d[i] = cr; d[i + 1] = cg; d[i + 2] = cb; d[i + 3] = Math.min(230, 30 + a);
+  }
+  ctx.putImageData(img, 0, 0);
+}
 
 async function renderFarm() {
   if (S.farm === undefined) S.farm = await getJSON(dataUrl('farm.json')).catch(() => null);
   const F = S.farm;
   if (!F) { $('farmBox').innerHTML = `<div class="empty">${L('Данные по фарму ещё не собраны', 'Farm data isn\'t ready yet')}</div>`; return; }
-  S.farmSit = S.farmSit || 'all';
-  const pick = k => { if (k === 'all') return F.all; const [a, b] = k.split(':'); return F.by[a]?.[b]; };
-  $('farmTabs').innerHTML = FARM_SITS.filter(([k]) => pick(k)).map(([k, label]) => `<button class="tab" data-k="${k}" aria-selected="${k === S.farmSit}">${label}</button>`).join('');
-  $('farmTabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S.farmSit = b.dataset.k; renderFarm(); }));
-  const d = pick(S.farmSit) || F.all, base = F.all;
+  S.farmWho = S.farmWho || 'all'; S.farmSit = S.farmSit || 'all'; S.farmSide = S.farmSide || 'both'; S.farmWin = S.farmWin || (F.windows || ['10-20'])[0];
+  const who = S.farmWho === 'all' ? null : (F.players || []).find(p => String(p.account_id) === String(S.farmWho));
+  const src = who || F;
+  const pick = k => { if (k === 'all') return src.all; const [a, b] = k.split(':'); return src.by?.[a]?.[b]; };
+  if (!pick(S.farmSit)) S.farmSit = 'all';
+  const d = pick(S.farmSit), base = src.all, grid = F.grid || 24;
+  let heat = d.heat?.[S.farmSide]?.[S.farmWin], heatNote = '';
+  if (!heat && base.heat?.[S.farmSide]?.[S.farmWin]) { heat = base.heat[S.farmSide][S.farmWin]; heatNote = L('В этой ситуации мало реплеев, карта по всем играм', 'Few replays in this situation, the map uses all games'); }
+  const heatN = (heat === d.heat?.[S.farmSide]?.[S.farmWin] ? d : base).heat?.[S.farmSide]?.n || 0;
+  const dire = S.farmSide === 'dire';
   const cats = Object.keys(FARM_CATS);
-  const heat = d.heat || (S.farmSit !== 'all' ? null : base.heat);
-  const top = heat ? Math.max(...Object.values(heat)) : 1;
-  const cells = heat ? Object.entries(heat).map(([c, v]) => { c = +c; return `<rect x="${(c % 24) * 100 / 24}" y="${Math.floor(c / 24) * 100 / 24}" width="${100 / 24}" height="${100 / 24}" fill="var(--accent)" fill-opacity="${(0.12 + 0.68 * v / top).toFixed(2)}"/>`; }).join('') : '';
-  const spots = Object.entries(FARM_SPOTS).map(([k, [x, y]]) => `<g class="farm-spot"><rect x="${x - 8}" y="${y - 3.4}" width="16" height="6.8" rx="1.6"/><text x="${x}" y="${y + 1.6}">${Math.round(d.share[k] * 100)}%</text></g>`).join('');
+  const spots = Object.entries(FARM_SPOTS).map(([k, [x, y]]) => {
+    if (dire) { x = 100 - x; y = 100 - y; }
+    return `<g class="farm-spot"><rect x="${x - 11}" y="${y - 5}" width="22" height="10" rx="2"/><text class="fs-name" x="${x}" y="${y - 0.6}">${FARM_SPOT_NAMES[k]}</text><text class="fs-val" x="${x}" y="${y + 3.6}">${Math.round(d.share[k] * 100)}%</text></g>`;
+  }).join('');
+  const tabs = (id, items, cur) => `<div class="tabs" id="${id}" role="tablist">${items.map(([k, label]) => `<button class="tab" data-k="${k}" aria-selected="${String(k) === String(cur)}">${label}</button>`).join('')}</div>`;
+  const whoTabs = [['all', L('Все про-керри', 'All pro carries')], ...(F.players || []).map(p => [p.account_id, `${p.avatar ? `<img class="pro-ava" src="${p.avatar}" alt="" width="20" height="20">` : ''}${esc(p.name)}`])];
 
   const pats = Object.entries(d.patterns).filter(([, [n]]) => n >= d.n * 0.08).sort((a, b) => b[1][2] - a[1][2]);
   const diffs = cats.map(k => [k, d.best[k]]).sort((a, b) => b[1] - a[1]);
-  const vsAll = cats.map(k => [k, d.share[k] - base.share[k]]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
-  const pctp = v => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v * 100))}%`;
+  const vsAll = cats.map(k => [k, d.share[k] - (who ? F.all : base).share[k]]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
   const tips = [
     pats[0] && L(`Быстрее всего здесь фармят через «${FARM_PATS[pats[0][0]]}»: ${pats[0][1][2]} GPM на 10–20 минуте, ${pats[0][1][1]}% побед.`, `The fastest farm here comes from "${FARM_PATS[pats[0][0]]}": ${pats[0][1][2]} GPM at 10–20 min, ${pats[0][1][1]}% wins.`),
     (() => { const w = [...pats].sort((x, y) => y[1][1] - x[1][1])[0]; return w && pats[0] && w[0] !== pats[0][0] && w[1][1] - pats[0][1][1] >= 3 && L(`Чаще всего выигрывают через «${FARM_PATS[w[0]]}»: ${w[1][1]}% побед, хотя фарма меньше (${w[1][2]} GPM). Такой керри раньше включается в драки и давит линии.`, `"${FARM_PATS[w[0]]}" wins most often: ${w[1][1]}% wins with less farm (${w[1][2]} GPM). That carry joins fights and pushes earlier.`); })(),
-    diffs[0][1] >= 0.02 && L(`Лучшие по фарму (верхние 25%) берут на ${Math.round(diffs[0][1] * 100)}% больше золота из зоны «${FARM_CATS[diffs[0][0]]}»${diffs.at(-1)[1] <= -0.02 ? ` и на ${Math.round(-diffs.at(-1)[1] * 100)}% меньше из зоны «${FARM_CATS[diffs.at(-1)[0]]}»` : ''}.`, `The best farmers (top 25%) take ${Math.round(diffs[0][1] * 100)}% more of their gold from "${FARM_CATS[diffs[0][0]]}"${diffs.at(-1)[1] <= -0.02 ? ` and ${Math.round(-diffs.at(-1)[1] * 100)}% less from "${FARM_CATS[diffs.at(-1)[0]]}"` : ''}.`),
-    S.farmSit !== 'all' && Math.abs(vsAll[1]) >= 0.02 && L(`По сравнению с обычной игрой доля зоны «${FARM_CATS[vsAll[0]]}» ${vsAll[1] > 0 ? 'выше' : 'ниже'} на ${Math.abs(Math.round(vsAll[1] * 100))}%.`, `Compared with a typical game, "${FARM_CATS[vsAll[0]]}" is ${Math.abs(Math.round(vsAll[1] * 100))}% ${vsAll[1] > 0 ? 'higher' : 'lower'}.`),
+    !who && diffs[0][1] >= 0.02 && L(`Лучшие по фарму (верхние 25%) берут на ${Math.round(diffs[0][1] * 100)}% больше золота из зоны «${FARM_CATS[diffs[0][0]]}»${diffs.at(-1)[1] <= -0.02 ? ` и на ${Math.round(-diffs.at(-1)[1] * 100)}% меньше из зоны «${FARM_CATS[diffs.at(-1)[0]]}»` : ''}.`, `The best farmers (top 25%) take ${Math.round(diffs[0][1] * 100)}% more of their gold from "${FARM_CATS[diffs[0][0]]}"${diffs.at(-1)[1] <= -0.02 ? ` and ${Math.round(-diffs.at(-1)[1] * 100)}% less from "${FARM_CATS[diffs.at(-1)[0]]}"` : ''}.`),
+    (who || S.farmSit !== 'all') && Math.abs(vsAll[1]) >= 0.02 && (who
+      ? L(`В отличие от среднего про-керри, ${esc(who.name)} берёт на ${Math.abs(Math.round(vsAll[1] * 100))}% ${vsAll[1] > 0 ? 'больше' : 'меньше'} золота из зоны «${FARM_CATS[vsAll[0]]}».`, `Compared with an average pro carry, ${esc(who.name)} takes ${Math.abs(Math.round(vsAll[1] * 100))}% ${vsAll[1] > 0 ? 'more' : 'less'} gold from "${FARM_CATS[vsAll[0]]}".`)
+      : L(`По сравнению с обычной игрой доля зоны «${FARM_CATS[vsAll[0]]}» ${vsAll[1] > 0 ? 'выше' : 'ниже'} на ${Math.abs(Math.round(vsAll[1] * 100))}%.`, `Compared with a typical game, "${FARM_CATS[vsAll[0]]}" is ${Math.abs(Math.round(vsAll[1] * 100))}% ${vsAll[1] > 0 ? 'higher' : 'lower'}.`)),
   ].filter(Boolean);
 
-  $('farmBox').innerHTML = `<div class="farm-wrap">
-    <div class="map card"><img src="${MAP_IMG}" alt="${L('Карта Dota 2', 'Dota 2 map')}" width="900" height="900"><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${L('Где про-керри проводят 10–20 минуту и откуда берут золото', 'Where pro carries spend minutes 10–20 and where their gold comes from')}">${cells}${spots}</svg></div>
+  $('farmBox').innerHTML = `
+  <div class="farm-filters">
+    ${tabs('farmWho', whoTabs, S.farmWho)}
+    ${tabs('farmSit', FARM_SITS.filter(([k]) => pick(k)), S.farmSit)}
+  </div>
+  <div class="farm-wrap">
     <div class="stack-sm">
-      <div class="card pad farm-head"><div><b>${fmt(d.n)}</b><span class="note">${L('игр про-керри', 'pro carry games')}</span></div><div><b>${d.wr}%</b><span class="note">${L('побед', 'wins')}</span></div><div><b>${d.gpm}</b><span class="note">${L('GPM на 10–20 мин', 'GPM at 10–20 min')}</span></div></div>
+      <div class="farm-mapbar">
+        ${tabs('farmSide', [['both', L('Обе стороны', 'Both sides')], ['rad', 'Radiant'], ['dire', 'Dire']], S.farmSide)}
+        ${tabs('farmWin', (F.windows || ['10-20']).map(w => [w, `${w} ${L('мин', 'min')}`]), S.farmWin)}
+      </div>
+      <div class="map card farm-map"><img src="${MAP_IMG}" alt="${L('Карта Dota 2', 'Dota 2 map')}" width="900" height="900"><canvas id="farmHeat" aria-hidden="true"></canvas>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${L('Где про-керри проводят время и откуда берут золото', 'Where pro carries spend their time and where their gold comes from')}">${spots}</svg>
+        ${heat ? '' : `<div class="farm-empty">${L('Мало реплеев для этой карты', 'Not enough replays for this map')}</div>`}</div>
+      <div class="heat-legend"><span>${L('мало времени', 'little time')}</span><i></i><span>${L('много', 'a lot')}</span></div>
+      <p class="note">${[S.farmSide === 'both' ? L('Игры за Dire отражены на сторону Radiant.', 'Dire games are mirrored onto the Radiant side.') : '', heatN ? L(`Реплеев: ${heatN}.`, `Replays: ${heatN}.`) : '', heatNote].filter(Boolean).join(' ')}</p>
+    </div>
+    <div class="stack-sm">
+      <div class="card pad farm-head">${who?.avatar ? `<img class="pro-ava big" src="${who.avatar}" alt="" width="40" height="40">` : ''}<div><b>${fmt(d.n)}</b><span class="note">${who ? L('игр', 'games') : L('игр про-керри', 'pro carry games')}</span></div><div><b>${d.wr}%</b><span class="note">${L('побед', 'wins')}</span></div><div><b>${d.gpm}</b><span class="note">${L('GPM на 10–20 мин', 'GPM at 10–20 min')}</span></div></div>
       ${tips.length ? `<div class="card pad"><ul class="lesson-tips">${tips.map(t => `<li>${t}</li>`).join('')}</ul></div>` : ''}
       <div class="card bench-list">${cats.map(k => `<div class="bench"><span>${FARM_CATS[k]}</span><div class="track"><div class="fill" style="width:${Math.min(100, d.share[k] * 200).toFixed(0)}%;background:var(--accent)"></div></div><span class="num">${Math.round(d.share[k] * 100)}%</span></div>`).join('')}</div>
       <div class="card">${pats.map(([k, [n, wr, gpm]], i) => `<div class="item-row farm-pat ${i === 0 ? 'best' : ''}"><span class="chip ${i === 0 ? 'pos' : ''}">${Math.round(n / d.n * 100)}%</span><div class="name">${FARM_PATS[k]}</div><div class="note">${gpm} GPM · ${wr}%</div></div>`).join('')}</div>
     </div>
   </div>
-  <p class="note">${L(`Доли золота за всю игру по ${fmt(d.n)} про-играм керри, патч ${F.patch}. Тепловая карта — где керри были на 10–20 минуте в ${d.tracked || base.tracked} реплеях, показано за Radiant.`, `Gold shares over the whole game across ${fmt(d.n)} pro carry games, patch ${F.patch}. The heat map shows where carries were at 10–20 min in ${d.tracked || base.tracked} replays, from the Radiant side.`)}</p>`;
+  <p class="note">${L(`Доли золота за всю игру по ${fmt(d.n)} про-играм керри, патч ${F.patch}. Тепловая карта показывает, где керри были в выбранное окно игры, по реплеям.`, `Gold shares over the whole game across ${fmt(d.n)} pro carry games, patch ${F.patch}. The heat map shows where carries were during the chosen window, from replays.`)}</p>`;
+  const on = (id, key) => $(id).querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { S[key] = b.dataset.k; renderFarm(); }));
+  on('farmWho', 'farmWho'); on('farmSit', 'farmSit'); on('farmSide', 'farmSide'); on('farmWin', 'farmWin');
+  requestAnimationFrame(() => drawHeat($('farmHeat'), heat, grid));
   fillIn($('farmBox'));
 }
 
