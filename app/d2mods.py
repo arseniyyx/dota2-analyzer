@@ -5,8 +5,8 @@ Two kinds of mods:
     built on the player's PC from the game's own files into one VPK;
   * ready mods from the open Dota2PornFx (D2PFX) catalog, downloaded only when ticked, checked by SHA-256
     and copied as they are.
-Everything goes into the folder of the game's voice language (e.g. game/dota_russian) as pakNN_dir.vpk, the
-way the D2PFX guide installs mods, so game updates don't switch them off. With an English client the files
+Everything goes into the folder of the game's voice language (e.g. game/dota_russian, or dota_<x> when Dota's
+launch options have -language <x>) as pakNN_dir.vpk, the way the D2PFX guide installs mods, so game updates don't switch them off. With an English client the files
 go to game/dota_d2a, mounted by one line in gameinfo.gi (backed up first). Uninstall removes only our files.
 
 Usage:  D2AMods.exe                                  window
@@ -30,7 +30,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.2.2"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -49,7 +49,7 @@ UA = {"User-Agent": f"D2AMods/{APP_VERSION}"}
 
 # ---------- game ----------
 
-def steam_libraries():
+def steam_roots():
     roots = []
     try:
         import winreg
@@ -66,8 +66,12 @@ def steam_libraries():
     except ImportError:
         pass
     roots += [r"C:\Program Files (x86)\Steam", r"C:\Program Files\Steam", os.path.expanduser("~/.steam/steam")]
+    return list({os.path.normcase(os.path.normpath(r)): os.path.normpath(r) for r in roots if os.path.isdir(r)}.values())
+
+
+def steam_libraries():
     libs = []
-    for r in roots:
+    for r in steam_roots():
         vdf = os.path.join(r, "steamapps", "libraryfolders.vdf")
         if os.path.exists(vdf):
             with open(vdf, encoding="utf-8", errors="ignore") as f:
@@ -94,11 +98,63 @@ def game_language(game):
         return "english"
 
 
+def parse_vdf(text):
+    """Steam's KeyValues text as nested dicts (enough for localconfig.vdf)."""
+    root, stack, key = {}, [], None
+    cur = root
+    for s, brace in re.findall(r'"((?:[^"\\]|\\.)*)"|([{}])', text):
+        if brace == "{":
+            stack.append(cur)
+            cur[key] = cur = {}
+            key = None
+        elif brace == "}":
+            cur = stack.pop() if stack else root
+        elif key is None:
+            key = s
+        else:
+            cur[key] = s
+            key = None
+    return root
+
+
+def find_dota_app(d):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            if k.lower() == "apps" and isinstance(v.get("570"), dict):
+                return v["570"]
+            found = find_dota_app(v)
+            if found:
+                return found
+    return None
+
+
+def launch_language():
+    """-language from Dota's launch options of the Steam account that played last: the game then mounts dota_<it>
+    instead of the Steam language folder (the D2PFX workaround for English clients sets -language dutch)."""
+    best = (-1, None)
+    for r in steam_roots():
+        users = os.path.join(r, "userdata")
+        for uid in os.listdir(users) if os.path.isdir(users) else []:
+            try:
+                with open(os.path.join(users, uid, "config", "localconfig.vdf"), encoding="utf-8", errors="ignore") as f:
+                    app = find_dota_app(parse_vdf(f.read()))
+            except OSError:
+                continue
+            if not app:
+                continue
+            when = int(app.get("LastPlayed") or (app.get("autocloud") or {}).get("lastlaunch") or 0)
+            m = re.search(r"(?:^|\s)[-+]language\s+(\w+)", app.get("LaunchOptions") or "")
+            if when > best[0]:
+                best = (when, m.group(1).lower() if m else None)
+    return best[1]
+
+
 def target(game):
     """Where our paks go: the voice language folder (mounted before the game) or, for English, our own folder."""
-    lang = game_language(game)
+    forced = launch_language()
+    lang = forced or game_language(game)
     folder = os.path.join(game, f"dota_{lang}")
-    if lang != "english" and os.path.exists(os.path.join(folder, "gameinfo.gi")):
+    if lang != "english" and (forced or os.path.exists(os.path.join(folder, "gameinfo.gi"))):
         return "lang", folder
     return "gameinfo", os.path.join(game, MOD_FOLDER)
 
@@ -632,7 +688,10 @@ def run_gui():
         have = installed_ids(st["game"])
         method, folder = target(st["game"])
         where = f"моды встанут в папку {os.path.basename(folder)}" if method == "lang" else "английский клиент: моды подключаются через gameinfo.gi"
-        if have and needs_reapply(st["game"]):
+        rec = load_state().get(st["game"]) or {}
+        if have and rec.get("folder") and os.path.normcase(rec["folder"]) != os.path.normcase(folder):
+            status.set(f"Dota сейчас читает папку {os.path.basename(folder)} (язык или параметр -language поменялся). Нажми «Установить выбранные», чтобы перенести моды туда.")
+        elif have and needs_reapply(st["game"]):
             status.set("Dota обновилась и отключила моды. Нажми «Установить выбранные», чтобы вернуть их.")
         elif have:
             status.set(f"Установлено: {len(have)}. Поменяй галочки и нажми «Установить», чтобы обновить набор ({where}).")
