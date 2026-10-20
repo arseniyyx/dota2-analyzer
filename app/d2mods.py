@@ -30,7 +30,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.1"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -416,7 +416,20 @@ def run_gui():
     tk.Label(head, text="D2A Mods", bg=C["bg"], fg=C["gold"], font=(F, 20, "bold")).pack(side="left")
     path_var = tk.StringVar(value=st["game"] or "Dota 2 не найдена")
     button(head, "Папка игры", lambda: pick()).pack(side="right")
-    tk.Label(head, textvariable=path_var, bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(side="right", padx=10)
+    heart = tk.Label(head, text="♥", bg=C["bg"], fg=C["muted"], font=(F, 14), padx=8, cursor="hand2")
+    heart.bind("<Button-1>", lambda e: webbrowser.open(SITE + "#support"))
+    heart.bind("<Enter>", lambda e: heart.configure(fg="#ff6b8a"))
+    heart.bind("<Leave>", lambda e: heart.configure(fg=C["muted"]))
+
+    def show_heart():  # quiet: shown only when the site lists ways to support
+        try:
+            if json.loads(http_get(SITE + "support.json", 10)).get("links"):
+                root.after(0, lambda: heart.pack(side="right", before=path_label))
+        except Exception:
+            pass
+    threading.Thread(target=show_heart, daemon=True).start()
+    path_label = tk.Label(head, textvariable=path_var, bg=C["bg"], fg=C["muted"], font=(F, 9))
+    path_label.pack(side="right", padx=10)
 
     tabs_row = tk.Frame(root, bg=C["bg"])
     tabs_row.pack(fill="x", padx=20, pady=(4, 4))

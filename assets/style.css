@@ -623,3 +623,8 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .mod .row { justify-content: space-between; margin-bottom: 6px; }
 .mods-hero a.btn { text-decoration: none; }
 .mod-ic { color: var(--accent); margin-right: 8px; }
+
+.heart-btn:hover { color: #ff6b8a; border-color: rgba(255, 107, 138, .4); }
+.support-links { display: flex; flex-direction: column; gap: 8px; }
+.support-link { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); text-decoration: none; transition: border-color .15s; }
+.support-link:hover { border-color: #ff6b8a; }

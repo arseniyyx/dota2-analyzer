@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=53">
+<link rel="stylesheet" href="assets/style.css?v=54">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -69,6 +69,7 @@
       </div>
     </nav>
     <span class="updated" id="updated"></span>
+    <button class="lang-btn key-btn heart-btn" id="supportBtn" type="button" hidden aria-label="Поддержать проект" data-en-aria="Support the project"><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 8 3.6 4.5 7 4.5c2 0 3.5 1.1 5 3 1.5-1.9 3-3 5-3 3.4 0 5.3 3.5 4.2 6.6-1.7 4.8-9.2 9.4-9.2 9.4Z"/></svg></button>
     <button class="lang-btn key-btn" id="keyBtn" type="button" aria-label="Токен Stratz" data-en-aria="Stratz token"><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg></button>
     <button class="lang-btn" id="langBtn" type="button">EN</button>
   </header>
@@ -292,6 +293,15 @@
 
 <datalist id="heroList"></datalist>
 
+<dialog id="supportDlg" class="key-dlg">
+  <form method="dialog" class="stack-sm">
+    <h2 class="section-title" data-en="Support the project">Поддержать проект</h2>
+    <p class="note" data-en="The site and the app are free and have no ads. If they help you, you can support development.">Сайт и программа бесплатные и без рекламы. Если они тебе помогают, можешь поддержать разработку.</p>
+    <div class="support-links" id="supportLinks"></div>
+    <div class="row"><button class="btn ghost small" type="submit" data-en="Close">Закрыть</button></div>
+  </form>
+</dialog>
+
 <dialog id="keyDlg" class="key-dlg">
   <form method="dialog" class="stack-sm" id="keyForm">
     <h2 class="section-title">Stratz</h2>
@@ -321,10 +331,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=53"></script>
-<script src="assets/grid.js?v=53"></script>
-<script src="assets/gridart.js?v=53"></script>
-<script src="assets/optimize.js?v=53"></script>
-<script src="assets/mods.js?v=53"></script>
+<script src="assets/app.js?v=54"></script>
+<script src="assets/grid.js?v=54"></script>
+<script src="assets/gridart.js?v=54"></script>
+<script src="assets/optimize.js?v=54"></script>
+<script src="assets/mods.js?v=54"></script>
 </body>
 </html>

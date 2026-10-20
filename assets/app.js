@@ -2049,6 +2049,17 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
+// a quiet heart next to the key: hidden until support.json has links
+async function wireSupport() {
+  const d = await getJSON(`support.json?d=${new Date().toISOString().slice(0, 10)}`).catch(() => null);
+  const links = (d?.links || []).filter(l => /^https:\/\//.test(l.url || ''));
+  if (!links.length) return;
+  $('supportLinks').innerHTML = links.map(l => `<a class="support-link" href="${esc(l.url)}" target="_blank" rel="noopener"><b>${esc(l.name)}</b>${l.note ? `<span class="note">${esc(EN && l.note_en ? l.note_en : l.note)}</span>` : ''}</a>`).join('');
+  $('supportBtn').hidden = false;
+  $('supportBtn').addEventListener('click', () => $('supportDlg').showModal());
+  if (location.hash === '#support') $('supportDlg').showModal(); // the app's heart opens the site here
+}
+
 function wireKey() {
   const dlg = $('keyDlg'), sync = () => $('keyBtn').classList.toggle('on', !!stratzToken());
   const status = () => { $('keyStatus').textContent = stratzToken() ? L('Токен подключён', 'Token connected') : ''; };
@@ -2089,6 +2100,7 @@ function applyStaticLang() {
 async function boot() {
   applyStaticLang();
   wireKey();
+  wireSupport();
   try { await loadBase(); } catch (e) { showError(L('Не удалось загрузить список героев: ', 'Couldn\'t load the hero list: ') + e.message); return; }
   const linkHero = +new URLSearchParams(location.search).get('hero'); // links from the static hero pages
   if (S.heroes[linkHero]) { S.learnHero = linkHero; S.learnHeroPicked = true; history.replaceState(null, '', location.pathname + location.search + '#learn'); }
