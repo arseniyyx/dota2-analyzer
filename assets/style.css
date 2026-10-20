@@ -553,3 +553,33 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 #viewMeta [data-hero]:hover, #viewMeta .hero-row:focus-visible { background: var(--surface-hover); }
 #viewMeta [data-hero]:hover .hero-cell span { color: var(--accent-strong); }
 #viewMeta .hero-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.nav-drop { position: relative; display: inline-flex; }
+#navTools { display: inline-flex; align-items: center; gap: 4px; border: none; background: none; color: inherit; font: inherit; cursor: pointer; padding: 8px 12px; border-radius: 8px; }
+#navTools[aria-current="page"] { background: var(--accent); color: #1a1408; }
+#navTools[aria-expanded="true"] .i { transform: rotate(180deg); }
+.nav-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 270px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--bg); box-shadow: 0 18px 40px -12px rgba(0,0,0,.8); }
+.nav-menu[hidden] { display: none; }
+.nav-menu a { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 8px; color: var(--fg); text-decoration: none; }
+.nav-menu a:hover, .nav-menu a:focus-visible { background: var(--surface-hover); }
+.nav-menu small { color: var(--fg-muted); font-size: 12px; }
+.grid-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 170px; padding: 18px; text-align: center; border: 2px dashed var(--border-strong); border-radius: 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+.grid-drop:hover, .grid-drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.grid-drop.busy { opacity: .6; pointer-events: none; }
+.grid-drop .i { color: var(--accent); }
+.grid-pic { position: relative; max-width: 900px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.grid-pic img { display: block; width: 100%; height: auto; }
+.grid-pic svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.grid-pic rect { fill: rgba(79, 210, 134, .12); stroke: var(--good); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.grid-pic rect.unsure { stroke: var(--accent); stroke-dasharray: 5 4; fill: rgba(227, 176, 75, .12); }
+.grid-pic text { fill: #fff; font-weight: 700; paint-order: stroke; stroke: rgba(0,0,0,.85); stroke-width: 3px; }
+.grid-name .field { max-width: 320px; }
+.grid-cat .row { flex-wrap: nowrap; }
+.grid-cat .cat-name { max-width: 320px; font-weight: 700; }
+.grid-heroes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+.grid-hero { cursor: pointer; }
+.grid-hero:hover { border-color: var(--accent); }
+.grid-heroes .add-hero, .grid-heroes .swap-hero { width: 150px; padding: 6px 10px; }
+.grid-out code { padding: 1px 6px; border-radius: 4px; background: var(--surface-2); font-size: 12px; word-break: break-all; }
+.grid-steps { margin-top: 10px; }
+@media (max-width: 720px) { .nav-menu { left: auto; right: 0; } }

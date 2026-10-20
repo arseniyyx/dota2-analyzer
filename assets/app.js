@@ -1995,12 +1995,30 @@ const VIEW_TITLES = {
   player: L('Dota 2 Analyzer — разбор игрока и мета патча', 'Dota 2 Analyzer: player analysis and patch meta'),
   meta: L('Мета Dota 2: сильнейшие герои и контрпики', 'Dota 2 meta: strongest heroes and counters'),
   learn: L('Обучение Dota 2: сборки и пики силы героев', 'Dota 2 coaching: hero builds and power spikes'),
+  tools: L('Сетка героев Dota 2 из картинки', 'Dota 2 hero grid from a picture'),
 };
+
+// "Полезное" dropdown in the top bar
+function closeTools() { $('toolsMenu').hidden = true; $('navTools').setAttribute('aria-expanded', 'false'); }
+$('navTools').addEventListener('click', e => {
+  e.stopPropagation();
+  const open = $('toolsMenu').hidden;
+  $('toolsMenu').hidden = !open; $('navTools').setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('click', e => { if (!e.target.closest('.nav-drop')) closeTools(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTools(); });
 function route() {
-  const view = location.hash === '#meta' ? 'meta' : location.hash === '#learn' ? 'learn' : 'player';
+  const h = location.hash;
+  const view = h === '#meta' ? 'meta' : h === '#learn' ? 'learn' : h.startsWith('#grid') ? 'tools' : 'player';
   document.title = VIEW_TITLES[view];
   const meta = view === 'meta';
-  $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn';
+  $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn'; $('viewTools').hidden = view !== 'tools';
+  $('navTools').setAttribute('aria-current', view === 'tools' ? 'page' : 'false');
+  closeTools();
+  if (view === 'tools') {
+    renderTools();
+    if (h === '#grid-meta') $('grid-meta').scrollIntoView({ block: 'center' });
+  }
   $('navPlayer').setAttribute('aria-current', view === 'player' ? 'page' : 'false');
   $('navMeta').setAttribute('aria-current', meta ? 'page' : 'false');
   $('navLearn').setAttribute('aria-current', view === 'learn' ? 'page' : 'false');

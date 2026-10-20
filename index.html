@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=38">
+<link rel="stylesheet" href="assets/style.css?v=44">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -58,6 +58,13 @@
       <a href="#player" id="navPlayer" data-en="Player">Игрок</a>
       <a href="#meta" id="navMeta" data-en="Meta">Мета</a>
       <a href="#learn" id="navLearn" data-en="Learn">Обучение</a>
+      <div class="nav-drop">
+        <button type="button" id="navTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu"><span data-en="Tools">Полезное</span><svg class="i" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="nav-menu" id="toolsMenu" role="menu" hidden>
+          <a href="#grid" role="menuitem"><b data-en="Hero grid from a picture">Сетка героев из картинки</b><small data-en="Tier list or screenshot into a Dota 2 grid">Тир-лист или скриншот в сетку Dota 2</small></a>
+          <a href="#grid-meta" role="menuitem"><b data-en="Meta hero grid">Мета-сетка героев</b><small data-en="Strongest heroes by position for your rank">Сильнейшие герои по позициям для твоего ранга</small></a>
+        </div>
+      </div>
     </nav>
     <span class="updated" id="updated"></span>
     <button class="lang-btn key-btn" id="keyBtn" type="button" aria-label="Токен Stratz" data-en-aria="Stratz token"><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg></button>
@@ -161,6 +168,32 @@
     </section>
   </main>
 
+  <main id="viewTools" class="stack" hidden>
+    <section class="section">
+      <h1 class="section-title" data-en="Hero grid for Dota 2">Сетка героев для Dota 2</h1>
+      <div class="two-col">
+        <div class="card pad stack-sm">
+          <h2 class="label" data-en="From a picture">Из картинки</h2>
+          <label class="grid-drop" id="gridDrop" for="gridFile">
+            <input type="file" id="gridFile" accept="image/*" hidden>
+            <svg class="i" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+            <b data-en="Drop a picture, paste it or pick a file">Перетащи картинку, вставь Ctrl+V или выбери файл</b>
+            <span class="note" data-en="Tier list with hero portraits or a screenshot of a hero grid">Тир-лист с портретами героев или скриншот сетки</span>
+          </label>
+          <p class="note" id="gridStatus"></p>
+        </div>
+        <div class="card pad stack-sm" id="grid-meta">
+          <h2 class="label" data-en="Meta grid">Мета-сетка</h2>
+          <p class="note" data-en="Five categories by position, strongest heroes first, from the last days of pubs.">Пять категорий по позициям, сильнейшие герои первыми, по пабам последних дней.</p>
+          <div class="row"><select class="field" id="metaGridGroup" aria-label="Ранг" data-en-aria="Rank"></select><button class="btn" id="metaGridBtn" type="button" data-en="Build">Собрать</button></div>
+          <button class="btn ghost small" id="emptyGridBtn" type="button" data-en="Start an empty grid">Начать пустую сетку</button>
+        </div>
+      </div>
+      <div id="gridPreview"></div>
+      <div id="gridEditor" class="stack-sm"></div>
+    </section>
+  </main>
+
   <main id="viewLearn" class="stack" hidden>
     <section class="section">
       <h2 class="section-title" data-en="Your training plan">Твой план тренировок</h2>
@@ -230,6 +263,7 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=38"></script>
+<script src="assets/app.js?v=44"></script>
+<script src="assets/grid.js?v=44"></script>
 </body>
 </html>
