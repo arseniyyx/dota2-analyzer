@@ -1,3 +1,5 @@
 {
-  "links": []
+  "links": [
+    {"name": "Boosty", "url": "https://boosty.to/arseniyyx", "note": "разовый донат или подписка", "note_en": "a one-off tip or a subscription"}
+  ]
 }
