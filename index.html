@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=67">
+<link rel="stylesheet" href="assets/style.css?v=68">
 </head>
 <body>
 <noscript><div class="noscript">
@@ -64,6 +64,7 @@
           <a href="#grid-art" role="menuitem"><b data-en="Art grid from a photo">Арт-сетка из фото</b><small data-en="A picture drawn with dots and zones for your heroes">Рисунок из точек и зоны для твоих героев</small></a>
           <a href="#mods" role="menuitem"><b data-en="Mods for Dota 2">Моды для Dota 2</b><small data-en="Our app: no weather, effects and ambient sounds">Наша программа: без погоды, лишних эффектов и фоновых звуков</small></a>
           <a href="#optimize" role="menuitem"><b data-en="Optimisation">Оптимизация</b><small data-en="More FPS: launch options, autoexec, video settings">Больше FPS: параметры запуска, autoexec, графика</small></a>
+          <a href="#glyph" role="menuitem"><b data-en="Who pressed the glyph">Кто нажал глиф</b><small data-en="Paste a match ID and see who used the glyph and how often">Вставь номер матча и увидишь, кто и сколько раз жал глиф</small></a>
           <a href="#grid-meta" role="menuitem"><b data-en="Meta hero grid">Мета-сетка героев</b><small data-en="Strongest heroes by position for your rank">Сильнейшие герои по позициям для твоего ранга</small></a>
         </div>
       </div>
@@ -189,6 +190,21 @@
     <section class="section">
       <h1 class="section-title" data-en="Mods for Dota 2">Моды для Dota 2</h1>
       <div id="modsBox" class="stack-sm"></div>
+    </section>
+  </main>
+
+  <main id="viewGlyph" class="stack" hidden>
+    <section class="section">
+      <h1 class="section-title" data-en="Who pressed the glyph">Кто нажал глиф</h1>
+      <p class="note" data-en="Paste a match ID or a Dotabuff, OpenDota or Stratz link: you will see how many times each player pressed the glyph.">Вставь номер матча или ссылку на него (Dotabuff, OpenDota, Stratz): покажем, сколько раз каждый игрок нажимал глиф.</p>
+      <form class="search-row" id="glyphForm">
+        <label class="search-field" for="glyphId">
+          <svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="text" id="glyphId" placeholder="Например 9057311648" data-en-placeholder="For example 9057311648" autocomplete="off" aria-label="Номер матча или ссылка" data-en-aria="Match ID or link">
+        </label>
+        <button class="btn" type="submit" data-en="Show">Показать</button>
+      </form>
+      <div id="glyphBox"></div>
     </section>
   </main>
 
@@ -360,10 +376,11 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=67"></script>
-<script src="assets/grid.js?v=67"></script>
-<script src="assets/gridart.js?v=67"></script>
-<script src="assets/optimize.js?v=67"></script>
-<script src="assets/mods.js?v=67"></script>
+<script src="assets/app.js?v=68"></script>
+<script src="assets/grid.js?v=68"></script>
+<script src="assets/gridart.js?v=68"></script>
+<script src="assets/optimize.js?v=68"></script>
+<script src="assets/mods.js?v=68"></script>
+<script src="assets/glyph.js?v=68"></script>
 </body>
 </html>

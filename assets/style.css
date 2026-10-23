@@ -713,3 +713,21 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .cmp-grid .num { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
 .cmp-grid .num.better { color: var(--fg); font-weight: 600; }
 .cal-card .cal-note { margin: 2px 0 0; max-width: none; text-align: center; font-size: 12px; line-height: 1.4; }
+
+#glyphForm { margin: 4px 0 12px; }
+.glyph-sum { font-size: 14px; }
+.glyph-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.glyph-team { display: flex; flex-direction: column; gap: 4px; }
+.glyph-team.radiant { box-shadow: inset 3px 0 0 var(--good); }
+.glyph-team.dire { box-shadow: inset 3px 0 0 var(--bad); }
+.glyph-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.glyph-head .note { margin-left: auto; }
+.glyph-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 5px 6px; border-radius: 8px; color: var(--fg-muted); }
+.glyph-row img { width: 44px; height: 25px; border-radius: 4px; object-fit: cover; }
+.glyph-who { display: flex; flex-direction: column; min-width: 0; }
+.glyph-who b { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.glyph-who .note { font-size: 11px; }
+.glyph-n { font-variant-numeric: tabular-nums; font-size: 13px; }
+.glyph-row.pressed { background: var(--accent-soft); color: var(--fg); }
+.glyph-row.pressed .glyph-n { color: var(--accent); font-weight: 700; }
+@media (max-width: 640px) { .glyph-grid { grid-template-columns: 1fr; } }
