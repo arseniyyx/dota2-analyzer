@@ -207,7 +207,8 @@ async function pool(tasks, n, onDone) {
 
 async function loadBase() {
   const [heroStats, meta, pros] = await Promise.all([
-    getJSONCached(`${API}/heroStats`, 360),
+    // our own daily copy first: the whole site stays usable when OpenDota is slow or blocked
+    getJSON(dataUrl('hero_list.json'), { signal: AbortSignal.timeout(15000) }).catch(() => getJSONCached(`${API}/heroStats`, 360)),
     getJSON(dataUrl('meta.json')).catch(() => null),
     getJSON(dataUrl('pros.json')).catch(() => null),
   ]);
@@ -232,7 +233,8 @@ async function loadGroup(g) {
 
 async function loadItems() {
   if (S.items) return;
-  const [ids, items] = await Promise.all([getJSON(`${API}/constants/item_ids`), getJSON(`${API}/constants/items`)]);
+  const own = await getJSON(dataUrl('item_list.json'), { signal: AbortSignal.timeout(15000) }).catch(() => null); // our daily copy first
+  const [ids, items] = own ? [own.ids, own.items] : await Promise.all([getJSON(`${API}/constants/item_ids`), getJSON(`${API}/constants/items`)]);
   S.items = items;
   S.itemIds = ids;
 }
@@ -2273,7 +2275,11 @@ async function boot() {
   applyStaticLang();
   wireKey();
   wireSupport();
-  try { await loadBase(); } catch (e) { showError(L('Не удалось загрузить список героев: ', 'Couldn\'t load the hero list: ') + e.message); return; }
+  try { await loadBase(); } catch (e) {
+    const msg = L('Не удалось загрузить список героев: ', 'Couldn\'t load the hero list: ') + e.message;
+    showError(msg); $('metaInfo').textContent = msg; // visible on the player and meta pages alike
+    return;
+  }
   const linkHero = +new URLSearchParams(location.search).get('hero'); // links from the static hero pages
   if (S.heroes[linkHero]) { S.learnHero = linkHero; S.learnHeroPicked = true; history.replaceState(null, '', location.pathname + location.search + '#learn'); }
   route();

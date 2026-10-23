@@ -613,11 +613,34 @@ def build_pros(patch, ids, by_match, items, hero_ids=()):
         json.dump({"patch": patch, "generated_at": int(time.time()), "players": players}, f, ensure_ascii=False, separators=(",", ":"))
 
 
+HERO_FIELDS = ("id", "name", "localized_name", "primary_attr", "attack_type", "roles", "img", "icon")
+
+
+def write_hero_list(heroes):
+    """The hero list the site needs, served from the site itself so pages work when OpenDota is slow or blocked."""
+    with open(os.path.join(OUT, "hero_list.json"), "w", encoding="utf-8") as f:
+        json.dump([{k: h.get(k) for k in HERO_FIELDS} for h in heroes], f, ensure_ascii=False, separators=(",", ":"))
+
+
+def item_list(ids, items):
+    """Only the item fields the site reads (name, picture, cost, recipe, ability titles)."""
+    return {"ids": ids, "items": {k: {"dname": v.get("dname"), "img": v.get("img"), "cost": v.get("cost"), "components": v.get("components"),
+                                      "abilities": [{"title": a.get("title")} for a in v.get("abilities") or [] if a.get("title")]}
+                                  for k, v in items.items()}}
+
+
+def write_item_list(ids, items):
+    with open(os.path.join(OUT, "item_list.json"), "w", encoding="utf-8") as f:
+        json.dump(item_list(ids, items), f, ensure_ascii=False, separators=(",", ":"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     heroes = get("heroStats")
     hero_ids = sorted(h["id"] for h in heroes)
+    write_hero_list(heroes)
     items = get("constants/items")
+    write_item_list(get("constants/item_ids"), items)
 
     print("Pro matches...")
     patch, pro_matches, positions, counters, pro_items, seen, pro_ids, by_match = build_pro(items)
