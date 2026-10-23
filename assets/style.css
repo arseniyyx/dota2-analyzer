@@ -737,3 +737,10 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .dlg-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-left: auto; }
 .dlg-links a { color: var(--fg-muted); text-decoration: none; }
 .dlg-links a:hover { color: var(--accent); }
+/* the stats grow to the height of the calendar column so both sides end on one line */
+@media (min-width: 861px) {
+  .top-split { align-items: stretch; }
+  .top-main { display: flex; flex-direction: column; }
+  .top-main #stats { flex: 1; grid-auto-rows: 1fr; }
+  .top-main .stat .value { margin-top: auto; }
+}
