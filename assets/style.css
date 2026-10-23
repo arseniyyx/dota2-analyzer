@@ -731,3 +731,9 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .glyph-row.pressed { background: var(--accent-soft); color: var(--fg); }
 .glyph-row.pressed .glyph-n { color: var(--accent); font-weight: 700; }
 @media (max-width: 640px) { .glyph-grid { grid-template-columns: 1fr; } }
+
+.dlg-foot { position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 20px; background: rgba(17, 21, 28, .92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border); font-size: 13px; }
+.dlg-foot .num { font-variant-numeric: tabular-nums; user-select: all; }
+.dlg-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-left: auto; }
+.dlg-links a { color: var(--fg-muted); text-decoration: none; }
+.dlg-links a:hover { color: var(--accent); }

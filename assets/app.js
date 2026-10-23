@@ -733,8 +733,23 @@ $('matchDlg').addEventListener('close', () => stopMap());
 $('matchDlg').addEventListener('click', e => { if (e.target === $('matchDlg')) $('matchDlg').close(); });
 document.querySelectorAll('#dlgTabs .tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
+// the match ID stays at the bottom on every tab: copy it, check the glyph, or open it on other sites
+function matchFoot(id) {
+  $('dlgFoot').innerHTML = `<span class="note">${L('ID матча', 'Match ID')}</span><b class="num">${id}</b>
+    <button class="btn ghost small" id="dlgCopy" type="button">${L('Копировать', 'Copy')}</button>
+    <span class="dlg-links"><a href="#glyph-${id}" id="dlgGlyph">${L('Кто нажал глиф', 'Who pressed the glyph')}</a>
+    <a href="https://www.dotabuff.com/matches/${id}" target="_blank" rel="noopener">Dotabuff</a>
+    <a href="https://www.opendota.com/matches/${id}" target="_blank" rel="noopener">OpenDota</a>
+    <a href="https://stratz.com/matches/${id}" target="_blank" rel="noopener">Stratz</a></span>`;
+  $('dlgCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(String(id)); $('dlgCopy').textContent = L('Скопировано', 'Copied'); } catch { $('dlgCopy').textContent = L('Выдели и скопируй', 'Select and copy'); }
+  });
+  $('dlgGlyph').addEventListener('click', () => $('matchDlg').close());
+}
+
 async function openMatch(id) {
   $('dlgTitle').textContent = `${L('Матч', 'Match')} ${id}`;
+  matchFoot(id);
   $('dlgBody').innerHTML = `<div class="loading"><div class="spinner"></div><p>${L('Загружаю матч…', 'Loading match…')}</p></div>`;
   $('matchDlg').showModal();
   if (motionOn()) M.animate($('matchDlg'), { opacity: [0, 1], scale: [0.97, 1] }, { type: 'spring', bounce: 0, visualDuration: 0.3 });
@@ -860,7 +875,7 @@ function renderOverview(m) {
           ${!weak.length ? `<div class="card issue good">${sevIcon('good')}<div class="body"><div class="title">${L('Серьёзных провалов нет', 'No major weak spots')}</div><div class="detail">${L('По ключевым показателям роли ты не хуже большинства.', 'On your role\'s key stats you\'re no worse than most players.')}</div></div></div>` : ''}
         </div></div>`;
   }
-  $('dlgBody').innerHTML = parseBlock(m) + mineBlock + table(mine, me ? L('Твоя команда', 'Your team') : 'Radiant', me ? won : m.radiant_win) + table(theirs, me ? L('Враги', 'Enemies') : 'Dire', me ? !won : !m.radiant_win) + `    <div class="row note"><a href="https://www.opendota.com/matches/${m.match_id}" target="_blank" rel="noopener">OpenDota</a><a href="https://www.dotabuff.com/matches/${m.match_id}" target="_blank" rel="noopener">Dotabuff</a><a href="https://stratz.com/matches/${m.match_id}" target="_blank" rel="noopener">Stratz</a></div>`;
+  $('dlgBody').innerHTML = parseBlock(m) + mineBlock + table(mine, me ? L('Твоя команда', 'Your team') : 'Radiant', me ? won : m.radiant_win) + table(theirs, me ? L('Враги', 'Enemies') : 'Dire', me ? !won : !m.radiant_win);
   wireParse(m);
   $('dlgBody').querySelectorAll('.player-link').forEach(b => b.addEventListener('click', () => {
     $('matchDlg').close();
