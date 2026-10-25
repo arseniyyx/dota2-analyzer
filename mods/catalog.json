@@ -8,7 +8,8 @@
     "particle": "particles/dev/empty_particle.vpcf_c",
     "sound": "sounds/null.vsnd_c",
     "model": "models/development/invisiblebox.vmdl_c",
-    "material": "materials/tools/toolsnodraw.vmat_c"
+    "material": "materials/tools/toolsnodraw.vmat_c",
+    "creep_hp_bg": "materials/vgui/hud/hud_healthbar_creeps_bg.vmat_c"
   },
   "tabs": [
     {
@@ -6723,6 +6724,30 @@
         {
           "match": "^materials/nature/card_grass.*\\.vmat_c$",
           "template": "material"
+        }
+      ]
+    },
+    {
+      "id": "creep-hp-contrast",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "▰",
+      "name": {
+        "ru": "Контрастное ХП крипов (тест)",
+        "en": "High-contrast creep HP (test)"
+      },
+      "desc": {
+        "ru": "Недостающее ХП у крипов чёрное вместо тёмно-красного и тёмно-зелёного, поэтому остаток полоски видно сразу. Экспериментальный: проверь в демо-режиме.",
+        "en": "Missing creep HP is black instead of dark red and dark green, so what is left stands out. Experimental: check it in demo mode."
+      },
+      "rules": [
+        {
+          "match": "^materials/vgui/hud/hud_healthbar_creepempty_(enemy|team)\\.vmat_c$",
+          "paths": [
+            "materials/vgui/hud/hud_healthbar_creepempty_enemy.vmat_c",
+            "materials/vgui/hud/hud_healthbar_creepempty_team.vmat_c"
+          ],
+          "template": "creep_hp_bg"
         }
       ]
     },
