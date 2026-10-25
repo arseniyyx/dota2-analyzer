@@ -35,7 +35,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.4.2"
+APP_VERSION = "1.4.3"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -47,7 +47,7 @@ D2PFX_CATS = [("shaders", "Шейдеры тумана"), ("cursors", "Курс�
               ("terrains", "Ландшафты"), ("fonts", "Шрифты")]
 # paid Valve terrains, and terrain packs that also swap trees (tree shapes matter for vision)
 D2PFX_SKIP = re.compile(r"^(TI\d+\b|Dota\+|Crownfall|The Kings New Journey)|\btrees?\b", re.I)
-SINGLE_CATS = {"shaders", "terrains", "fonts"}
+SINGLE_CATS = {"shaders", "terrains", "fonts", "creep-deny"}
 ENGLISH_ID = "english-ui"  # mods of these categories replace the same files, so one at a time
 MOD_FOLDER = "dota_d2a"  # English clients only
 MARK = "// D2A mods"
@@ -239,8 +239,13 @@ def load_d2pfx():
     out = {}
     for cat, _label in D2PFX_CATS:
         items = mods.get("modsData", {}).get(cat)
+        if isinstance(items, dict):  # grouped categories (creep-deny: Deny and Lasthit)
+            items = [m for g in items.get("groups", []) for m in g.get("mods", [])]
         if not isinstance(items, list):
             continue
+        # a mod with colour styles is one file per style
+        items = [dict(m, name=f"{m.get('name', '')} {s.get('label', '')}".strip(), file=s.get("file"), preview=s.get("preview") or m.get("preview")) if s else m
+                 for m in items for s in m.get("styles") or [None]]
         for m in items:
             f = m.get("file") or ""
             if not f or f.startswith("http") or m.get("type") == "guide" or not re.search(r"\.(zip|vpk)$", f, re.I):
