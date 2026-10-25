@@ -407,6 +407,9 @@ def main():
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
                 + "".join(entry(p) for p in urls) + "</urlset>\n")
+    # the same pages as plain text, a second sitemap Search Console accepts
+    with open(os.path.join(ROOT, "sitemap.txt"), "w", encoding="utf-8") as f:
+        f.write("".join(f"{SITE + p}\n{SITE + ('en/' + p if p else '?lang=en')}\n" for p in urls))
     print(f"pages: {len(urls) - 1} per language, sitemap: {len(urls) * 2} urls")
 
 
