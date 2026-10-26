@@ -39,16 +39,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.8.1"
+APP_VERSION = "1.9.0"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
 D2PFX_CREDITS = "https://github.com/h6rd/Dota2PornFxWeb#credits"
 D2PFX_RAW = "https://raw.githubusercontent.com/h6rd/Dota2PornFxWeb/main/assets/"
 # only categories that neither unlock paid Valve cosmetics nor give an in-game advantage
-D2PFX_CATS = [("shaders", "Шейдеры тумана"), ("cursors", "Курсоры"), ("backgrounds", "Фоны меню"), ("hero-icons", "Иконки героев"),
-              ("item-icons", "Иконки предметов"), ("ranks", "Иконки рангов"), ("pings", "Пинги"), ("creep-deny", "Денай"),
-              ("terrains", "Ландшафты"), ("fonts", "Шрифты"), ("huds", "Интерфейс"), ("parts", "Части интерфейса")]
+D2PFX_CATS = [("shaders", "Шейдеры тумана", "Fog shaders"), ("cursors", "Курсоры", "Cursors"), ("backgrounds", "Фоны меню", "Menu backgrounds"),
+              ("hero-icons", "Иконки героев", "Hero icons"), ("item-icons", "Иконки предметов", "Item icons"), ("ranks", "Иконки рангов", "Rank icons"),
+              ("pings", "Пинги", "Pings"), ("creep-deny", "Денай", "Deny"), ("terrains", "Ландшафты", "Terrains"), ("fonts", "Шрифты", "Fonts"),
+              ("huds", "Интерфейс", "HUD"), ("parts", "Части интерфейса", "HUD parts")]
 # paid Valve terrains, and terrain packs that also swap trees (tree shapes matter for vision)
 D2PFX_SKIP = re.compile(r"^(TI\d+\b|Dota\+|Crownfall|The Kings New Journey)|\btrees?\b", re.I)
 SINGLE_CATS = {"shaders", "terrains", "fonts", "creep-deny", "huds"}
@@ -59,6 +60,28 @@ PAK_FIRST = 60
 GAME_DIRS = ("particles", "materials", "models", "panorama", "resource", "sounds", "soundevents", "scripts", "maps")
 DATA_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "D2AMods")
 UA = {"User-Agent": f"D2AMods/{APP_VERSION}"}
+LANG = "ru"  # set in main(): the player's choice, otherwise the Windows display language
+
+
+def T(ru, en):
+    return en if LANG == "en" else ru
+
+
+def loc(d):
+    """A {"ru": ..., "en": ...} text from the catalog in the app language."""
+    return (d or {}).get(LANG) or (d or {}).get("ru") or ""
+
+
+def system_lang():
+    try:
+        import ctypes
+        return "ru" if (ctypes.windll.kernel32.GetUserDefaultUILanguage() & 0x3FF) in (0x19, 0x22, 0x23, 0x3F) else "en"  # ru, uk, be, kk
+    except Exception:
+        return "ru"
+
+
+def site_url(page):
+    return SITE + ("?lang=en" if LANG == "en" else "") + page
 
 
 def ver(v):
@@ -224,13 +247,13 @@ def fetch_file(url, sha256, name, log):
         with open(path, "rb") as f:
             return not sha256 or hashlib.sha256(f.read()).hexdigest() == sha256
     if not ok():
-        log(f"Скачиваю «{name}»…")
+        log(T(f"Скачиваю «{name}»…", f"Downloading “{name}”…"))
         with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300) as r, open(path + ".part", "wb") as f:
             shutil.copyfileobj(r, f)
         os.replace(path + ".part", path)
         if not ok():
             os.remove(path)
-            raise RuntimeError(f"«{name}» скачался с ошибкой (не совпала контрольная сумма), попробуй ещё раз")
+            raise RuntimeError(T(f"«{name}» скачался с ошибкой (не совпала контрольная сумма), попробуй ещё раз", f"“{name}” downloaded with an error (checksum mismatch), try again"))
     return path
 
 
@@ -241,7 +264,7 @@ def load_d2pfx():
     mods, _ = cached_json(D2PFX_RAW + "data/mods.json", "d2pfx_mods.json", 6 * 3600)
     hashes, _ = cached_json(D2PFX_RAW + "data/mod-hashes.json", "d2pfx_hashes.json", 6 * 3600)
     out = {}
-    for cat, _label in D2PFX_CATS:
+    for cat, *_labels in D2PFX_CATS:
         items = mods.get("modsData", {}).get(cat)
         if isinstance(items, dict):  # grouped categories (creep-deny: Deny and Lasthit)
             items = [m for g in items.get("groups", []) for m in g.get("mods", [])]
@@ -295,7 +318,7 @@ def build_rules(game, catalog, mod_ids, tmp, log=print):
                     with open(dst, "wb") as f:
                         f.write(blank[name])
                     count += 1
-        log(f"{m['name']['ru']}: {count - before} файлов")
+        log(T(f"{loc(m['name'])}: {count - before} файлов", f"{loc(m['name'])}: {count - before} files"))
     return count
 
 
@@ -324,11 +347,11 @@ def patch_svgs(game, catalog, mod_ids, tmp, log=print):
             off, size = resource_block(data, "DATA")
             svg = bytes(data[off + 6:off + size])
             if data[off + 4:off + 6] != b"\0\0" or struct.unpack_from("<I", data, off)[0] != zlib.crc32(svg):
-                raise RuntimeError(f"«{m['name']['ru']}»: формат файла в игре поменялся, мод нужно обновить")
+                raise RuntimeError(T(f"«{loc(m['name'])}»: формат файла в игре поменялся, мод нужно обновить", f"“{loc(m['name'])}”: the game changed the file format, the mod needs an update"))
             for old, new in edits:
                 old, new = old.encode(), new.encode()
                 if len(old) != len(new) or old not in svg:
-                    raise RuntimeError(f"«{m['name']['ru']}»: игра обновила {path.rsplit('/', 1)[-1]}, мод нужно обновить")
+                    raise RuntimeError(T(f"«{loc(m['name'])}»: игра обновила {path.rsplit('/', 1)[-1]}, мод нужно обновить", f"“{loc(m['name'])}”: the game updated {path.rsplit('/', 1)[-1]}, the mod needs an update"))
                 svg = svg.replace(old, new)
             struct.pack_into("<I", data, off, zlib.crc32(svg))
             data[off + 6:off + size] = svg
@@ -337,7 +360,7 @@ def patch_svgs(game, catalog, mod_ids, tmp, log=print):
             with open(dst, "wb") as f:
                 f.write(data)
             count += 1
-        log(f"{m['name']['ru']}: {len(m['svg'])} файлов")
+        log(T(f"{loc(m['name'])}: {len(m['svg'])} файлов", f"{loc(m['name'])}: {len(m['svg'])} files"))
     return count
 
 
@@ -370,7 +393,7 @@ def scale_dxt5(data, sprites, factors):
     off, size = resource_block(data, "DATA")
     w, h = struct.unpack_from("<HH", data, off + 20)
     if data[off + 26] != 2:
-        raise RuntimeError("формат текстуры в игре поменялся, мод нужно обновить")
+        raise RuntimeError(T("формат текстуры в игре поменялся, мод нужно обновить", "the game changed the texture format, the mod needs an update"))
     mips = data[off + 27]
     sizes = [max(1, (max(1, w >> i) + 3) // 4) * max(1, (max(1, h >> i) + 3) // 4) * 16 for i in range(mips)]
     for level in range(mips):
@@ -405,14 +428,14 @@ def patch_sheets(game, catalog, mod_ids, tmp, lang, log=print):
             data = bytearray(pak.get_file(path).read())
             sprites = sheet_sprites(data)
             if any(s not in sprites for s in m["sheet"]["scale"]):
-                raise RuntimeError(f"«{m['name']['ru']}»: игра обновила полоски здоровья, мод нужно обновить")
+                raise RuntimeError(T(f"«{loc(m['name'])}»: игра обновила полоски здоровья, мод нужно обновить", f"“{loc(m['name'])}”: the game updated the health bars, the mod needs an update"))
             scale_dxt5(data, sprites, sheet_factors(m))
             dst = os.path.join(tmp, *path.split("/"))
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             with open(dst, "wb") as f:
                 f.write(data)
             count += 1
-        log(f"{m['name']['ru']}: {count} текстур")
+        log(T(f"{loc(m['name'])}: {count} текстур", f"{loc(m['name'])}: {count} textures"))
     return count
 
 
@@ -484,7 +507,7 @@ def map_colors(data, fn):
         data[start:] = buf.getvalue()
         return
     if fmt not in (1, 2):
-        raise RuntimeError("формат текстуры не поддерживается")
+        raise RuntimeError(T("формат текстуры не поддерживается", "texture format not supported"))
     bsize, coff = (8, 0) if fmt == 1 else (16, 8)
     to565 = lambda c: (c[0] * 31 + 127) // 255 << 11 | (c[1] * 63 + 127) // 255 << 5 | (c[2] * 31 + 127) // 255
     cache = {}
@@ -518,7 +541,7 @@ def parse_paint(code):
     ability icons, or not a colour, is dropped."""
     code = (code or "").strip()
     if not code.startswith("D2AP1:"):
-        raise ValueError("Это не код кастомизации героев: он начинается с D2AP1:")
+        raise ValueError(T("Это не код кастомизации героев: он начинается с D2AP1:", "This is not a hero customisation code: it starts with D2AP1:"))
     data = json.loads(base64.b64decode(code[6:] + "=" * (-len(code[6:]) % 4)).decode("utf-8"))
     out = {}
     for path, v in (data.get("t") or {}).items():
@@ -561,7 +584,7 @@ def paint_textures(game, mod_ids, tmp, log=print):
         with open(dst, "wb") as f:
             f.write(data)
         done += 1
-    log(f"Кастомизация героев: {done} текстур" + (f", пропущено {skipped}" if skipped else ""))
+    log(T(f"Кастомизация героев: {done} текстур", f"Hero customisation: {done} textures") + (T(f", пропущено {skipped}", f", skipped {skipped}") if skipped else ""))
     return done
 
 
@@ -573,10 +596,10 @@ def paint_window():
         def apply(self, code):
             try:
                 n = save_paint(code)
-                return f"Сохранено текстур: {n}. Закрой это окно и нажми в D2A Mods «Установить выбранные»."
+                return T(f"Сохранено текстур: {n}. Закрой это окно и нажми в D2A Mods «Установить выбранные».", f"Saved textures: {n}. Close this window and press Install selected in D2A Mods.")
             except Exception as e:
-                return f"Не получилось: {e}"
-    webview.create_window("D2A Mods: кастомизация героев", SITE + "#paint", js_api=Api(), width=1320, height=900, background_color="#0b0e14")
+                return T(f"Не получилось: {e}", f"Failed: {e}")
+    webview.create_window(T("D2A Mods: кастомизация героев", "D2A Mods: hero customisation"), site_url("#paint"), js_api=Api(), width=1320, height=900, background_color="#0b0e14")
     webview.start()
 
 
@@ -592,7 +615,7 @@ def recolor_textures(game, catalog, mod_ids, tmp, log=print):
         hue = setting(m, "hue", rc["hue"])
         for path in rc["textures"]:
             if path not in names:
-                raise RuntimeError(f"«{m['name']['ru']}»: игра обновила текстуры, мод нужно обновить")
+                raise RuntimeError(T(f"«{loc(m['name'])}»: игра обновила текстуры, мод нужно обновить", f"“{loc(m['name'])}”: the game updated the textures, the mod needs an update"))
             data = bytearray(pak.get_file(path).read())
             colorize(data, hue, rc.get("sat", 1.0), rc.get("hues"))
             dst = os.path.join(tmp, *path.split("/"))
@@ -600,7 +623,7 @@ def recolor_textures(game, catalog, mod_ids, tmp, log=print):
             with open(dst, "wb") as f:
                 f.write(data)
             count += 1
-        log(f"{m['name']['ru']}: {len(rc['textures'])} текстур")
+        log(T(f"{loc(m['name'])}: {len(rc['textures'])} текстур", f"{loc(m['name'])}: {len(rc['textures'])} textures"))
     return count
 
 
@@ -613,12 +636,12 @@ def place_files(mod, tmp, log):
     base, items = mod["files"]["base"], mod["files"]["list"]
     cache = os.path.join(DATA_DIR, "files", "git")
     os.makedirs(cache, exist_ok=True)
-    log(f"Скачиваю «{mod['name']['ru']}» ({len(items)} файлов)…")
+    log(T(f"Скачиваю «{loc(mod['name'])}» ({len(items)} файлов)…", f"Downloading “{loc(mod['name'])}” ({len(items)} files)…"))
 
     def one(item):
         rel, sha = item
         if ".." in rel.split("/") or not re.fullmatch(r"[0-9a-f]{40}", sha):
-            raise RuntimeError(f"Странный путь в моде: {rel}")
+            raise RuntimeError(T(f"Странный путь в моде: {rel}", f"Odd path in the mod: {rel}"))
         path = os.path.join(cache, sha)
         data = None
         if os.path.exists(path):
@@ -627,7 +650,7 @@ def place_files(mod, tmp, log):
         if data is None or not git_blob_ok(data, sha):
             data = http_get(base + urllib.parse.quote(rel), 120)
             if not git_blob_ok(data, sha):
-                raise RuntimeError(f"Файл «{rel}» скачался с ошибкой, попробуй ещё раз")
+                raise RuntimeError(T(f"Файл «{rel}» скачался с ошибкой, попробуй ещё раз", f"File “{rel}” downloaded with an error, try again"))
             with open(path, "wb") as f:
                 f.write(data)
         dst = os.path.join(tmp, *rel.split("/"))
@@ -682,7 +705,7 @@ def place_d2pfx(mod, folder, numbers, tmp, log):
                     shutil.copyfileobj(src, out)
                 loose += 1
     if not written and not loose:
-        raise RuntimeError(f"В моде «{mod['name']}» не нашлось файлов игры")
+        raise RuntimeError(T(f"В моде «{mod['name']}» не нашлось файлов игры", f"No game files found in “{mod['name']}”"))
     return written, loose
 
 
@@ -727,7 +750,7 @@ def place_font(mod, game, log):
                 continue
             written.append(replace_loose(game, f"dota/panorama/fonts/{parts[-1]}", z.read(info)))
     if not written:
-        raise RuntimeError(f"В шрифте «{mod['name']}» не нашлось файлов шрифта")
+        raise RuntimeError(T(f"В шрифте «{mod['name']}» не нашлось файлов шрифта", f"No font files found in “{mod['name']}”"))
     return written
 
 
@@ -752,7 +775,7 @@ def english_ui(game, lang, tmp, log):
                 if src != os.path.join(dirpath, name) and os.path.isfile(src):
                     with open(src, "rb") as f:
                         loose.append(replace_loose(game, os.path.relpath(os.path.join(dirpath, name), game).replace("\\", "/"), f.read()))
-    log(f"Английский интерфейс: {n + len(loose)} файлов текста")
+    log(T(f"Английский интерфейс: {n + len(loose)} файлов текста", f"English interface: {n + len(loose)} text files"))
     return n, loose
 
 
@@ -823,7 +846,7 @@ def mount(game):
         shutil.copy2(gi, backup)
     new, n = re.subn(r"(\n([ \t]*)Game[ \t]+dota[ \t]*\n)", lambda m: f"\n{m.group(2)}Game\t\t\t\t{MOD_FOLDER}\t{MARK}{m.group(1)}", text, count=1)
     if not n:
-        raise RuntimeError("Не нашёл строку «Game dota» в gameinfo.gi: формат файла изменился")
+        raise RuntimeError(T("Не нашёл строку «Game dota» в gameinfo.gi: формат файла изменился", "No “Game dota” line in gameinfo.gi: the file format changed"))
     with open(gi, "w", encoding="utf-8") as f:
         f.write(new)
 
@@ -860,12 +883,14 @@ def remove_ours(game):
 
 def install(game, catalog, d2pfx, ids, log=print):
     if dota_running():
-        raise RuntimeError("Закрой Dota 2 перед установкой")
+        raise RuntimeError(T("Закрой Dota 2 перед установкой", "Close Dota 2 before installing"))
     method, folder = target(game)
     lang = os.path.basename(folder)[len("dota_"):] if method == "lang" else "english"
     if ENGLISH_ID in ids and lang == "english":
-        raise RuntimeError("Чтобы моды работали с английским интерфейсом, поставь в параметрах запуска Dota «-language dutch» "
-                           "(Steam → Dota 2 → Свойства → Параметры запуска) вместо «-language english» и нажми «Установить» ещё раз.")
+        raise RuntimeError(T("Чтобы моды работали с английским интерфейсом, поставь в параметрах запуска Dota «-language dutch» "
+                             "(Steam → Dota 2 → Свойства → Параметры запуска) вместо «-language english» и нажми «Установить» ещё раз.",
+                             "For mods with an English interface, set -language dutch in the Dota launch options "
+                             "(Steam → Dota 2 → Properties → Launch options) instead of -language english and press Install again."))
     remove_ours(game)
     os.makedirs(folder, exist_ok=True)
     taken = {f.lower() for f in os.listdir(folder)}
@@ -900,13 +925,13 @@ def install(game, catalog, d2pfx, ids, log=print):
                 vpk.new(tmp).save(dst)
                 files.append(os.path.basename(dst))
     except StopIteration:
-        raise RuntimeError("Слишком много модов сразу: в папке закончились свободные номера pak60–pak99")
+        raise RuntimeError(T("Слишком много модов сразу: в папке закончились свободные номера pak60–pak99", "Too many mods at once: the folder ran out of free numbers pak60–pak99"))
     finally:
         st = load_state()
         st[game] = {"folder": folder, "files": files, "loose": replaced, "mods": sorted(ids), "method": method, "app": APP_VERSION}
         save_state(st)
     if not files and not replaced:
-        raise RuntimeError("Ни один файл не подошёл под выбранные моды")
+        raise RuntimeError(T("Ни один файл не подошёл под выбранные моды", "No game files matched the selected mods"))
     if method == "gameinfo" and files:
         mount(game)
     return total
@@ -914,7 +939,7 @@ def install(game, catalog, d2pfx, ids, log=print):
 
 def uninstall(game):
     if dota_running():
-        raise RuntimeError("Закрой Dota 2 перед удалением")
+        raise RuntimeError(T("Закрой Dota 2 перед удалением", "Close Dota 2 before removing mods"))
     remove_ours(game)
 
 
@@ -969,8 +994,9 @@ def run_gui():
     head = tk.Frame(root, bg=C["bg"])
     head.pack(fill="x", padx=20, pady=(16, 6))
     tk.Label(head, text="D2A Mods", bg=C["bg"], fg=C["gold"], font=(F, 20, "bold")).pack(side="left")
-    path_var = tk.StringVar(value=st["game"] or "Dota 2 не найдена")
-    button(head, "Папка игры", lambda: pick()).pack(side="right")
+    path_var = tk.StringVar(value=st["game"] or T("Dota 2 не найдена", "Dota 2 not found"))
+    button(head, T("Папка игры", "Game folder"), lambda: pick()).pack(side="right")
+    button(head, "EN" if LANG == "ru" else "RU", lambda: switch_lang()).pack(side="right", padx=(0, 8))
     heart = tk.Label(head, text="♥", bg=C["bg"], fg=C["muted"], font=(F, 14), padx=8, cursor="hand2")
     heart.bind("<Button-1>", lambda e: webbrowser.open(SITE + "#support"))
     heart.bind("<Enter>", lambda e: heart.configure(fg="#ff6b8a"))
@@ -996,8 +1022,8 @@ def run_gui():
     qvar = tk.StringVar()
     entry = tk.Entry(search_row, textvariable=qvar, bg=C["panel"], fg=C["fg"], insertbackground=C["fg"], relief="flat", font=(F, 10), width=28)
     entry.pack(side="left", ipady=5, ipadx=6)
-    tk.Label(search_row, text="поиск", bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(side="left", padx=8)
-    credit = tk.Label(search_row, text="Моды из Dota2PornFx · авторы модов", bg=C["bg"], fg=C["gold"], font=(F, 9, "underline"), cursor="hand2")
+    tk.Label(search_row, text=T("поиск", "search"), bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(side="left", padx=8)
+    credit = tk.Label(search_row, text=T("Моды из Dota2PornFx · авторы модов", "Mods from Dota2PornFx · mod authors"), bg=C["bg"], fg=C["gold"], font=(F, 9, "underline"), cursor="hand2")
     credit.pack(side="right")
     credit.bind("<Button-1>", lambda e: webbrowser.open(D2PFX_SITE))
     tk.Label(search_row, text="", bg=C["bg"]).pack(side="right")
@@ -1009,12 +1035,12 @@ def run_gui():
     row = tk.Frame(foot, bg=C["bg"])
     row.pack(fill="x")
     count_var = tk.StringVar()
-    button(row, "Установить выбранные", lambda: do_install(), primary=True).pack(side="left")
-    button(row, "Удалить все моды", lambda: do_uninstall()).pack(side="left", padx=8)
-    button(row, "Выбрать все", lambda: select_view(True)).pack(side="left")
-    button(row, "Снять все", lambda: select_view(False)).pack(side="left", padx=8)
+    button(row, T("Установить выбранные", "Install selected"), lambda: do_install(), primary=True).pack(side="left")
+    button(row, T("Удалить все моды", "Remove all mods"), lambda: do_uninstall()).pack(side="left", padx=8)
+    button(row, T("Выбрать все", "Select all"), lambda: select_view(True)).pack(side="left")
+    button(row, T("Снять все", "Clear all"), lambda: select_view(False)).pack(side="left", padx=8)
     tk.Label(row, textvariable=count_var, bg=C["bg"], fg=C["gold"], font=(F, 10, "bold")).pack(side="left", padx=8)
-    button(row, "Сайт", lambda: webbrowser.open(SITE + "#mods")).pack(side="right")
+    button(row, T("Сайт", "Website"), lambda: webbrowser.open(site_url("#mods"))).pack(side="right")
 
     wrap = tk.Frame(root, bg=C["bg"])
     wrap.pack(fill="both", expand=True, padx=(20, 8))
@@ -1075,25 +1101,25 @@ def run_gui():
         gear = None
         t = tk.Frame(parent, bg=C["panel"], highlightthickness=2, highlightbackground=C["gold"] if on else C["line"], cursor="hand2")
         if st["tab"] == "d2pfx":
-            pic = tk.Label(t, bg="#0f131a", width=236, height=133, text="" if m["preview"] else "без превью", fg=C["muted"])
+            pic = tk.Label(t, bg="#0f131a", width=236, height=133, text="" if m["preview"] else T("без превью", "no preview"), fg=C["muted"])
             pic.pack(padx=8, pady=(8, 4))
             thumb(m, pic)
             top = tk.Frame(t, bg=C["panel"])
             top.pack(fill="x", padx=10)
             tk.Label(top, text=m["name"], bg=C["panel"], fg=C["fg"], font=(F, 10, "bold"), anchor="w", justify="left", wraplength=width - 50).pack(side="left", fill="x")
             tk.Label(top, text="✓" if on else "", bg=C["panel"], fg=C["gold"], font=(F, 13, "bold")).pack(side="right")
-            tk.Label(t, text=f"автор: {m['author']}" if m["author"] else "Dota2PornFx", bg=C["panel"], fg=C["muted"], font=(F, 8), anchor="w").pack(fill="x", padx=10, pady=(0, 8))
+            tk.Label(t, text=T(f"автор: {m['author']}", f"author: {m['author']}") if m["author"] else "Dota2PornFx", bg=C["panel"], fg=C["muted"], font=(F, 8), anchor="w").pack(fill="x", padx=10, pady=(0, 8))
         else:
             top = tk.Frame(t, bg=C["panel"])
             top.pack(fill="x", padx=12, pady=(10, 2))
             tk.Label(top, text=m.get("icon", "◆"), bg=C["panel"], fg=C["gold"], font=(F, 18)).pack(side="left")
             tk.Label(top, text="✓" if on else "", bg=C["panel"], fg=C["gold"], font=(F, 14, "bold")).pack(side="right")
-            kind = {"fps": "FPS", "sound": "звук", "visual": "вид"}.get(m.get("category"), "")
+            kind = {"fps": "FPS", "sound": T("звук", "sound"), "visual": T("вид", "visual")}.get(m.get("category"), "")
             tk.Label(top, text=kind, bg=C["panel2"], fg=C["muted"], font=(F, 8, "bold"), padx=6).pack(side="right", padx=6)
-            tk.Label(t, text=m["name"]["ru"], bg=C["panel"], fg=C["fg"], font=(F, 11, "bold"), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12)
-            tk.Label(t, text=m["desc"]["ru"], bg=C["panel"], fg=C["muted"], font=(F, 9), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12, pady=(2, 6 if m.get("settings") else 12))
+            tk.Label(t, text=loc(m["name"]), bg=C["panel"], fg=C["fg"], font=(F, 11, "bold"), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12)
+            tk.Label(t, text=loc(m["desc"]), bg=C["panel"], fg=C["muted"], font=(F, 9), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12, pady=(2, 6 if m.get("settings") else 12))
             if m.get("settings") or m.get("paint"):
-                gear = tk.Label(t, text="⚙ Открыть редактор" if m.get("paint") else "⚙ Настроить", bg=C["panel"], fg=C["gold"], font=(F, 9, "underline"), cursor="hand2")
+                gear = tk.Label(t, text=T("⚙ Открыть редактор", "⚙ Open editor") if m.get("paint") else T("⚙ Настроить", "⚙ Settings"), bg=C["panel"], fg=C["gold"], font=(F, 9, "underline"), cursor="hand2")
                 gear.pack(anchor="w", padx=12, pady=(0, 10))
 
         def toggle(_e=None):
@@ -1143,7 +1169,7 @@ def run_gui():
     def open_paint(m):
         """A small window: open the 3D editor inside the app, paste a code from the site, or clear the colours."""
         win = tk.Toplevel(root)
-        win.title(m["name"]["ru"])
+        win.title(loc(m["name"]))
         win.configure(bg=C["bg"])
         win.transient(root)
         win.resizable(False, False)
@@ -1151,8 +1177,8 @@ def run_gui():
 
         def refresh():
             n = len(((load_settings().get(PAINT_ID) or {}).get("t") or {}))
-            info.set(f"Сохранено изменённых текстур: {n}." + (" Нажми «Установить выбранные», чтобы поставить их в игру." if n else ""))
-        tk.Label(win, text="Настрой цвета героев в 3D-редакторе: клик по части модели, выбор цвета, галочка «Красить всего героя». Видишь цвета только ты.",
+            info.set(T(f"Сохранено изменённых текстур: {n}.", f"Saved textures: {n}.") + (T(" Нажми «Установить выбранные», чтобы поставить их в игру.", " Press Install selected to put them in the game.") if n else ""))
+        tk.Label(win, text=T("Настрой цвета героев в 3D-редакторе: клик по части модели, выбор цвета, галочка «Красить всего героя». Видишь цвета только ты.", "Set hero colours in the 3D editor: click a part of the model, pick a colour, or tick Paint the whole hero. Only you see the colours."),
                  bg=C["bg"], fg=C["fg"], font=(F, 10), wraplength=440, justify="left").pack(padx=16, pady=(16, 8), anchor="w")
         tk.Label(win, textvariable=info, bg=C["bg"], fg=C["gold"], font=(F, 9), wraplength=440, justify="left").pack(padx=16, anchor="w")
         bar = tk.Frame(win, bg=C["bg"])
@@ -1163,7 +1189,7 @@ def run_gui():
             if (load_settings().get(PAINT_ID) or {}).get("t"):
                 st["sel"].add(PAINT_ID)
                 draw()
-                status.set("Кастомизация сохранена. Нажми «Установить выбранные», чтобы поставить её в игру.")
+                status.set(T("Кастомизация сохранена. Нажми «Установить выбранные», чтобы поставить её в игру.", "Customisation saved. Press Install selected to put it in the game."))
 
         def editor():
             frozen = getattr(sys, "frozen", False)
@@ -1171,12 +1197,12 @@ def run_gui():
             try:
                 proc = subprocess.Popen(cmd)
             except OSError:
-                webbrowser.open(SITE + "#paint")
+                webbrowser.open(site_url("#paint"))
                 return
             def wait():
                 code = proc.wait()
                 if code:  # no WebView2 or pywebview: the same editor in the browser, colours come back as a code
-                    root.after(0, lambda: (webbrowser.open(SITE + "#paint"), info.set("Редактор открыт в браузере. Там нажми «Скопировать код», потом здесь «Вставить код».")))
+                    root.after(0, lambda: (webbrowser.open(site_url("#paint")), info.set(T("Редактор открыт в браузере. Там нажми «Скопировать код», потом здесь «Вставить код».", "The editor opened in the browser. Press Copy the code there, then Paste code here."))))
                 root.after(0, after_editor)
             threading.Thread(target=wait, daemon=True).start()
 
@@ -1184,9 +1210,9 @@ def run_gui():
             try:
                 n = save_paint(root.clipboard_get())
                 after_editor()
-                messagebox.showinfo("D2A Mods", f"Код принят: {n} текстур.", parent=win)
+                messagebox.showinfo("D2A Mods", T(f"Код принят: {n} текстур.", f"Code accepted: {n} textures."), parent=win)
             except Exception as e:
-                messagebox.showerror("D2A Mods", f"Не получилось прочитать код: {e}", parent=win)
+                messagebox.showerror("D2A Mods", T(f"Не получилось прочитать код: {e}", f"Could not read the code: {e}"), parent=win)
 
         def clear():
             s = load_settings()
@@ -1195,19 +1221,19 @@ def run_gui():
             st["sel"].discard(PAINT_ID)
             draw()
             refresh()
-        button(bar, "Открыть 3D-редактор", editor, primary=True).pack(side="left")
-        button(bar, "Вставить код", paste).pack(side="left", padx=8)
-        button(bar, "Очистить", clear).pack(side="left")
+        button(bar, T("Открыть 3D-редактор", "Open the 3D editor"), editor, primary=True).pack(side="left")
+        button(bar, T("Вставить код", "Paste code"), paste).pack(side="left", padx=8)
+        button(bar, T("Очистить", "Clear"), clear).pack(side="left")
         refresh()
 
     def open_settings(m):
         win = tk.Toplevel(root)
-        win.title(m["name"]["ru"])
+        win.title(loc(m["name"]))
         win.configure(bg=C["bg"])
         win.transient(root)
         win.resizable(False, False)
         own = load_settings().get(m["id"], {})
-        pic = tk.Label(win, bg=C["bg"], fg=C["muted"], text="Загружаю текстуры из игры…", font=(F, 9))
+        pic = tk.Label(win, bg=C["bg"], fg=C["muted"], text=T("Загружаю текстуры из игры…", "Loading textures from the game…"), font=(F, 9))
         pic.pack(padx=16, pady=(16, 8))
         sliders = {}
 
@@ -1239,7 +1265,7 @@ def run_gui():
         for s in m["settings"]:
             row = tk.Frame(win, bg=C["bg"])
             row.pack(fill="x", padx=16, pady=2)
-            tk.Label(row, text=s["ru"], bg=C["bg"], fg=C["fg"], font=(F, 10), width=16, anchor="w").pack(side="left")
+            tk.Label(row, text=loc(s), bg=C["bg"], fg=C["fg"], font=(F, 10), width=16, anchor="w").pack(side="left")
             k = s.get("mult", 100)
             v = tk.DoubleVar(value=round(float(own.get(s["key"], s["default"])) * k))
             tk.Scale(row, from_=s["min"] * k, to=s["max"] * k, resolution=s.get("step", 5), orient="horizontal", variable=v, length=300, command=redraw,
@@ -1247,7 +1273,7 @@ def run_gui():
             tk.Label(row, text=s.get("unit", "%"), bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(side="left")
             sliders[s["key"]] = v
         if m.get("note"):
-            tk.Label(win, text=m["note"]["ru"], bg=C["bg"], fg=C["muted"], font=(F, 9), wraplength=440, justify="left").pack(padx=16, pady=(6, 0), anchor="w")
+            tk.Label(win, text=loc(m["note"]), bg=C["bg"], fg=C["muted"], font=(F, 9), wraplength=440, justify="left").pack(padx=16, pady=(6, 0), anchor="w")
         bar = tk.Frame(win, bg=C["bg"])
         bar.pack(fill="x", padx=16, pady=14)
 
@@ -1257,15 +1283,15 @@ def run_gui():
             save_settings(all_)
             st["sel"].add(m["id"])
             draw()
-            status.set("Настройки сохранены. Нажми «Установить выбранные», чтобы применить их в игре.")
+            status.set(T("Настройки сохранены. Нажми «Установить выбранные», чтобы применить их в игре.", "Settings saved. Press Install selected to apply them in the game."))
             win.destroy()
 
         def defaults():
             for s in m["settings"]:
                 sliders[s["key"]].set(round(s["default"] * s.get("mult", 100)))
             redraw()
-        button(bar, "Сохранить", save, primary=True).pack(side="left")
-        button(bar, "По умолчанию", defaults).pack(side="left", padx=8)
+        button(bar, T("Сохранить", "Save"), save, primary=True).pack(side="left")
+        button(bar, T("По умолчанию", "Defaults"), defaults).pack(side="left", padx=8)
 
         def load_tex():
             try:
@@ -1274,7 +1300,7 @@ def run_gui():
                 tex_cache[m["id"]] = (data, data[off + 26])
                 root.after(0, redraw)
             except Exception:
-                root.after(0, lambda: pic.configure(text="Превью недоступно, но настройки работают"))
+                root.after(0, lambda: pic.configure(text=T("Превью недоступно, но настройки работают", "No preview, but the settings work")))
 
         def load():
             try:
@@ -1288,7 +1314,7 @@ def run_gui():
                 hp_sheet.update(empty=crop("tintable_creep_empty"), full=crop("tintable_creep_full"))
                 root.after(0, redraw)
             except Exception:
-                root.after(0, lambda: pic.configure(text="Превью недоступно, но настройки работают"))
+                root.after(0, lambda: pic.configure(text=T("Превью недоступно, но настройки работают", "No preview, but the settings work")))
         if (m.get("sheet") and hp_sheet) or m["id"] in tex_cache:
             redraw()
         elif Image is not None and st["game"]:
@@ -1307,7 +1333,7 @@ def run_gui():
         for i, m in enumerate(its):
             tile(grid, m, tw).grid(row=i // cols, column=i % cols, padx=6, pady=6, sticky="nsew")
         if st["tab"] == "d2pfx" and not its:
-            tk.Label(grid, text="Загружаю каталог D2PFX…" if st["d2pfx"] is None else "Ничего не нашлось", bg=C["bg"], fg=C["muted"], font=(F, 10)).grid(row=0, column=0, sticky="w", padx=6, pady=10)
+            tk.Label(grid, text=T("Загружаю каталог D2PFX…", "Loading the D2PFX catalog…") if st["d2pfx"] is None else T("Ничего не нашлось", "Nothing found"), bg=C["bg"], fg=C["muted"], font=(F, 10)).grid(row=0, column=0, sticky="w", padx=6, pady=10)
         for c in range(cols):
             grid.grid_columnconfigure(c, weight=1, minsize=tw)
         canvas.itemconfigure(win, width=width)
@@ -1318,7 +1344,7 @@ def run_gui():
             on = b.cat_id == st["cat"]
             b.configure(bg=C["panel2"] if on else C["bg"], fg=C["gold"] if on else C["muted"])
         n_ext = sum(1 for i in st["sel"] if i.startswith("d2pfx:"))
-        count_var.set(f"выбрано: {len(st['sel'])}" + (f" (из D2PFX: {n_ext})" if n_ext else "") if st["sel"] else "")
+        count_var.set(T(f"выбрано: {len(st['sel'])}", f"selected: {len(st['sel'])}") + (T(f" (из D2PFX: {n_ext})", f" (D2PFX: {n_ext})") if n_ext else "") if st["sel"] else "")
 
     job = {"id": None}
 
@@ -1339,14 +1365,14 @@ def run_gui():
         if tab == "d2pfx":
             sub.pack(fill="x", padx=20, pady=(0, 6), after=tabs_row)
             if st["d2pfx"] is None:
-                status.set("Загружаю каталог D2PFX…")
+                status.set(T("Загружаю каталог D2PFX…", "Loading the D2PFX catalog…"))
 
                 def load():
                     try:
                         data = load_d2pfx()
-                        root.after(0, lambda: (st.update(d2pfx=data), status.set(f"Каталог D2PFX: {sum(map(len, data.values()))} модов. Скачаются только отмеченные."), draw()))
+                        root.after(0, lambda: (st.update(d2pfx=data), status.set(T(f"Каталог D2PFX: {sum(map(len, data.values()))} модов. Скачаются только отмеченные.", f"D2PFX catalog: {sum(map(len, data.values()))} mods. Only the ticked ones are downloaded.")), draw()))
                     except Exception:
-                        root.after(0, lambda: status.set("Не удалось загрузить каталог D2PFX. Проверь интернет."))
+                        root.after(0, lambda: status.set(T("Не удалось загрузить каталог D2PFX. Проверь интернет.", "Could not load the D2PFX catalog. Check the internet connection.")))
                 threading.Thread(target=load, daemon=True).start()
         else:
             sub.pack_forget()
@@ -1356,43 +1382,52 @@ def run_gui():
     def set_cat(cat):
         st["cat"] = cat
         if cat == "terrains":
-            status.set("Ландшафты меняют стандартную карту: если в Dota выбран другой ландшафт, верни стандартный.")
+            status.set(T("Ландшафты меняют стандартную карту: если в Dota выбран другой ландшафт, верни стандартный.", "Terrains change the default map: if another terrain is equipped in Dota, switch back to the default one."))
         elif cat == "fonts":
-            status.set("Шрифт заменяет файлы шрифтов игры, оригиналы сохраняются. Не во всех шрифтах есть кириллица.")
+            status.set(T("Шрифт заменяет файлы шрифтов игры, оригиналы сохраняются. Не во всех шрифтах есть кириллица.", "A font replaces the game font files, the originals are kept. Not every font has Cyrillic."))
         canvas.yview_moveto(0)
         draw()
 
     def select_view(on):
         if on and st["tab"] == "d2pfx" and st["cat"] in SINGLE_CATS:
-            return status.set("В этой категории можно выбрать только один мод: они меняют одни и те же файлы.")
+            return status.set(T("В этой категории можно выбрать только один мод: они меняют одни и те же файлы.", "Only one mod in this category: they change the same files."))
         ids = {m["id"] for m in view_items()}
         st["sel"] = (st["sel"] | ids) if on else (st["sel"] - ids)
         draw()
 
+    def switch_lang():
+        global LANG
+        LANG = "en" if LANG == "ru" else "ru"
+        all_ = load_settings()
+        all_["lang"] = LANG
+        save_settings(all_)
+        st["restart"] = True
+        root.destroy()
+
     def pick():
-        d = filedialog.askdirectory(title="Папка ...\\dota 2 beta\\game")
+        d = filedialog.askdirectory(title=T("Папка ...\\dota 2 beta\\game", "Folder ...\\dota 2 beta\\game"))
         if d and os.path.exists(os.path.join(d, "dota", "gameinfo.gi")):
             st["game"] = os.path.normpath(d)
             path_var.set(st["game"])
             refresh_status()
         elif d:
-            messagebox.showerror("D2A Mods", "Нужна папка ...\\steamapps\\common\\dota 2 beta\\game")
+            messagebox.showerror("D2A Mods", T("Нужна папка ...\\steamapps\\common\\dota 2 beta\\game", "Pick the folder ...\\steamapps\\common\\dota 2 beta\\game"))
 
     def refresh_status():
         if not st["game"]:
-            return status.set("Не нашёл Dota 2. Нажми «Папка игры» и укажи ...\\steamapps\\common\\dota 2 beta\\game")
+            return status.set(T("Не нашёл Dota 2. Нажми «Папка игры» и укажи ...\\steamapps\\common\\dota 2 beta\\game", "Dota 2 not found. Press Game folder and pick ...\\steamapps\\common\\dota 2 beta\\game"))
         have = installed_ids(st["game"])
         method, folder = target(st["game"])
-        where = f"моды встанут в папку {os.path.basename(folder)}" if method == "lang" else "английский клиент: надёжнее поставить -language dutch и включить «Английский интерфейс»"
+        where = T(f"моды встанут в папку {os.path.basename(folder)}", f"mods go into the {os.path.basename(folder)} folder") if method == "lang" else T("английский клиент: надёжнее поставить -language dutch и включить «Английский интерфейс»", "English client: setting -language dutch and the English interface tile is more reliable")
         rec = load_state().get(st["game"]) or {}
         if have and rec.get("folder") and os.path.normcase(rec["folder"]) != os.path.normcase(folder):
-            status.set(f"Dota сейчас читает папку {os.path.basename(folder)} (язык или параметр -language поменялся). Нажми «Установить выбранные», чтобы перенести моды туда.")
+            status.set(T(f"Dota сейчас читает папку {os.path.basename(folder)} (язык или параметр -language поменялся). Нажми «Установить выбранные», чтобы перенести моды туда.", f"Dota now reads the {os.path.basename(folder)} folder (the language or -language changed). Press Install selected to move the mods there."))
         elif have and needs_reapply(st["game"]):
-            status.set("Dota обновилась и отключила моды. Нажми «Установить выбранные», чтобы вернуть их.")
+            status.set(T("Dota обновилась и отключила моды. Нажми «Установить выбранные», чтобы вернуть их.", "Dota updated and switched the mods off. Press Install selected to bring them back."))
         elif have:
-            status.set(f"Установлено: {len(have)}. Поменяй галочки и нажми «Установить», чтобы обновить набор ({where}).")
+            status.set(T(f"Установлено: {len(have)}. Поменяй галочки и нажми «Установить», чтобы обновить набор ({where}).", f"Installed: {len(have)}. Change the ticks and press Install to update the set ({where})."))
         else:
-            status.set(f"Отметь моды и нажми «Установить выбранные». Перед установкой закрой Dota ({where}).")
+            status.set(T(f"Отметь моды и нажми «Установить выбранные». Перед установкой закрой Dota ({where}).", f"Tick the mods and press Install selected. Close Dota first ({where})."))
 
     def work(fn):
         st["busy"] = True
@@ -1415,36 +1450,36 @@ def run_gui():
 
     def do_install():
         if not st["game"]:
-            return messagebox.showerror("D2A Mods", "Сначала укажи папку игры")
+            return messagebox.showerror("D2A Mods", T("Сначала укажи папку игры", "Pick the game folder first"))
         if not st["sel"]:
             return do_uninstall()
         if any(i.startswith("d2pfx:") for i in st["sel"]) and st["d2pfx"] is None:
             st["d2pfx"] = load_d2pfx()
-        status.set("Собираю моды… Это может занять до минуты.")
-        work(lambda: f"Готово: файлов в модах — {install(st['game'], st['catalog'], st['d2pfx'], set(st['sel']), lambda s: root.after(0, status.set, s))}. Запускай Dota.")
+        status.set(T("Собираю моды… Это может занять до минуты.", "Building the mods… This can take up to a minute."))
+        work(lambda: (lambda n: T(f"Готово: файлов в модах — {n}. Запускай Dota.", f"Done: {n} files in the mods. Start Dota."))(install(st['game'], st['catalog'], st['d2pfx'], set(st['sel']), lambda s: root.after(0, status.set, s))))
 
     def do_uninstall():
-        if st["game"] and messagebox.askyesno("D2A Mods", "Удалить все наши моды и вернуть игру как было?"):
+        if st["game"] and messagebox.askyesno("D2A Mods", T("Удалить все наши моды и вернуть игру как было?", "Remove all our mods and put the game back as it was?")):
             def run():
                 uninstall(st["game"])
                 st["sel"] = set()
-                return "Все моды удалены, игра как была."
+                return T("Все моды удалены, игра как была.", "All mods removed, the game is as it was.")
             work(run)
 
     try:
         st["catalog"], offline = load_catalog()
     except Exception:
-        status.set("Не удалось загрузить список модов. Проверь интернет и перезапусти программу.")
+        status.set(T("Не удалось загрузить список модов. Проверь интернет и перезапусти программу.", "Could not load the mod list. Check the internet connection and restart the app."))
         root.mainloop()
         return
-    tabs = (st["catalog"].get("tabs") or [{"id": "optimize", "name": {"ru": "Оптимизация"}}]) + [{"id": "d2pfx", "name": {"ru": "Каталог D2PFX"}}]
+    tabs = (st["catalog"].get("tabs") or [{"id": "optimize", "name": {"ru": "Оптимизация", "en": "Optimisation"}}]) + [{"id": "d2pfx", "name": {"ru": "Каталог D2PFX", "en": "D2PFX catalog"}}]
     for t in tabs:
-        b = tk.Label(tabs_row, text=t["name"]["ru"], bg=C["bg"], fg=C["muted"], font=(F, 11, "bold"), padx=16, pady=7, cursor="hand2")
+        b = tk.Label(tabs_row, text=loc(t["name"]), bg=C["bg"], fg=C["muted"], font=(F, 11, "bold"), padx=16, pady=7, cursor="hand2")
         b.tab_id = t["id"]
         b.bind("<Button-1>", lambda e, tid=t["id"]: set_tab(tid))
         b.pack(side="left", padx=(0, 6))
-    for cid, label in D2PFX_CATS:
-        b = tk.Label(cats_row, text=label, bg=C["bg"], fg=C["muted"], font=(F, 9, "bold"), padx=10, pady=5, cursor="hand2")
+    for cid, ru_label, en_label in D2PFX_CATS:
+        b = tk.Label(cats_row, text=T(ru_label, en_label), bg=C["bg"], fg=C["muted"], font=(F, 9, "bold"), padx=10, pady=5, cursor="hand2")
         b.cat_id = cid
         b.bind("<Button-1>", lambda e, c=cid: set_cat(c))
         b.pack(side="left", padx=(0, 4))
@@ -1454,21 +1489,24 @@ def run_gui():
     refresh_status()
     newest = st["catalog"].get("app", {}).get("version")
     if offline:
-        status.set("Нет интернета: показан сохранённый список модов.")
+        status.set(T("Нет интернета: показан сохранённый список модов.", "No internet: showing the saved mod list."))
     elif newest and ver(newest) > ver(APP_VERSION):
-        status.set(f"Есть новая версия программы {newest}: скачай её на сайте (кнопка «Сайт»).")
+        status.set(T(f"Есть новая версия программы {newest}: скачай её на сайте (кнопка «Сайт»).", f"A new version {newest} is out: download it on the website (Website button)."))
         download = st["catalog"].get("app", {}).get("download")
 
         def offer():
-            if download and messagebox.askyesno("D2A Mods", f"Вышла новая версия {newest} (у тебя {APP_VERSION}). Скачать сейчас?\n\nПосле скачивания закрой эту программу и запусти новую."):
+            if download and messagebox.askyesno("D2A Mods", T(f"Вышла новая версия {newest} (у тебя {APP_VERSION}). Скачать сейчас?\n\nПосле скачивания закрой эту программу и запусти новую.", f"Version {newest} is out (you have {APP_VERSION}). Download it now?\n\nAfter downloading, close this app and start the new one.")):
                 webbrowser.open(download)
         root.after(400, offer)
     root.after(50, draw)
     root.mainloop()
     pool.shutdown(wait=False, cancel_futures=True)
+    return st.get("restart")
 
 
 def main():
+    global LANG
+    LANG = load_settings().get("lang") or system_lang()
     args = sys.argv[1:]
     if "--paint" in args:
         try:
@@ -1491,7 +1529,8 @@ def main():
             vpk.new(tmp).save(out)
         print(f"game: {game}\nfiles replaced: {n} -> {out}")
         return
-    run_gui()
+    while run_gui():  # a language switch rebuilds the window
+        pass
 
 
 if __name__ == "__main__":
