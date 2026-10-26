@@ -329,7 +329,7 @@ class Page:
       <div class="card pad"><h2 class="section-title">{t('Кто контрит', 'Countered by')} {esc(name)}</h2><ul class="hero-list">{cnt(counters, lambda x: G.adv(x, h), "neg")}</ul></div>
       <div class="card pad"><h2 class="section-title">{t('Кого контрит', 'Counters')} {esc(name)}</h2><ul class="hero-list">{cnt(victims, lambda x: G.adv(h, x), "pos")}</ul></div>
     </div><p class="note">{t('Преимущество в матчапе в пабах Divine–Immortal, с поправкой на общий винрейт героев.', 'Matchup advantage in Divine–Immortal pubs, adjusted for each hero’s overall win rate.')}</p></section>"""
-        title = t(f"{name}: гайд и сборка, патч {c['patch']} | Dota 2 Analyzer", f"{name} guide and build, patch {c['patch']} | Dota 2 Analyzer")
+        title = t(f"{name}: сборка, контрпики и гайд, патч {c['patch']} | Dota 2 Analyzer", f"{name} build, counters and guide, patch {c['patch']} | Dota 2 Analyzer")
         desc = short(" ".join(summary))
         crumbs = [(t("Главная", "Home"), ""), (t("Герои", "Heroes"), "heroes/"), (name, path)]
         art = {"@context": "https://schema.org", "@type": "Article", "headline": title.split(" | ")[0], "inLanguage": self.lang,
@@ -356,10 +356,13 @@ class Page:
     # ---------- patch meta ----------
     def meta(self):
         t, c, G = self.t, self.c, self.c["G"]
-        secs = []
+        secs, best = [], []
         for p in range(1, 6):
             hs = [h for h in c["heroes"] if G.idx.get(h) is not None and G.pick(h) >= 0.01 and pos_prior(h, c["meta"], c["heroes"])[p - 1] >= 0.15]
             hs.sort(key=lambda h: -G.wr(h))
+            top = next((h for h in hs if h not in {b[0] for b in best}), None)  # a different hero for every position
+            if top is not None:
+                best.append((top, f"{POS[self.lang][p].lower()} {c['heroes'][top]['localized_name']} {G.wr(top) * 100:.0f}%"))
             rows = "".join(f'<tr><td>{i + 1}</td><td>{self.hero_link(h)}</td><td class="num">{G.wr(h) * 100:.1f}%</td><td class="num">{G.pick(h) * 100:.1f}%</td></tr>' for i, h in enumerate(hs[:12]))
             secs.append(f'<section class="section card pad"><h2 class="section-title">{POS[self.lang][p]} · {t("позиция", "position")} {p}</h2>'
                         f'<div class="table-wrap"><table><thead><tr><th>#</th><th>{t("Герой", "Hero")}</th><th>{t("Винрейт", "Win rate")}</th><th>{t("Пикрейт", "Pick rate")}</th></tr></thead><tbody>{rows}</tbody></table></div></section>')
@@ -368,10 +371,12 @@ class Page:
                       f'The best heroes for each position by win rate in Divine–Immortal pubs over the last {c["days"]} days. Counterpicks and draft help are in the interactive meta.')}</p>
     <p><a class="btn" href="{BASE}{'?lang=en' if self.lang == 'en' else ''}#meta">{t('Интерактивная мета и контрпики', 'Interactive meta and counterpicks')}</a></p>
 {''.join(secs)}"""
-        title = t(f"Мета Dota 2 {c['patch']}: лучшие герои | Dota 2 Analyzer", f"Dota 2 meta {c['patch']}: best heroes | Dota 2 Analyzer")
-        return "meta/", self.shell("meta/", title, t(f"Сильнейшие герои Dota 2 на каждой позиции в патче {c['patch']}: винрейт и пикрейт в пабах Divine–Immortal, обновляется каждый день.",
-                                                     f"The strongest Dota 2 heroes in every position in patch {c['patch']}: win and pick rates in Divine–Immortal pubs, updated daily."),
-                                   body, [(t("Главная", "Home"), ""), (t("Мета", "Meta"), "meta/")])
+        title = t(f"Мета Dota 2 {c['patch']}: тир-лист героев по позициям | Dota 2 Analyzer", f"Dota 2 meta {c['patch']}: hero tier list by position | Dota 2 Analyzer")
+        # today's leaders right in the snippet: a concrete answer gets more clicks than a general promise
+        lead = ", ".join(b[1] for b in best)
+        desc = t(f"Тир-лист {c['patch']} на сегодня: {lead}. Пабы Divine–Immortal, обновляется каждый день.",
+                 f"Tier list for {c['patch']} today: {lead}. Divine–Immortal pubs, updated daily.")
+        return "meta/", self.shell("meta/", title, desc, body, [(t("Главная", "Home"), ""), (t("Мета", "Meta"), "meta/")])
 
 
 def write(rel, text):
