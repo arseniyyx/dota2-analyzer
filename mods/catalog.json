@@ -1,7 +1,7 @@
 {
   "version": 2,
   "app": {
-    "version": "1.6.1",
+    "version": "1.7.0",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
@@ -8306,7 +8306,60 @@
           "default": 0.0
         }
       ],
-      "image": "mods/img/creep-hp.png"
+      "image": "mods/img/creep-hp.png",
+      "note": {
+        "ru": "Цвет команды игра накладывает сама, поэтому меняется яркость, а не оттенок.",
+        "en": "The game adds the team colour itself, so this changes brightness, not hue."
+      }
+    },
+    {
+      "id": "morphling-recolor",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "◍",
+      "min_app": "1.7.0",
+      "name": {
+        "ru": "Цвет Морфлинга",
+        "en": "Morphling colour"
+      },
+      "desc": {
+        "ru": "Перекрашивает стандартного Морфлинга: по умолчанию изумрудный, оттенок выбирается ползунком. Меняется только у тебя, остальные видят обычного.",
+        "en": "Recolours the default Morphling: emerald by default, any hue with the slider. Only you see it."
+      },
+      "note": {
+        "ru": "Перекрашиваются синие и бирюзовые тона; глаза, блики и тени остаются. Эффекты способностей и предметы из сокровищниц не меняются.",
+        "en": "Blue and teal tones change; eyes, highlights and shadows stay. Ability effects and treasure items do not change."
+      },
+      "rules": [],
+      "recolor": {
+        "hue": 145,
+        "sat": 1.0,
+        "hues": [
+          150,
+          260
+        ],
+        "textures": [
+          "materials/models/heroes/morphling/morphling_color_psd_404e21e5.vtex_c",
+          "materials/models/heroes/morphling/morphling_2_color_tga_81513123.vtex_c",
+          "materials/models/heroes/morphling/morphling_body_fluid_color_tga_60b32dfe.vtex_c",
+          "materials/models/heroes/morphling/morphling_head_fluid_color_tga_7a98ddd9.vtex_c",
+          "materials/models/heroes/morphling/bakedprowfluid1_color_tga_d8e2c6a.vtex_c",
+          "materials/models/heroes/morphling/bakedprowfluid2_color_tga_af8f7088.vtex_c"
+        ]
+      },
+      "settings": [
+        {
+          "key": "hue",
+          "ru": "Оттенок",
+          "en": "Hue",
+          "min": 0,
+          "max": 359,
+          "default": 145,
+          "mult": 1,
+          "step": 1,
+          "unit": "°"
+        }
+      ]
     },
     {
       "id": "english-ui",

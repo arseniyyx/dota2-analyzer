@@ -17,6 +17,7 @@ go to game/dota_d2a, mounted by one line in gameinfo.gi (backed up first). Unins
 Usage:  D2AMods.exe                                  window
         d2mods.py --build-only out.vpk --mods a,b    build our rules VPK somewhere else, touch nothing in the game
 """
+import colorsys
 import hashlib
 import io
 import json
@@ -37,7 +38,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.6.1"
+APP_VERSION = "1.7.0"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -414,6 +415,87 @@ def patch_sheets(game, catalog, mod_ids, tmp, lang, log=print):
     return count
 
 
+def setting(m, key, default):
+    """A player's slider value for a mod, kept within the slider's limits."""
+    s = next((x for x in m.get("settings", []) if x["key"] == key), None)
+    v = load_settings().get(m["id"], {}).get(key, default)
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return default
+    return min(max(v, s["min"]), s["max"]) if s else v
+
+
+def tint(rgb, hue, sat=1.0, hues=None):
+    """One colour moved to the chosen hue with its lightness kept; greys, whites and colours outside `hues` stay."""
+    h, l, s = colorsys.rgb_to_hls(*(c / 255 for c in rgb))
+    if s < 0.08 or not 0.03 < l < 0.97 or (hues and not hues[0] <= h * 360 <= hues[1]):
+        return rgb
+    return tuple(round(c * 255) for c in colorsys.hls_to_rgb(hue / 360, l, min(1.0, max(s, 0.5) * sat)))
+
+
+def colorize(data, hue, sat=1.0, hues=None):
+    """Recolours a DXT1/DXT5/RGBA8888 texture on every mip level. DXT colours are blends of two endpoints per 4x4 block,
+    so recolouring the endpoints recolours the block exactly as the game will draw it, with no re-encoding."""
+    off, size = resource_block(data, "DATA")
+    w, h = struct.unpack_from("<HH", data, off + 20)
+    fmt, mips = data[off + 26], data[off + 27]
+    start = off + size
+    if fmt == 4:
+        for i in range(sum(max(1, w >> k) * max(1, h >> k) for k in range(mips))):
+            p = start + i * 4
+            data[p:p + 3] = bytes(tint(tuple(data[p:p + 3]), hue, sat, hues))
+        return
+    if fmt not in (1, 2):
+        raise RuntimeError("формат текстуры не поддерживается")
+    bsize, coff = (8, 0) if fmt == 1 else (16, 8)
+    to565 = lambda c: (c[0] * 31 + 127) // 255 << 11 | (c[1] * 63 + 127) // 255 << 5 | (c[2] * 31 + 127) // 255
+    cache = {}
+
+    def new(c):
+        if c not in cache:
+            cache[c] = to565(tint(((c >> 11) * 255 // 31, (c >> 5 & 63) * 255 // 63, (c & 31) * 255 // 31), hue, sat, hues))
+        return cache[c]
+    for i in range(sum(max(1, (max(1, w >> k) + 3) // 4) * max(1, (max(1, h >> k) + 3) // 4) for k in range(mips))):
+        p = start + i * bsize + coff
+        c0, c1, idx = struct.unpack_from("<HHI", data, p)
+        n0, n1 = new(c0), new(c1)
+        if fmt == 1:  # in DXT1 the endpoint order picks 4-colour or 3-colour+transparent mode: keep the block's mode
+            if c0 > c1 and n0 <= n1:
+                if n0 == n1:
+                    n0, n1 = (n0, n1 - 1) if n1 else (n0 + 1, n1)
+                else:
+                    n0, n1, idx = n1, n0, idx ^ 0x55555555
+            elif c0 <= c1 and n0 > n1:
+                n0, n1 = n1, n0
+                idx = sum((((idx >> 2 * k) & 3) ^ (1 if (idx >> 2 * k) & 3 < 2 else 0)) << 2 * k for k in range(16))
+        struct.pack_into("<HHI", data, p, n0, n1, idx)
+
+
+def recolor_textures(game, catalog, mod_ids, tmp, log=print):
+    chosen = [m for m in catalog["mods"] if m["id"] in mod_ids and m.get("recolor")]
+    if not chosen:
+        return 0
+    pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
+    names = set(pak)
+    count = 0
+    for m in chosen:
+        rc = m["recolor"]
+        hue = setting(m, "hue", rc["hue"])
+        for path in rc["textures"]:
+            if path not in names:
+                raise RuntimeError(f"«{m['name']['ru']}»: игра обновила текстуры, мод нужно обновить")
+            data = bytearray(pak.get_file(path).read())
+            colorize(data, hue, rc.get("sat", 1.0), rc.get("hues"))
+            dst = os.path.join(tmp, *path.split("/"))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            with open(dst, "wb") as f:
+                f.write(data)
+            count += 1
+        log(f"{m['name']['ru']}: {len(rc['textures'])} текстур")
+    return count
+
+
 def git_blob_ok(data, sha):
     return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest() == sha
 
@@ -687,6 +769,7 @@ def install(game, catalog, d2pfx, ids, log=print):
             total += build_rules(game, catalog, ids, tmp, log)
             total += patch_svgs(game, catalog, ids, tmp, log)
             total += patch_sheets(game, catalog, ids, tmp, lang, log)
+            total += recolor_textures(game, catalog, ids, tmp, log)
             for m in catalog["mods"]:
                 if m["id"] in ids and m.get("files"):
                     total += place_files(m, tmp, log)
@@ -926,6 +1009,7 @@ def run_gui():
         return t
 
     hp_sheet = {}  # the health bar sprites from the player's own game, loaded once for the preview
+    tex_cache = {}  # the first texture of a recolour mod, for its preview
 
     def hp_preview(m, factors):
         """Creep bars at 60, 30 and 12% for both teams, drawn from the game's sprites with the chosen brightness."""
@@ -954,28 +1038,47 @@ def run_gui():
         win.transient(root)
         win.resizable(False, False)
         own = load_settings().get(m["id"], {})
-        pic = tk.Label(win, bg=C["bg"], fg=C["muted"], text="Загружаю полоски из игры…", font=(F, 9))
+        pic = tk.Label(win, bg=C["bg"], fg=C["muted"], text="Загружаю текстуры из игры…", font=(F, 9))
         pic.pack(padx=16, pady=(16, 8))
         sliders = {}
 
+        mult = {s["key"]: s.get("mult", 100) for s in m["settings"]}
+
         def factors():
-            return {k: v.get() / 100 for k, v in sliders.items()}
+            return {k: v.get() / mult[k] for k, v in sliders.items()}
 
         def redraw(_=None):
-            if hp_sheet and Image is not None:
+            if Image is None:
+                return
+            if m.get("sheet") and hp_sheet:
                 pic.photo = hp_preview(m, factors())
-                pic.configure(image=pic.photo, text="")
+            elif m.get("recolor") and m["id"] in tex_cache:
+                raw, fmt = tex_cache[m["id"]]
+                data = bytearray(raw)
+                colorize(data, factors().get("hue", m["recolor"]["hue"]), m["recolor"].get("sat", 1.0), m["recolor"].get("hues"))
+                off, size = resource_block(data, "DATA")
+                w, h = struct.unpack_from("<HH", data, off + 20)
+                bs = 8 if fmt == 1 else 16
+                mip = lambda k: max(1, (max(1, w >> k) + 3) // 4) * max(1, (max(1, h >> k) + 3) // 4) * bs
+                start = off + size + sum(mip(k) for k in range(1, data[off + 27]))  # the full size image is stored last
+                img = Image.frombytes("RGBA", (w, h), bytes(data[start:start + mip(0)]), "bcn", 1 if fmt == 1 else 3).convert("RGB")
+                pic.photo = ImageTk.PhotoImage(img.resize((320, 320)))
+            else:
+                return
+            pic.configure(image=pic.photo, text="")
 
         for s in m["settings"]:
             row = tk.Frame(win, bg=C["bg"])
             row.pack(fill="x", padx=16, pady=2)
             tk.Label(row, text=s["ru"], bg=C["bg"], fg=C["fg"], font=(F, 10), width=16, anchor="w").pack(side="left")
-            v = tk.DoubleVar(value=round(float(own.get(s["key"], s["default"])) * 100))
-            tk.Scale(row, from_=s["min"] * 100, to=s["max"] * 100, resolution=5, orient="horizontal", variable=v, length=300, command=redraw,
+            k = s.get("mult", 100)
+            v = tk.DoubleVar(value=round(float(own.get(s["key"], s["default"])) * k))
+            tk.Scale(row, from_=s["min"] * k, to=s["max"] * k, resolution=s.get("step", 5), orient="horizontal", variable=v, length=300, command=redraw,
                      bg=C["bg"], fg=C["fg"], troughcolor=C["panel2"], highlightthickness=0, activebackground=C["gold"]).pack(side="left")
-            tk.Label(row, text="%", bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(side="left")
+            tk.Label(row, text=s.get("unit", "%"), bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(side="left")
             sliders[s["key"]] = v
-        tk.Label(win, text="Цвет команды игра накладывает сама, поэтому меняется яркость, а не оттенок.", bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(padx=16, pady=(6, 0), anchor="w")
+        if m.get("note"):
+            tk.Label(win, text=m["note"]["ru"], bg=C["bg"], fg=C["muted"], font=(F, 9), wraplength=440, justify="left").pack(padx=16, pady=(6, 0), anchor="w")
         bar = tk.Frame(win, bg=C["bg"])
         bar.pack(fill="x", padx=16, pady=14)
 
@@ -990,10 +1093,19 @@ def run_gui():
 
         def defaults():
             for s in m["settings"]:
-                sliders[s["key"]].set(round(s["default"] * 100))
+                sliders[s["key"]].set(round(s["default"] * s.get("mult", 100)))
             redraw()
         button(bar, "Сохранить", save, primary=True).pack(side="left")
         button(bar, "По умолчанию", defaults).pack(side="left", padx=8)
+
+        def load_tex():
+            try:
+                data = vpk.open(os.path.join(st["game"], "dota", "pak01_dir.vpk")).get_file(m["recolor"]["textures"][0]).read()
+                off, _ = resource_block(data, "DATA")
+                tex_cache[m["id"]] = (data, data[off + 26])
+                root.after(0, redraw)
+            except Exception:
+                root.after(0, lambda: pic.configure(text="Превью недоступно, но настройки работают"))
 
         def load():
             try:
@@ -1008,10 +1120,10 @@ def run_gui():
                 root.after(0, redraw)
             except Exception:
                 root.after(0, lambda: pic.configure(text="Превью недоступно, но настройки работают"))
-        if hp_sheet:
+        if (m.get("sheet") and hp_sheet) or m["id"] in tex_cache:
             redraw()
         elif Image is not None and st["game"]:
-            threading.Thread(target=load, daemon=True).start()
+            threading.Thread(target=load_tex if m.get("recolor") else load, daemon=True).start()
 
     def draw():
         for w in grid.winfo_children():
