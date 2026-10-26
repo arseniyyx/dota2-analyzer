@@ -1,7 +1,7 @@
 {
   "version": 2,
   "app": {
-    "version": "1.5.0",
+    "version": "1.5.1",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
@@ -6736,22 +6736,17 @@
         "en": "High-contrast creep HP"
       },
       "desc": {
-        "ru": "Недостающее ХП у крипов почти чёрное вместо тёмно-красного и тёмно-зелёного, поэтому остаток полоски видно сразу.",
-        "en": "Missing creep HP is almost black instead of dark red and dark green, so what is left stands out."
+        "ru": "Недостающее ХП у крипов чёрное, а оставшееся ярче, поэтому сколько осталось, видно сразу. Цвет команды игра накладывает сама, меняется только яркость.",
+        "en": "Missing creep HP is black and the rest is brighter, so what is left stands out. The game adds the team colour itself, only the brightness changes."
       },
       "rules": [],
-      "min_app": "1.5.0",
-      "svg": {
-        "panorama/images/hud/health_bars/creep_health_bar_background.vsvg_c": [
-          [
-            "stop-color=\"#595959\"",
-            "stop-color=\"#0D0D0D\""
-          ],
-          [
-            "stop-color=\"#808080\"",
-            "stop-color=\"#1A1A1A\""
-          ]
-        ]
+      "min_app": "1.5.1",
+      "sheet": {
+        "texture": "materials/vgui/hud/health_sheet/healthbar_sheet",
+        "scale": {
+          "tintable_creep_empty": 0.0,
+          "tintable_creep_full": 1.5
+        }
       }
     },
     {

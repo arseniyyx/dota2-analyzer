@@ -37,7 +37,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.5.1"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -339,6 +339,81 @@ def patch_svgs(game, catalog, mod_ids, tmp, log=print):
     return count
 
 
+def sheet_sprites(data):
+    """{sprite name: (u0, v0, u1, v1)} from the SHEET extra data of a compiled texture."""
+    off, _ = resource_block(data, "DATA")
+    p = off + 32
+    rel, count = struct.unpack_from("<II", data, p)
+    out = {}
+    for i in range(count):
+        e = p + rel + i * 12
+        kind, erel, _size = struct.unpack_from("<III", data, e)
+        if kind != 2:  # SHEET
+            continue
+        s = e + 4 + erel
+        q = s + 8
+        for _ in range(struct.unpack_from("<I", data, s + 4)[0]):
+            frames = q + 8 + struct.unpack_from("<I", data, q + 8)[0]
+            name_at = q + 20 + struct.unpack_from("<I", data, q + 20)[0]
+            name = data[name_at:data.index(b"\0", name_at)].decode()
+            image = frames + 4 + struct.unpack_from("<I", data, frames + 4)[0]
+            out[name] = struct.unpack_from("<4f", data, image)
+            q += 32
+    return out
+
+
+def scale_dxt5(data, sprites, factors):
+    """Brightness of chosen sprites in a DXT5 sheet, on every mip level: the two colour endpoints of each 4x4 block
+    are scaled, the per-pixel indices and the alpha stay, so shapes and edges are the game's own."""
+    off, size = resource_block(data, "DATA")
+    w, h = struct.unpack_from("<HH", data, off + 20)
+    if data[off + 26] != 2:
+        raise RuntimeError("формат текстуры в игре поменялся, мод нужно обновить")
+    mips = data[off + 27]
+    sizes = [max(1, (max(1, w >> i) + 3) // 4) * max(1, (max(1, h >> i) + 3) // 4) * 16 for i in range(mips)]
+    for level in range(mips):
+        start = off + size + sum(sizes[level + 1:])  # smallest mip first
+        lw, lh = max(1, w >> level), max(1, h >> level)
+        bw = (lw + 3) // 4
+        for name, k in factors.items():
+            u0, v0, u1, v1 = sprites[name]
+            for by in range(int(v0 * lh) // 4, (int(v1 * lh + 0.999) + 3) // 4):
+                for bx in range(int(u0 * lw) // 4, (int(u1 * lw + 0.999) + 3) // 4):
+                    q = start + (by * bw + bx) * 16 + 8
+                    for e in (q, q + 2):
+                        c = struct.unpack_from("<H", data, e)[0]
+                        r, g, b = min(31, int((c >> 11) * k)), min(63, int((c >> 5 & 63) * k)), min(31, int((c & 31) * k))
+                        struct.pack_into("<H", data, e, r << 11 | g << 5 | b)
+
+
+def patch_sheets(game, catalog, mod_ids, tmp, lang, log=print):
+    """Mods that make sprites of a texture sheet darker or brighter (the health bar sheet), in the base sheet and in
+    the copy for the game language, since the game draws from the one that matches -language."""
+    chosen = [m for m in catalog["mods"] if m["id"] in mod_ids and m.get("sheet")]
+    if not chosen:
+        return 0
+    pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
+    names = set(pak)
+    count = 0
+    for m in chosen:
+        base = m["sheet"]["texture"]
+        for path in dict.fromkeys(f"{base}{sfx}.vtex_c" for sfx in ("", f"_{lang}")):
+            if path not in names:
+                continue
+            data = bytearray(pak.get_file(path).read())
+            sprites = sheet_sprites(data)
+            if any(s not in sprites for s in m["sheet"]["scale"]):
+                raise RuntimeError(f"«{m['name']['ru']}»: игра обновила полоски здоровья, мод нужно обновить")
+            scale_dxt5(data, sprites, m["sheet"]["scale"])
+            dst = os.path.join(tmp, *path.split("/"))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            with open(dst, "wb") as f:
+                f.write(data)
+            count += 1
+        log(f"{m['name']['ru']}: {count} текстур")
+    return count
+
+
 def git_blob_ok(data, sha):
     return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest() == sha
 
@@ -582,6 +657,7 @@ def install(game, catalog, d2pfx, ids, log=print):
         with tempfile.TemporaryDirectory() as tmp:
             total += build_rules(game, catalog, ids, tmp, log)
             total += patch_svgs(game, catalog, ids, tmp, log)
+            total += patch_sheets(game, catalog, ids, tmp, lang, log)
             for m in catalog["mods"]:
                 if m["id"] in ids and m.get("files"):
                     total += place_files(m, tmp, log)
