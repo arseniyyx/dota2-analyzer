@@ -291,8 +291,8 @@ function code() {
 }
 function summary() {
   const heroes = Object.entries(saved.heroes).filter(([, h]) => Object.keys(h.parts).length + Object.keys(h.icons).length);
-  $('paintSummary').textContent = heroes.length ? L(`Раскрашено героев: ${heroes.length}. Код содержит все твои раскраски, программа поставит их разом.`, `Heroes painted: ${heroes.length}. The code holds all of them, the app installs them at once.`)
-    : L('Пока ничего не раскрашено.', 'Nothing painted yet.');
+  $('paintSummary').textContent = heroes.length ? L(`Настроено героев: ${heroes.length}. Код содержит все твои настройки, программа поставит их разом.`, `Heroes painted: ${heroes.length}. The code holds all of them, the app installs them at once.`)
+    : L('Пока ничего не изменено.', 'Nothing painted yet.');
   drawHeroesDots();
 }
 const drawHeroesDots = () => document.querySelectorAll('.paint-hero').forEach(b => {
@@ -313,13 +313,13 @@ function wire() {
   $('paintSearch').addEventListener('input', drawHeroes);
   $('paintCopy').addEventListener('click', async () => {
     const c = code();
-    if (!c.n) { $('paintOutNote').textContent = L('Сначала раскрась что-нибудь.', 'Paint something first.'); return; }
-    try { await navigator.clipboard.writeText(c.text); $('paintOutNote').textContent = L('Код скопирован. В D2A Mods: вкладка «Кастомизация» → «Раскраска героев» → «Вставить код».', 'Copied. In D2A Mods: Customisation tab → Hero paint → Paste code.'); }
+    if (!c.n) { $('paintOutNote').textContent = L('Сначала покрась что-нибудь.', 'Paint something first.'); return; }
+    try { await navigator.clipboard.writeText(c.text); $('paintOutNote').textContent = L('Код скопирован. В D2A Mods: вкладка «Кастомизация» → «Кастомизация героев» → «Вставить код».', 'Copied. In D2A Mods: Customisation tab → Hero customisation → Paste code.'); }
     catch { $('paintOutNote').textContent = L('Не получилось скопировать автоматически.', 'Could not copy automatically.'); }
   });
   $('paintApply').addEventListener('click', async () => {
     const c = code();
-    $('paintOutNote').textContent = c.n ? await window.pywebview.api.apply(c.text) : L('Сначала раскрась что-нибудь.', 'Paint something first.');
+    $('paintOutNote').textContent = c.n ? await window.pywebview.api.apply(c.text) : L('Сначала покрась что-нибудь.', 'Paint something first.');
   });
 }
 

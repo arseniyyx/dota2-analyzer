@@ -2189,7 +2189,7 @@ const VIEW_TITLES = {
   optimize: L('Оптимизация Dota 2: больше FPS', 'Dota 2 optimisation: more FPS'),
   mods: L('Моды для Dota 2: без погоды и лишних эффектов', 'Dota 2 mods: no weather and extra effects'),
   glyph: L('Кто нажал глиф в Dota 2: по номеру матча', 'Who pressed the glyph in Dota 2, by match ID'),
-  paint: L('Раскраска героев Dota 2 в 3D', 'Dota 2 hero paint in 3D'),
+  paint: L('Кастомизация героев Dota 2 в 3D', 'Dota 2 hero customisation in 3D'),
 };
 
 // "Полезное" dropdown in the top bar

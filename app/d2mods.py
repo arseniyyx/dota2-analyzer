@@ -39,7 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.8.0"
+APP_VERSION = "1.8.1"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -518,7 +518,7 @@ def parse_paint(code):
     ability icons, or not a colour, is dropped."""
     code = (code or "").strip()
     if not code.startswith("D2AP1:"):
-        raise ValueError("Это не код раскраски: он начинается с D2AP1:")
+        raise ValueError("Это не код кастомизации героев: он начинается с D2AP1:")
     data = json.loads(base64.b64decode(code[6:] + "=" * (-len(code[6:]) % 4)).decode("utf-8"))
     out = {}
     for path, v in (data.get("t") or {}).items():
@@ -561,7 +561,7 @@ def paint_textures(game, mod_ids, tmp, log=print):
         with open(dst, "wb") as f:
             f.write(data)
         done += 1
-    log(f"Раскраска героев: {done} текстур" + (f", пропущено {skipped}" if skipped else ""))
+    log(f"Кастомизация героев: {done} текстур" + (f", пропущено {skipped}" if skipped else ""))
     return done
 
 
@@ -576,7 +576,7 @@ def paint_window():
                 return f"Сохранено текстур: {n}. Закрой это окно и нажми в D2A Mods «Установить выбранные»."
             except Exception as e:
                 return f"Не получилось: {e}"
-    webview.create_window("D2A Mods: раскраска героев", SITE + "#paint", js_api=Api(), width=1320, height=900, background_color="#0b0e14")
+    webview.create_window("D2A Mods: кастомизация героев", SITE + "#paint", js_api=Api(), width=1320, height=900, background_color="#0b0e14")
     webview.start()
 
 
@@ -1151,8 +1151,8 @@ def run_gui():
 
         def refresh():
             n = len(((load_settings().get(PAINT_ID) or {}).get("t") or {}))
-            info.set(f"Сохранено раскрашенных текстур: {n}." + (" Нажми «Установить выбранные», чтобы поставить их в игру." if n else ""))
-        tk.Label(win, text="Раскрась героев в 3D-редакторе: клик по части модели, выбор цвета, галочка «Красить всего героя». Видишь цвета только ты.",
+            info.set(f"Сохранено изменённых текстур: {n}." + (" Нажми «Установить выбранные», чтобы поставить их в игру." if n else ""))
+        tk.Label(win, text="Настрой цвета героев в 3D-редакторе: клик по части модели, выбор цвета, галочка «Красить всего героя». Видишь цвета только ты.",
                  bg=C["bg"], fg=C["fg"], font=(F, 10), wraplength=440, justify="left").pack(padx=16, pady=(16, 8), anchor="w")
         tk.Label(win, textvariable=info, bg=C["bg"], fg=C["gold"], font=(F, 9), wraplength=440, justify="left").pack(padx=16, anchor="w")
         bar = tk.Frame(win, bg=C["bg"])
@@ -1163,7 +1163,7 @@ def run_gui():
             if (load_settings().get(PAINT_ID) or {}).get("t"):
                 st["sel"].add(PAINT_ID)
                 draw()
-                status.set("Раскраска сохранена. Нажми «Установить выбранные», чтобы поставить её в игру.")
+                status.set("Кастомизация сохранена. Нажми «Установить выбранные», чтобы поставить её в игру.")
 
         def editor():
             frozen = getattr(sys, "frozen", False)

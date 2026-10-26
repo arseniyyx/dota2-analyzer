@@ -1,7 +1,7 @@
 {
   "version": 2,
   "app": {
-    "version": "1.8.0",
+    "version": "1.8.1",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
@@ -8321,8 +8321,8 @@
       "paint": true,
       "rules": [],
       "name": {
-        "ru": "Раскраска героев",
-        "en": "Hero paint"
+        "ru": "Кастомизация героев",
+        "en": "Hero customisation"
       },
       "desc": {
         "ru": "Свои цвета для любого героя и его частей, плюс иконки способностей. Красишь в 3D-редакторе, видишь только ты.",
