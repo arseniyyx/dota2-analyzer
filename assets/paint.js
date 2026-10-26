@@ -172,7 +172,68 @@ function select(sel) {
   document.querySelectorAll('.paint-icon').forEach(b => b.classList.toggle('on', sel?.kind === 'icon' && b.dataset.ab === sel.name));
   drawParts();
 }
-const setColorInputs = hex => { $('paintColor').value = hex; $('paintHex').value = hex; };
+const setColorInputs = hex => { $('paintColor').value = hex; $('paintHex').value = hex; syncWheel(hex); };
+
+/* ---- colour wheel: hue around the circle, saturation from the centre out, brightness on its own slider ---- */
+const hsv = { h: 0.4, s: 0.8, v: 0.8 };
+function hsv2rgb(h, s, v) {
+  const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  return [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][((i % 6) + 6) % 6];
+}
+function rgb2hsv(r, g, b) {
+  const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
+  const h = !d ? 0 : mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [((h / 6) + 1) % 1, mx ? d / mx : 0, mx];
+}
+const toHex = rgb => '#' + rgb.map(c => Math.round(c * 255).toString(16).padStart(2, '0')).join('');
+let wheelV = -1;
+function drawWheel() {
+  if (wheelV === hsv.v) return;
+  wheelV = hsv.v;
+  const c = $('paintWheel'), x = c.getContext('2d'), n = c.width, r = n / 2, img = x.createImageData(n, n);
+  for (let py = 0; py < n; py++) for (let px = 0; px < n; px++) {
+    const dx = px - r + .5, dy = py - r + .5, d = Math.hypot(dx, dy) / r, i = (py * n + px) * 4;
+    if (d > 1) continue;
+    const [cr, cg, cb] = hsv2rgb(((Math.atan2(dy, dx) / (2 * Math.PI)) + 1) % 1, d, hsv.v);
+    img.data[i] = cr * 255; img.data[i + 1] = cg * 255; img.data[i + 2] = cb * 255;
+    img.data[i + 3] = d > 0.985 ? (1 - d) / 0.015 * 255 : 255; // a soft edge
+  }
+  x.putImageData(img, 0, 0);
+}
+function placeDot() {
+  const a = hsv.h * 2 * Math.PI, dot = $('paintWheelDot');
+  dot.style.left = `${50 + Math.cos(a) * hsv.s * 50}%`; dot.style.top = `${50 + Math.sin(a) * hsv.s * 50}%`;
+  dot.style.background = toHex(hsv2rgb(hsv.h, hsv.s, hsv.v));
+  $('paintValue').value = Math.round(hsv.v * 100); $('paintValueVal').textContent = `${Math.round(hsv.v * 100)}%`;
+  $('paintWheel').setAttribute('aria-valuetext', `${Math.round(hsv.h * 360)}°, ${Math.round(hsv.s * 100)}%`);
+}
+function syncWheel(hex) {
+  [hsv.h, hsv.s, hsv.v] = rgb2hsv(...hex2rgb(hex));
+  drawWheel(); placeDot();
+}
+function fromWheel() {
+  const hex = toHex(hsv2rgb(hsv.h, hsv.s, hsv.v));
+  $('paintColor').value = hex; $('paintHex').value = hex;
+  drawWheel(); placeDot(); paint();
+}
+function wireWheel() {
+  const c = $('paintWheel');
+  const at = e => {
+    const r = c.getBoundingClientRect(), dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2;
+    hsv.h = ((Math.atan2(dy, dx) / (2 * Math.PI)) + 1) % 1; hsv.s = Math.min(1, Math.hypot(dx, dy) / (r.width / 2));
+    if (hsv.v < 0.05) hsv.v = 0.8; // picking on a black wheel would do nothing visible
+    fromWheel();
+  };
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); at(e); });
+  c.addEventListener('pointermove', e => { if (c.hasPointerCapture(e.pointerId)) at(e); });
+  c.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 0.1 : 0.02, k = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+    if (!k) return;
+    e.preventDefault(); hsv.h = (hsv.h + k[0] + 1) % 1; hsv.s = Math.min(1, Math.max(0, hsv.s + k[1])); fromWheel();
+  });
+  $('paintValue').addEventListener('input', () => { hsv.v = +$('paintValue').value / 100; fromWheel(); });
+  syncWheel($('paintColor').value);
+}
 
 // what a colour change paints: the whole hero, the selected part or icon, and all icons if that box is ticked
 function targets() {
@@ -242,8 +303,9 @@ const drawHeroesDots = () => document.querySelectorAll('.paint-hero').forEach(b 
 function wire() {
   $('paintSwatches').innerHTML = SWATCHES.map(c => `<button type="button" class="paint-swatch" style="background:${c}" data-c="${c}" aria-label="${c}" title="${c}"></button>`).join('');
   $('paintSwatches').querySelectorAll('.paint-swatch').forEach(b => b.addEventListener('click', () => { setColorInputs(b.dataset.c); paint(); }));
-  $('paintColor').addEventListener('input', () => { $('paintHex').value = $('paintColor').value; paint(); });
-  $('paintHex').addEventListener('input', () => { const v = $('paintHex').value.trim(); if (/^#[0-9a-f]{6}$/i.test(v)) { $('paintColor').value = v.toLowerCase(); paint(); } });
+  $('paintColor').addEventListener('input', () => { $('paintHex').value = $('paintColor').value; syncWheel($('paintColor').value); paint(); });
+  $('paintHex').addEventListener('input', () => { const v = $('paintHex').value.trim(); if (/^#[0-9a-f]{6}$/i.test(v)) { $('paintColor').value = v.toLowerCase(); syncWheel(v.toLowerCase()); paint(); } });
+  wireWheel();
   $('paintStrength').addEventListener('input', () => { $('paintStrengthVal').textContent = `${$('paintStrength').value}%`; paint(); });
   $('paintAll').addEventListener('change', () => select(P.sel));
   $('paintResetSel').addEventListener('click', () => reset(false));

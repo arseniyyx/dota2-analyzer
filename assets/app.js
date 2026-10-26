@@ -2210,7 +2210,7 @@ function route() {
   $('navTools').setAttribute('aria-current', ['tools', 'optimize', 'mods', 'glyph', 'paint'].includes(view) ? 'page' : 'false');
   if (view === 'optimize') renderOptimize();
   if (view === 'glyph') renderGlyph();
-  if (view === 'paint') import('./paint.js?v=72').then(m => m.renderPaint()).catch(() => { $('paintHint').textContent = L('Не удалось загрузить 3D-редактор', 'Could not load the 3D editor'); });
+  if (view === 'paint') import('./paint.js?v=73').then(m => m.renderPaint()).catch(() => { $('paintHint').textContent = L('Не удалось загрузить 3D-редактор', 'Could not load the 3D editor'); });
   if (view === 'mods') renderMods();
   // the last analysed profile loads on the first visit to a page that needs it, not on the tools pages
   const last = store.get('lastId');

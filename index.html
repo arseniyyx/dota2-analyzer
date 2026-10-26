@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=72">
+<link rel="stylesheet" href="assets/style.css?v=73">
 <script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -221,6 +221,12 @@
             <input type="color" id="paintColor" value="#2ecc71">
             <input class="field paint-hex" id="paintHex" value="#2ecc71" maxlength="7" spellcheck="false" aria-label="Цвет в HEX" data-en-aria="Colour as HEX">
           </div>
+          <div class="paint-wheel">
+            <canvas id="paintWheel" width="440" height="440" tabindex="0" role="slider" aria-label="Цветовой круг: стрелки влево и вправо меняют оттенок, вверх и вниз насыщенность" data-en-aria="Colour wheel: left and right arrows change the hue, up and down the saturation"></canvas>
+            <span class="paint-wheel-dot" id="paintWheelDot" aria-hidden="true"></span>
+          </div>
+          <label class="label" for="paintValue"><span data-en="Brightness">Яркость</span> <b id="paintValueVal">80%</b></label>
+          <input type="range" id="paintValue" min="0" max="100" step="1" value="80">
           <div class="paint-swatches" id="paintSwatches"></div>
           <label class="label" for="paintStrength"><span data-en="Strength">Сила заливки</span> <b id="paintStrengthVal">100%</b></label>
           <input type="range" id="paintStrength" min="20" max="100" step="5" value="100">
@@ -426,11 +432,11 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=72"></script>
-<script src="assets/grid.js?v=72"></script>
-<script src="assets/gridart.js?v=72"></script>
-<script src="assets/optimize.js?v=72"></script>
-<script src="assets/mods.js?v=72"></script>
-<script src="assets/glyph.js?v=72"></script>
+<script src="assets/app.js?v=73"></script>
+<script src="assets/grid.js?v=73"></script>
+<script src="assets/gridart.js?v=73"></script>
+<script src="assets/optimize.js?v=73"></script>
+<script src="assets/mods.js?v=73"></script>
+<script src="assets/glyph.js?v=73"></script>
 </body>
 </html>
