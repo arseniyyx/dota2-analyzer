@@ -37,7 +37,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.1"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -46,10 +46,10 @@ D2PFX_RAW = "https://raw.githubusercontent.com/h6rd/Dota2PornFxWeb/main/assets/"
 # only categories that neither unlock paid Valve cosmetics nor give an in-game advantage
 D2PFX_CATS = [("shaders", "Шейдеры тумана"), ("cursors", "Курсоры"), ("backgrounds", "Фоны меню"), ("hero-icons", "Иконки героев"),
               ("item-icons", "Иконки предметов"), ("ranks", "Иконки рангов"), ("pings", "Пинги"), ("creep-deny", "Денай"),
-              ("terrains", "Ландшафты"), ("fonts", "Шрифты")]
+              ("terrains", "Ландшафты"), ("fonts", "Шрифты"), ("huds", "Интерфейс"), ("parts", "Части интерфейса")]
 # paid Valve terrains, and terrain packs that also swap trees (tree shapes matter for vision)
 D2PFX_SKIP = re.compile(r"^(TI\d+\b|Dota\+|Crownfall|The Kings New Journey)|\btrees?\b", re.I)
-SINGLE_CATS = {"shaders", "terrains", "fonts", "creep-deny"}
+SINGLE_CATS = {"shaders", "terrains", "fonts", "creep-deny", "huds"}
 ENGLISH_ID = "english-ui"  # mods of these categories replace the same files, so one at a time
 MOD_FOLDER = "dota_d2a"  # English clients only
 MARK = "// D2A mods"
