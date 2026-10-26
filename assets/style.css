@@ -749,3 +749,45 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .mod-fig { margin: 10px 0 0; }
 .mod-fig img { display: block; width: 100%; max-width: 760px; height: auto; border-radius: 8px; }
 .mod-fig figcaption { display: grid; grid-template-columns: 1fr 1fr; max-width: 760px; margin-top: 6px; text-align: center; }
+
+/* ---------- hero paint ---------- */
+.paint-wrap { display: grid; grid-template-columns: 220px minmax(0, 1fr) 300px; gap: 12px; align-items: start; }
+.paint-heroes { display: flex; flex-direction: column; gap: 8px; max-height: 640px; }
+.paint-hero-grid { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+.paint-hero { display: flex; align-items: center; gap: 8px; padding: 4px 6px; min-height: 44px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--fg); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.paint-hero img { width: 48px; height: 27px; border-radius: 4px; object-fit: cover; }
+.paint-hero span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paint-hero:hover { background: var(--surface-hover); }
+.paint-hero[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.paint-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.paint-stage { position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 35%, #232c3a 0%, #0f131a 70%); }
+.paint-canvas { height: 520px; }
+.paint-canvas canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.paint-hint { position: absolute; left: 0; right: 0; bottom: 10px; margin: 0; text-align: center; font-size: 12px; color: var(--fg-muted); pointer-events: none; }
+.paint-icons .row { flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.paint-icon { width: 64px; height: 64px; padding: 0; border: 2px solid var(--border); border-radius: 10px; overflow: hidden; background: #000; cursor: pointer; }
+.paint-icon canvas { display: block; width: 100%; height: 100%; }
+.paint-icon.on { border-color: var(--accent); }
+.paint-icon.painted:not(.on) { border-color: var(--border-strong); }
+.paint-panel { display: flex; flex-direction: column; gap: 12px; }
+.paint-selected { display: flex; flex-direction: column; gap: 2px; }
+.paint-selected b { font-size: 14px; }
+.paint-check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; min-height: 32px; }
+.paint-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.paint-color-row { display: grid; grid-template-columns: auto 48px 1fr; gap: 8px; align-items: center; }
+.paint-color-row input[type="color"] { width: 48px; height: 40px; padding: 0; border: 1px solid var(--border-strong); border-radius: 8px; background: none; cursor: pointer; }
+.paint-hex { font-variant-numeric: tabular-nums; text-transform: lowercase; }
+.paint-swatches { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.paint-swatch { aspect-ratio: 1; min-height: 28px; border: 1px solid rgba(255, 255, 255, .15); border-radius: 6px; cursor: pointer; }
+.paint-swatch:hover { transform: scale(1.08); }
+.paint-panel input[type="range"] { width: 100%; accent-color: var(--accent); }
+.paint-parts { display: flex; flex-direction: column; gap: 4px; }
+.paint-part { display: grid; grid-template-columns: 14px 1fr; grid-template-areas: "dot name" "dot note"; column-gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--fg); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.paint-part .note { grid-area: note; font-size: 11px; }
+.paint-part.on { border-color: var(--accent); }
+.paint-dot { grid-area: dot; width: 14px; height: 14px; border-radius: 50%; border: 1px dashed var(--border-strong); }
+.paint-hero .paint-dot.on, i.paint-dot.on { width: 8px; height: 8px; border: none; background: var(--accent); }
+.paint-reset { gap: 8px; flex-wrap: wrap; }
+.paint-out .row { gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+@media (max-width: 1100px) { .paint-wrap { grid-template-columns: 1fr 300px; } .paint-heroes { grid-column: 1 / -1; max-height: none; } .paint-hero-grid { flex-direction: row; overflow-x: auto; } .paint-hero { flex: 0 0 auto; } }
+@media (max-width: 760px) { .paint-wrap { grid-template-columns: 1fr; } .paint-canvas { height: 380px; } }

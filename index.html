@@ -39,7 +39,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=71">
+<link rel="stylesheet" href="assets/style.css?v=72">
+<script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
 <noscript><div class="noscript">
@@ -64,6 +65,7 @@
           <a href="#grid-art" role="menuitem"><b data-en="Art grid from a photo">Арт-сетка из фото</b><small data-en="A picture drawn with dots and zones for your heroes">Рисунок из точек и зоны для твоих героев</small></a>
           <a href="#mods" role="menuitem"><b data-en="Mods for Dota 2">Моды для Dota 2</b><small data-en="Our app: no weather, effects and ambient sounds">Наша программа: без погоды, лишних эффектов и фоновых звуков</small></a>
           <a href="#optimize" role="menuitem"><b data-en="Optimisation">Оптимизация</b><small data-en="More FPS: launch options, autoexec, video settings">Больше FPS: параметры запуска, autoexec, графика</small></a>
+          <a href="#paint" role="menuitem"><b data-en="Hero paint">Раскраска героев</b><small data-en="3D: click a part of the hero and pick any colour, then use it in the game">3D: кликни по части героя, выбери цвет и поставь в игру</small></a>
           <a href="#glyph" role="menuitem"><b data-en="Who pressed the glyph">Кто нажал глиф</b><small data-en="Paste a match ID and see who used the glyph and how often">Вставь номер матча и увидишь, кто и сколько раз жал глиф</small></a>
           <a href="#grid-meta" role="menuitem"><b data-en="Meta hero grid">Мета-сетка героев</b><small data-en="Strongest heroes by position for your rank">Сильнейшие герои по позициям для твоего ранга</small></a>
         </div>
@@ -190,6 +192,53 @@
     <section class="section">
       <h1 class="section-title" data-en="Mods for Dota 2">Моды для Dota 2</h1>
       <div id="modsBox" class="stack-sm"></div>
+    </section>
+  </main>
+
+  <main id="viewPaint" class="stack" hidden>
+    <section class="section">
+      <h1 class="section-title" data-en="Hero paint">Раскраска героев</h1>
+      <p class="note" data-en="Pick a hero, turn the model with the mouse and click a part to colour it. Your colours go into the game through the D2A Mods app; only you see them.">Выбери героя, крути модель мышкой и кликни по части, чтобы её покрасить. Цвета ставятся в игру через программу D2A Mods, видишь их только ты.</p>
+      <div class="paint-wrap">
+        <aside class="card pad paint-heroes">
+          <label class="label" for="paintSearch" data-en="Hero">Герой</label>
+          <input class="field" id="paintSearch" type="search" placeholder="Поиск" data-en-placeholder="Search" autocomplete="off">
+          <div class="paint-hero-grid" id="paintHeroes" role="listbox" aria-label="Герои" data-en-aria="Heroes"></div>
+        </aside>
+        <div class="paint-main">
+          <div class="card paint-stage">
+            <div id="paintCanvas" class="paint-canvas"></div>
+            <p class="paint-hint" id="paintHint" data-en="Drag to turn · scroll to zoom · click a part to paint it">Тяни, чтобы повернуть · колесо для зума · клик по части, чтобы покрасить</p>
+          </div>
+          <div class="card pad paint-icons"><span class="label" data-en="Ability icons">Иконки способностей</span><div class="row" id="paintIcons"></div></div>
+        </div>
+        <aside class="card pad paint-panel">
+          <div class="paint-selected"><span class="label" data-en="Selected">Выбрано</span><b id="paintSelName">—</b></div>
+          <label class="paint-check"><input type="checkbox" id="paintAll"><span data-en="Paint the whole hero">Красить всего героя</span></label>
+          <label class="paint-check"><input type="checkbox" id="paintAllIcons"><span data-en="Ability icons too">И иконки способностей</span></label>
+          <div class="paint-color-row">
+            <label for="paintColor" class="label" data-en="Colour">Цвет</label>
+            <input type="color" id="paintColor" value="#2ecc71">
+            <input class="field paint-hex" id="paintHex" value="#2ecc71" maxlength="7" spellcheck="false" aria-label="Цвет в HEX" data-en-aria="Colour as HEX">
+          </div>
+          <div class="paint-swatches" id="paintSwatches"></div>
+          <label class="label" for="paintStrength"><span data-en="Strength">Сила заливки</span> <b id="paintStrengthVal">100%</b></label>
+          <input type="range" id="paintStrength" min="20" max="100" step="5" value="100">
+          <div class="paint-parts" id="paintParts"></div>
+          <div class="row paint-reset">
+            <button class="btn ghost small" id="paintResetSel" type="button" data-en="Reset selected">Сбросить выбранное</button>
+            <button class="btn ghost small" id="paintResetHero" type="button" data-en="Reset hero">Сбросить героя</button>
+          </div>
+        </aside>
+      </div>
+      <div class="card pad paint-out">
+        <p id="paintSummary" class="note"></p>
+        <div class="row">
+          <button class="btn" id="paintApply" type="button" hidden data-en="Apply in the game">Применить в игре</button>
+          <button class="btn" id="paintCopy" type="button" data-en="Copy the code for D2A Mods">Скопировать код для D2A Mods</button>
+          <span class="note" id="paintOutNote"></span>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -377,11 +426,11 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=71"></script>
-<script src="assets/grid.js?v=71"></script>
-<script src="assets/gridart.js?v=71"></script>
-<script src="assets/optimize.js?v=71"></script>
-<script src="assets/mods.js?v=71"></script>
-<script src="assets/glyph.js?v=71"></script>
+<script src="assets/app.js?v=72"></script>
+<script src="assets/grid.js?v=72"></script>
+<script src="assets/gridart.js?v=72"></script>
+<script src="assets/optimize.js?v=72"></script>
+<script src="assets/mods.js?v=72"></script>
+<script src="assets/glyph.js?v=72"></script>
 </body>
 </html>

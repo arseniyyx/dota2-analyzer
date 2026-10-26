@@ -1,7 +1,7 @@
 {
   "version": 2,
   "app": {
-    "version": "1.7.0",
+    "version": "1.8.0",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
@@ -8360,6 +8360,23 @@
           "unit": "°"
         }
       ]
+    },
+    {
+      "id": "hero-paint",
+      "tab": "custom",
+      "category": "visual",
+      "icon": "✦",
+      "min_app": "1.8.0",
+      "paint": true,
+      "rules": [],
+      "name": {
+        "ru": "Раскраска героев",
+        "en": "Hero paint"
+      },
+      "desc": {
+        "ru": "Свои цвета для любого героя и его частей, плюс иконки способностей. Красишь в 3D-редакторе, видишь только ты.",
+        "en": "Your own colours for any hero and its parts, plus ability icons. Paint in the 3D editor, only you see it."
+      }
     },
     {
       "id": "english-ui",

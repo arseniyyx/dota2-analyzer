@@ -17,8 +17,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install vpk==1.4.0 pillow==11.0.0 pyinstaller==6.11.1
-      - run: pyinstaller --onefile --windowed --name D2AMods --icon app/icon.ico --add-data "app/icon.ico;." app/d2mods.py
+      - run: pip install vpk==1.4.0 pillow==11.0.0 pyinstaller==6.11.1 pywebview==5.4
+      - run: pyinstaller --onefile --windowed --name D2AMods --icon app/icon.ico --add-data "app/icon.ico;." --collect-all webview --hidden-import clr app/d2mods.py
       - name: Publish release
         shell: bash
         env:

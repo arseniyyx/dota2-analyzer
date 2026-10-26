@@ -17,6 +17,7 @@ go to game/dota_d2a, mounted by one line in gameinfo.gi (backed up first). Unins
 Usage:  D2AMods.exe                                  window
         d2mods.py --build-only out.vpk --mods a,b    build our rules VPK somewhere else, touch nothing in the game
 """
+import base64
 import colorsys
 import hashlib
 import io
@@ -38,7 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.7.0"
+APP_VERSION = "1.8.0"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -434,9 +435,24 @@ def tint(rgb, hue, sat=1.0, hues=None):
     return tuple(round(c * 255) for c in colorsys.hls_to_rgb(hue / 360, l, min(1.0, max(s, 0.5) * sat)))
 
 
+def paint_rgb(rgb, target, k=1.0):
+    """The site's hero paint colour: hue and saturation of the chosen colour, the pixel's own lightness moved toward
+    the chosen lightness (shading stays), blended by strength k. Same formula as assets/paint.js."""
+    th, tl, ts = colorsys.rgb_to_hls(*(c / 255 for c in target))
+    r, g, b = (c / 255 for c in rgb)
+    l = colorsys.rgb_to_hls(r, g, b)[1]
+    nl = l * 2 * tl if tl <= 0.5 else l + (1 - l) * (2 * tl - 1)
+    n = colorsys.hls_to_rgb(th, nl, ts)
+    return tuple(max(0, min(255, round((c + (d - c) * k) * 255))) for c, d in zip((r, g, b), n))
+
+
 def colorize(data, hue, sat=1.0, hues=None):
-    """Recolours a DXT1/DXT5/RGBA8888 texture on every mip level. DXT colours are blends of two endpoints per 4x4 block,
-    so recolouring the endpoints recolours the block exactly as the game will draw it, with no re-encoding."""
+    map_colors(data, lambda rgb: tint(rgb, hue, sat, hues))
+
+
+def map_colors(data, fn):
+    """Recolours a DXT1/DXT5/RGBA8888 texture on every mip level with fn(rgb) -> rgb. DXT colours are blends of two
+    endpoints per 4x4 block, so recolouring the endpoints recolours the block as the game draws it, no re-encoding."""
     off, size = resource_block(data, "DATA")
     w, h = struct.unpack_from("<HH", data, off + 20)
     fmt, mips = data[off + 26], data[off + 27]
@@ -444,7 +460,28 @@ def colorize(data, hue, sat=1.0, hues=None):
     if fmt == 4:
         for i in range(sum(max(1, w >> k) * max(1, h >> k) for k in range(mips))):
             p = start + i * 4
-            data[p:p + 3] = bytes(tint(tuple(data[p:p + 3]), hue, sat, hues))
+            data[p:p + 3] = bytes(fn(tuple(data[p:p + 3])))
+        return
+    if fmt == 28:  # BGRA8888
+        for i in range(sum(max(1, w >> k) * max(1, h >> k) for k in range(mips))):
+            p = start + i * 4
+            data[p:p + 3] = bytes(reversed(fn(tuple(reversed(data[p:p + 3])))))
+        return
+    if fmt == 16:  # a PNG stored as is (some ability icons): decode, recolour, store again; the header's size covers
+        # only the resource blocks, not the image after them, so it stays as it is
+        from PIL import Image
+        im = Image.open(io.BytesIO(bytes(data[start:]))).convert("RGBA")
+        px = im.load()
+        cache = {}
+        for y in range(im.height):
+            for x in range(im.width):
+                r, g, b, a = px[x, y]
+                if (r, g, b) not in cache:
+                    cache[(r, g, b)] = fn((r, g, b))
+                px[x, y] = (*cache[(r, g, b)], a)
+        buf = io.BytesIO()
+        im.save(buf, "PNG")
+        data[start:] = buf.getvalue()
         return
     if fmt not in (1, 2):
         raise RuntimeError("формат текстуры не поддерживается")
@@ -454,7 +491,7 @@ def colorize(data, hue, sat=1.0, hues=None):
 
     def new(c):
         if c not in cache:
-            cache[c] = to565(tint(((c >> 11) * 255 // 31, (c >> 5 & 63) * 255 // 63, (c & 31) * 255 // 31), hue, sat, hues))
+            cache[c] = to565(fn(((c >> 11) * 255 // 31, (c >> 5 & 63) * 255 // 63, (c & 31) * 255 // 31)))
         return cache[c]
     for i in range(sum(max(1, (max(1, w >> k) + 3) // 4) * max(1, (max(1, h >> k) + 3) // 4) for k in range(mips))):
         p = start + i * bsize + coff
@@ -470,6 +507,77 @@ def colorize(data, hue, sat=1.0, hues=None):
                 n0, n1 = n1, n0
                 idx = sum((((idx >> 2 * k) & 3) ^ (1 if (idx >> 2 * k) & 3 < 2 else 0)) << 2 * k for k in range(16))
         struct.pack_into("<HHI", data, p, n0, n1, idx)
+
+
+PAINT_ID = "hero-paint"
+PAINT_DIRS = ("materials/models/", "panorama/images/spellicons/")
+
+
+def parse_paint(code):
+    """{texture path: (rgb, strength)} from a site code "D2AP1:<base64 json>"; anything outside hero textures and
+    ability icons, or not a colour, is dropped."""
+    code = (code or "").strip()
+    if not code.startswith("D2AP1:"):
+        raise ValueError("Это не код раскраски: он начинается с D2AP1:")
+    data = json.loads(base64.b64decode(code[6:] + "=" * (-len(code[6:]) % 4)).decode("utf-8"))
+    out = {}
+    for path, v in (data.get("t") or {}).items():
+        if not (isinstance(path, str) and path.startswith(PAINT_DIRS) and path.endswith(".vtex_c") and ".." not in path):
+            continue
+        if not (isinstance(v, list) and len(v) >= 2 and isinstance(v[0], str) and re.fullmatch(r"#[0-9a-fA-F]{6}", v[0])):
+            continue
+        out[path] = [v[0].lower(), min(1.0, max(0.0, float(v[1])))]
+    return out
+
+
+def save_paint(code):
+    t = parse_paint(code)
+    s = load_settings()
+    s[PAINT_ID] = {"t": t}
+    save_settings(s)
+    return len(t)
+
+
+def paint_textures(game, mod_ids, tmp, log=print):
+    if PAINT_ID not in mod_ids:
+        return 0
+    t = (load_settings().get(PAINT_ID) or {}).get("t") or {}
+    pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
+    names = set(pak)
+    done = skipped = 0
+    for path, (hexc, k) in t.items():
+        if path not in names or not path.startswith(PAINT_DIRS):
+            skipped += 1
+            continue
+        data = bytearray(pak.get_file(path).read())
+        rgb = tuple(int(hexc[i:i + 2], 16) for i in (1, 3, 5))
+        try:
+            map_colors(data, lambda c, rgb=rgb, k=k: paint_rgb(c, rgb, k))
+        except RuntimeError:
+            skipped += 1
+            continue
+        dst = os.path.join(tmp, *path.split("/"))
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, "wb") as f:
+            f.write(data)
+        done += 1
+    log(f"Раскраска героев: {done} текстур" + (f", пропущено {skipped}" if skipped else ""))
+    return done
+
+
+def paint_window():
+    """The site's 3D paint editor inside the app (Edge WebView2); "Apply in the game" saves the colours here."""
+    import webview
+
+    class Api:
+        def apply(self, code):
+            try:
+                n = save_paint(code)
+                return f"Сохранено текстур: {n}. Закрой это окно и нажми в D2A Mods «Установить выбранные»."
+            except Exception as e:
+                return f"Не получилось: {e}"
+    webview.create_window("D2A Mods: раскраска героев", SITE + "#paint", js_api=Api(), width=1320, height=900, background_color="#0b0e14")
+    webview.start()
 
 
 def recolor_textures(game, catalog, mod_ids, tmp, log=print):
@@ -770,6 +878,7 @@ def install(game, catalog, d2pfx, ids, log=print):
             total += patch_svgs(game, catalog, ids, tmp, log)
             total += patch_sheets(game, catalog, ids, tmp, lang, log)
             total += recolor_textures(game, catalog, ids, tmp, log)
+            total += paint_textures(game, ids, tmp, log)
             for m in catalog["mods"]:
                 if m["id"] in ids and m.get("files"):
                     total += place_files(m, tmp, log)
@@ -983,8 +1092,8 @@ def run_gui():
             tk.Label(top, text=kind, bg=C["panel2"], fg=C["muted"], font=(F, 8, "bold"), padx=6).pack(side="right", padx=6)
             tk.Label(t, text=m["name"]["ru"], bg=C["panel"], fg=C["fg"], font=(F, 11, "bold"), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12)
             tk.Label(t, text=m["desc"]["ru"], bg=C["panel"], fg=C["muted"], font=(F, 9), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12, pady=(2, 6 if m.get("settings") else 12))
-            if m.get("settings"):
-                gear = tk.Label(t, text="⚙ Настроить", bg=C["panel"], fg=C["gold"], font=(F, 9, "underline"), cursor="hand2")
+            if m.get("settings") or m.get("paint"):
+                gear = tk.Label(t, text="⚙ Открыть редактор" if m.get("paint") else "⚙ Настроить", bg=C["panel"], fg=C["gold"], font=(F, 9, "underline"), cursor="hand2")
                 gear.pack(anchor="w", padx=12, pady=(0, 10))
 
         def toggle(_e=None):
@@ -1005,7 +1114,7 @@ def run_gui():
                 bind_all(c)
         bind_all(t)
         if gear is not None:  # after bind_all, so a click here opens the settings instead of ticking the tile
-            gear.bind("<Button-1>", lambda e: open_settings(m))
+            gear.bind("<Button-1>", lambda e: open_paint(m) if m.get("paint") else open_settings(m))
         return t
 
     hp_sheet = {}  # the health bar sprites from the player's own game, loaded once for the preview
@@ -1030,6 +1139,66 @@ def run_gui():
         for i, r in enumerate(rows):
             out.paste(r, (12, 12 + i * (h * k + 10)), r)
         return ImageTk.PhotoImage(out)
+
+    def open_paint(m):
+        """A small window: open the 3D editor inside the app, paste a code from the site, or clear the colours."""
+        win = tk.Toplevel(root)
+        win.title(m["name"]["ru"])
+        win.configure(bg=C["bg"])
+        win.transient(root)
+        win.resizable(False, False)
+        info = tk.StringVar()
+
+        def refresh():
+            n = len(((load_settings().get(PAINT_ID) or {}).get("t") or {}))
+            info.set(f"Сохранено раскрашенных текстур: {n}." + (" Нажми «Установить выбранные», чтобы поставить их в игру." if n else ""))
+        tk.Label(win, text="Раскрась героев в 3D-редакторе: клик по части модели, выбор цвета, галочка «Красить всего героя». Видишь цвета только ты.",
+                 bg=C["bg"], fg=C["fg"], font=(F, 10), wraplength=440, justify="left").pack(padx=16, pady=(16, 8), anchor="w")
+        tk.Label(win, textvariable=info, bg=C["bg"], fg=C["gold"], font=(F, 9), wraplength=440, justify="left").pack(padx=16, anchor="w")
+        bar = tk.Frame(win, bg=C["bg"])
+        bar.pack(fill="x", padx=16, pady=14)
+
+        def after_editor():
+            refresh()
+            if (load_settings().get(PAINT_ID) or {}).get("t"):
+                st["sel"].add(PAINT_ID)
+                draw()
+                status.set("Раскраска сохранена. Нажми «Установить выбранные», чтобы поставить её в игру.")
+
+        def editor():
+            frozen = getattr(sys, "frozen", False)
+            cmd = [sys.executable, "--paint"] if frozen else [sys.executable, os.path.abspath(__file__), "--paint"]
+            try:
+                proc = subprocess.Popen(cmd)
+            except OSError:
+                webbrowser.open(SITE + "#paint")
+                return
+            def wait():
+                code = proc.wait()
+                if code:  # no WebView2 or pywebview: the same editor in the browser, colours come back as a code
+                    root.after(0, lambda: (webbrowser.open(SITE + "#paint"), info.set("Редактор открыт в браузере. Там нажми «Скопировать код», потом здесь «Вставить код».")))
+                root.after(0, after_editor)
+            threading.Thread(target=wait, daemon=True).start()
+
+        def paste():
+            try:
+                n = save_paint(root.clipboard_get())
+                after_editor()
+                messagebox.showinfo("D2A Mods", f"Код принят: {n} текстур.", parent=win)
+            except Exception as e:
+                messagebox.showerror("D2A Mods", f"Не получилось прочитать код: {e}", parent=win)
+
+        def clear():
+            s = load_settings()
+            s.pop(PAINT_ID, None)
+            save_settings(s)
+            st["sel"].discard(PAINT_ID)
+            draw()
+            refresh()
+        button(bar, "Открыть 3D-редактор", editor, primary=True).pack(side="left")
+        button(bar, "Вставить код", paste).pack(side="left", padx=8)
+        button(bar, "Очистить", clear).pack(side="left")
+        refresh()
 
     def open_settings(m):
         win = tk.Toplevel(root)
@@ -1301,6 +1470,12 @@ def run_gui():
 
 def main():
     args = sys.argv[1:]
+    if "--paint" in args:
+        try:
+            paint_window()
+        except Exception:
+            sys.exit(2)  # the app falls back to the browser
+        return
     if "--build-only" in args:
         out = args[args.index("--build-only") + 1]
         game = args[args.index("--game") + 1] if "--game" in args else find_dota()
