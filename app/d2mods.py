@@ -37,7 +37,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.5.1"
+APP_VERSION = "1.6.0"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -404,7 +404,7 @@ def patch_sheets(game, catalog, mod_ids, tmp, lang, log=print):
             sprites = sheet_sprites(data)
             if any(s not in sprites for s in m["sheet"]["scale"]):
                 raise RuntimeError(f"«{m['name']['ru']}»: игра обновила полоски здоровья, мод нужно обновить")
-            scale_dxt5(data, sprites, m["sheet"]["scale"])
+            scale_dxt5(data, sprites, sheet_factors(m))
             dst = os.path.join(tmp, *path.split("/"))
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             with open(dst, "wb") as f:
@@ -566,6 +566,35 @@ def english_ui(game, lang, tmp, log):
     return n, loose
 
 
+def settings_path():
+    return os.path.join(DATA_DIR, "settings.json")
+
+
+def load_settings():
+    try:
+        with open(settings_path(), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_settings(s):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(settings_path(), "w", encoding="utf-8") as f:
+        json.dump(s, f, ensure_ascii=False, indent=1)
+
+
+def sheet_factors(m):
+    """The mod's brightness per sprite: the catalog default, or what the player set with the sliders (within limits)."""
+    own = load_settings().get(m["id"], {})
+    limits = {s["key"]: (s["min"], s["max"]) for s in m.get("settings", [])}
+    out = dict(m["sheet"]["scale"])
+    for k, v in own.items():
+        if k in out and k in limits:
+            out[k] = min(max(float(v), limits[k][0]), limits[k][1])
+    return out
+
+
 def state_path():
     return os.path.join(DATA_DIR, "installed.json")
 
@@ -717,9 +746,9 @@ def run_gui():
     from tkinter import filedialog, messagebox
 
     try:
-        from PIL import Image, ImageTk
+        from PIL import Image, ImageChops, ImageTk
     except ImportError:
-        Image = ImageTk = None
+        Image = ImageChops = ImageTk = None
 
     C = {"bg": "#0b0e14", "panel": "#151a23", "panel2": "#1c222d", "line": "#2a313e", "fg": "#e8ecf2", "muted": "#96a0b2",
          "gold": "#e3b04b", "gold2": "#f5cd78", "dark": "#1a1408"}
@@ -851,6 +880,7 @@ def run_gui():
 
     def tile(parent, m, width):
         on = m["id"] in st["sel"]
+        gear = None
         t = tk.Frame(parent, bg=C["panel"], highlightthickness=2, highlightbackground=C["gold"] if on else C["line"], cursor="hand2")
         if st["tab"] == "d2pfx":
             pic = tk.Label(t, bg="#0f131a", width=236, height=133, text="" if m["preview"] else "без превью", fg=C["muted"])
@@ -869,7 +899,10 @@ def run_gui():
             kind = {"fps": "FPS", "sound": "звук", "visual": "вид"}.get(m.get("category"), "")
             tk.Label(top, text=kind, bg=C["panel2"], fg=C["muted"], font=(F, 8, "bold"), padx=6).pack(side="right", padx=6)
             tk.Label(t, text=m["name"]["ru"], bg=C["panel"], fg=C["fg"], font=(F, 11, "bold"), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12)
-            tk.Label(t, text=m["desc"]["ru"], bg=C["panel"], fg=C["muted"], font=(F, 9), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12, pady=(2, 12))
+            tk.Label(t, text=m["desc"]["ru"], bg=C["panel"], fg=C["muted"], font=(F, 9), anchor="w", justify="left", wraplength=width - 30).pack(fill="x", padx=12, pady=(2, 6 if m.get("settings") else 12))
+            if m.get("settings"):
+                gear = tk.Label(t, text="⚙ Настроить", bg=C["panel"], fg=C["gold"], font=(F, 9, "underline"), cursor="hand2")
+                gear.pack(anchor="w", padx=12, pady=(0, 10))
 
         def toggle(_e=None):
             if not st["busy"]:
@@ -888,7 +921,97 @@ def run_gui():
             for c in w.winfo_children():
                 bind_all(c)
         bind_all(t)
+        if gear is not None:  # after bind_all, so a click here opens the settings instead of ticking the tile
+            gear.bind("<Button-1>", lambda e: open_settings(m))
         return t
+
+    hp_sheet = {}  # the health bar sprites from the player's own game, loaded once for the preview
+
+    def hp_preview(m, factors):
+        """Creep bars at 60, 30 and 12% for both teams, drawn from the game's sprites with the chosen brightness."""
+        empty, full = hp_sheet["empty"], hp_sheet["full"]
+        k = 2
+        w, h = empty.size
+        rows = []
+        for col in ((255, 70, 55), (95, 230, 90)):  # roughly the enemy and ally tints
+            for hp in (0.6, 0.3, 0.12):
+                bar = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+                for part, key, cut in ((empty, "tintable_creep_empty", w), (full, "tintable_creep_full", int(w * hp))):
+                    f = factors.get(key, 1)
+                    rgb = part.convert("RGB").point(lambda v, f=f: min(255, int(v * f)))
+                    rgb = ImageChops.multiply(rgb, Image.new("RGB", part.size, col))
+                    bar.alpha_composite(Image.merge("RGBA", (*rgb.split(), part.getchannel("A"))).crop((0, 0, cut, h)))
+                rows.append(bar.resize((w * k, h * k), Image.NEAREST))
+        out = Image.new("RGB", (w * k + 24, len(rows) * (h * k + 10) + 14), (58, 72, 44))
+        for i, r in enumerate(rows):
+            out.paste(r, (12, 12 + i * (h * k + 10)), r)
+        return ImageTk.PhotoImage(out)
+
+    def open_settings(m):
+        win = tk.Toplevel(root)
+        win.title(m["name"]["ru"])
+        win.configure(bg=C["bg"])
+        win.transient(root)
+        win.resizable(False, False)
+        own = load_settings().get(m["id"], {})
+        pic = tk.Label(win, bg=C["bg"], fg=C["muted"], text="Загружаю полоски из игры…", font=(F, 9))
+        pic.pack(padx=16, pady=(16, 8))
+        sliders = {}
+
+        def factors():
+            return {k: v.get() / 100 for k, v in sliders.items()}
+
+        def redraw(_=None):
+            if hp_sheet and Image is not None:
+                pic.photo = hp_preview(m, factors())
+                pic.configure(image=pic.photo, text="")
+
+        for s in m["settings"]:
+            row = tk.Frame(win, bg=C["bg"])
+            row.pack(fill="x", padx=16, pady=2)
+            tk.Label(row, text=s["ru"], bg=C["bg"], fg=C["fg"], font=(F, 10), width=16, anchor="w").pack(side="left")
+            v = tk.DoubleVar(value=round(float(own.get(s["key"], s["default"])) * 100))
+            tk.Scale(row, from_=s["min"] * 100, to=s["max"] * 100, resolution=5, orient="horizontal", variable=v, length=300, command=redraw,
+                     bg=C["bg"], fg=C["fg"], troughcolor=C["panel2"], highlightthickness=0, activebackground=C["gold"]).pack(side="left")
+            tk.Label(row, text="%", bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(side="left")
+            sliders[s["key"]] = v
+        tk.Label(win, text="Цвет команды игра накладывает сама, поэтому меняется яркость, а не оттенок.", bg=C["bg"], fg=C["muted"], font=(F, 9)).pack(padx=16, pady=(6, 0), anchor="w")
+        bar = tk.Frame(win, bg=C["bg"])
+        bar.pack(fill="x", padx=16, pady=14)
+
+        def save():
+            all_ = load_settings()
+            all_[m["id"]] = factors()
+            save_settings(all_)
+            st["sel"].add(m["id"])
+            draw()
+            status.set("Настройки сохранены. Нажми «Установить выбранные», чтобы применить их в игре.")
+            win.destroy()
+
+        def defaults():
+            for s in m["settings"]:
+                sliders[s["key"]].set(round(s["default"] * 100))
+            redraw()
+        button(bar, "Сохранить", save, primary=True).pack(side="left")
+        button(bar, "По умолчанию", defaults).pack(side="left", padx=8)
+
+        def load():
+            try:
+                pak = vpk.open(os.path.join(st["game"], "dota", "pak01_dir.vpk"))
+                data = pak.get_file(m["sheet"]["texture"] + ".vtex_c").read()
+                off, size = resource_block(data, "DATA")
+                w, h = struct.unpack_from("<HH", data, off + 20)
+                sheet = Image.frombytes("RGBA", (w, h), data[off + size:off + size + w * h], "bcn", 3)
+                uv = sheet_sprites(data)
+                crop = lambda n: sheet.crop(tuple(round(c * s) for c, s in zip(uv[n], (w, h, w, h))))
+                hp_sheet.update(empty=crop("tintable_creep_empty"), full=crop("tintable_creep_full"))
+                root.after(0, redraw)
+            except Exception:
+                root.after(0, lambda: pic.configure(text="Превью недоступно, но настройки работают"))
+        if hp_sheet:
+            redraw()
+        elif Image is not None and st["game"]:
+            threading.Thread(target=load, daemon=True).start()
 
     def draw():
         for w in grid.winfo_children():

@@ -1,7 +1,7 @@
 {
   "version": 2,
   "app": {
-    "version": "1.5.1",
+    "version": "1.6.0",
     "download": "https://github.com/arseniyyx/dota2-analyzer/releases/latest/download/D2AMods.exe"
   },
   "templates": {
@@ -6747,7 +6747,26 @@
           "tintable_creep_empty": 0.0,
           "tintable_creep_full": 1.5
         }
-      }
+      },
+      "settings": [
+        {
+          "key": "tintable_creep_full",
+          "ru": "Оставшееся ХП",
+          "en": "HP left",
+          "min": 0.6,
+          "max": 2.0,
+          "default": 1.5
+        },
+        {
+          "key": "tintable_creep_empty",
+          "ru": "Потерянное ХП",
+          "en": "HP lost",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        }
+      ],
+      "image": "mods/img/creep-hp.png"
     },
     {
       "id": "english-ui",

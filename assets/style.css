@@ -744,3 +744,8 @@ tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .top-main #stats { flex: 1; grid-auto-rows: 1fr; }
   .top-main .stat .value { margin-top: auto; }
 }
+
+.mod.has-fig { grid-column: 1 / -1; }
+.mod-fig { margin: 10px 0 0; }
+.mod-fig img { display: block; width: 100%; max-width: 760px; height: auto; border-radius: 8px; }
+.mod-fig figcaption { display: grid; grid-template-columns: 1fr 1fr; max-width: 760px; margin-top: 6px; text-align: center; }
