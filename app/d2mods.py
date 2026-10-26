@@ -23,6 +23,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -31,11 +32,12 @@ import time
 import urllib.parse
 import urllib.request
 import zipfile
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 
 import vpk
 
-APP_VERSION = "1.4.3"
+APP_VERSION = "1.5.0"
 SITE = "https://arseniyyx.github.io/dota2-analyzer/"
 CATALOG_URL = SITE + "mods/catalog.json"
 D2PFX_SITE = "https://h6rd.github.io/Dota2PornFxWeb"
@@ -295,6 +297,48 @@ def build_rules(game, catalog, mod_ids, tmp, log=print):
     return count
 
 
+def resource_block(data, name):
+    """(offset, size) of a block in a compiled Source 2 resource (RED2, DATA, ...)."""
+    rel, count = struct.unpack_from("<II", data, 8)
+    for i in range(count):
+        p = 8 + rel + i * 12
+        if data[p:p + 4] == name.encode():
+            off, size = struct.unpack_from("<II", data, p + 4)
+            return p + 4 + off, size
+    raise ValueError(f"no {name} block")
+
+
+def patch_svgs(game, catalog, mod_ids, tmp, log=print):
+    """Colour edits inside compiled Panorama SVGs (vsvg_c). Their DATA block is a CRC32 of the SVG, two zero bytes and
+    the SVG text; edits keep the length, so only the CRC changes and the file layout stays the game's own."""
+    chosen = [m for m in catalog["mods"] if m["id"] in mod_ids and m.get("svg")]
+    if not chosen:
+        return 0
+    pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
+    count = 0
+    for m in chosen:
+        for path, edits in m["svg"].items():
+            data = bytearray(pak.get_file(path).read())
+            off, size = resource_block(data, "DATA")
+            svg = bytes(data[off + 6:off + size])
+            if data[off + 4:off + 6] != b"\0\0" or struct.unpack_from("<I", data, off)[0] != zlib.crc32(svg):
+                raise RuntimeError(f"«{m['name']['ru']}»: формат файла в игре поменялся, мод нужно обновить")
+            for old, new in edits:
+                old, new = old.encode(), new.encode()
+                if len(old) != len(new) or old not in svg:
+                    raise RuntimeError(f"«{m['name']['ru']}»: игра обновила {path.rsplit('/', 1)[-1]}, мод нужно обновить")
+                svg = svg.replace(old, new)
+            struct.pack_into("<I", data, off, zlib.crc32(svg))
+            data[off + 6:off + size] = svg
+            dst = os.path.join(tmp, *path.split("/"))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            with open(dst, "wb") as f:
+                f.write(data)
+            count += 1
+        log(f"{m['name']['ru']}: {len(m['svg'])} файлов")
+    return count
+
+
 def git_blob_ok(data, sha):
     return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest() == sha
 
@@ -537,6 +581,7 @@ def install(game, catalog, d2pfx, ids, log=print):
     try:
         with tempfile.TemporaryDirectory() as tmp:
             total += build_rules(game, catalog, ids, tmp, log)
+            total += patch_svgs(game, catalog, ids, tmp, log)
             for m in catalog["mods"]:
                 if m["id"] in ids and m.get("files"):
                     total += place_files(m, tmp, log)
