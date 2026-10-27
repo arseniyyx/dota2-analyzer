@@ -39,3 +39,8 @@ jobs:
           git commit -m "Refresh meta data"
           git pull --rebase origin main
           git push
+      - name: Tell Yandex and Bing about the pages (IndexNow)
+        run: |
+          sleep 90  # let GitHub Pages publish the fresh pages first
+          python scripts/indexnow.py
+        continue-on-error: true
