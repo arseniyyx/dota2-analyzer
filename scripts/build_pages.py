@@ -17,6 +17,10 @@ BASE = "/dota2-analyzer/"
 CDN = "https://cdn.cloudflare.steamstatic.com"
 K_HERO, K_PAIR, K_DUR = 50, 60, 40
 POS = {"ru": ["", "Керри", "Мид", "Оффлейн", "Четвёрка", "Пятёрка"], "en": ["", "Carry", "Mid", "Offlane", "Soft support", "Hard support"]}
+POS_SLUG = ["", "carry", "mid", "offlane", "soft-support", "hard-support"]
+# what people search for: "лучшие керри", "лучшие саппорты 5 позиции"
+POS_WHO = {"ru": ["", "керри", "мидеры", "оффлейнеры", "саппорты 4 позиции", "саппорты 5 позиции"],
+           "en": ["", "carry heroes", "mid heroes", "offlaners", "position 4 supports", "position 5 supports"]}
 DUR = {"ru": ["до 20", "20–25", "25–30", "30–35", "35–40", "40–45", "45–50", "50+"], "en": ["<20", "20–25", "25–30", "30–35", "35–40", "40–45", "45–50", "50+"]}
 BOOTS = re.compile(r"boots|treads|greaves|bearing")
 esc = html.escape
@@ -161,7 +165,11 @@ class Page:
         if extra_ld:
             ld.append(extra_ld)
         nav = [(self.t("Игрок", "Player"), BASE + ("?lang=en" if lang == "en" else "")), (self.t("Мета", "Meta"), self.url("meta/")),
-               (self.t("Герои", "Heroes"), self.url("heroes/")), (self.t("Обучение", "Learn"), BASE + ("?lang=en" if lang == "en" else "") + "#learn")]
+               (self.t("Герои", "Heroes"), self.url("heroes/")), (self.t("Моды", "Mods"), self.url("mods/"))]
+        # every static page links to every landing page, so crawlers reach all of them from any hero guide
+        foot = [(self.t(f"Лучшие {POS_WHO['ru'][p]}", f"Best {POS_WHO['en'][p]}"), self.url(f"meta/{POS_SLUG[p]}/")) for p in range(1, 6)]
+        foot += [(self.t("Моды Dota 2", "Dota 2 mods"), self.url("mods/")), (self.t("Кастомизация героев", "Hero customisation"), self.url("paint/")),
+                 (self.t("Кто нажал глиф", "Who pressed the glyph"), self.url("glyph/")), (self.t("Все герои", "All heroes"), self.url("heroes/"))]
         crumb_html = " › ".join(f'<a href="{self.url(p)}">{esc(n)}</a>' if i < len(crumbs) - 1 else f"<span>{esc(n)}</span>" for i, (n, p) in enumerate(crumbs))
         updated = datetime.fromtimestamp(self.c["updated"], timezone.utc).strftime("%d.%m.%Y")
         return f"""<!doctype html>
@@ -209,6 +217,7 @@ class Page:
     <nav class="crumbs" aria-label="{self.t('Навигация', 'Breadcrumbs')}">{crumb_html}</nav>
 {body}
   </main>
+  <nav class="foot-links" aria-label="{self.t('Разделы сайта', 'Site sections')}">{''.join(f'<a href="{h}">{esc(n)}</a>' for n, h in foot)}</nav>
   <footer class="page-foot">{self.t('Данные: OpenDota и Stratz, пабы Divine–Immortal и про-сцена. Обновляется каждый день.', 'Data: OpenDota and Stratz, Divine–Immortal pubs and the pro scene. Updated daily.')}</footer>
 </div>
 </body>
@@ -310,6 +319,8 @@ class Page:
                                 f'<b>{esc(pname or t("Про-игрок", "Pro player"))}</b> · {mmss(dur)} · vs {" ".join(self.hero_img(e, "mini-hero") for e in enemies if e in c["heroes"])}'
                                 f' <a class="note" href="{BASE}?{"lang=en&" if self.lang == "en" else ""}match={mid}" rel="nofollow">{t("разбор", "breakdown")}</a></li>')
                 blocks.append(f'<h3>{t("Последние игры про", "Recent pro games")}</h3><ul class="pro-list">{"".join(rows)}</ul>')
+            all_pos = t(f"Все лучшие {POS_WHO['ru'][pi]} патча", f"All the best {POS_WHO['en'][pi]} of the patch")
+            blocks.append(f'<p><a href="{self.url("meta/" + POS_SLUG[pi] + "/")}">{all_pos} →</a></p>')
             sections.append(f'<section class="section card pad pos-section" id="pos-{pi}"><h2 class="section-title">{POS[self.lang][pi]} · {t("позиция", "position")} {pi}</h2>{"".join(blocks)}</section>')
 
         if trend > 0.015:
@@ -354,18 +365,25 @@ class Page:
                                      body, [(t("Главная", "Home"), ""), (t("Герои", "Heroes"), "heroes/")])
 
     # ---------- patch meta ----------
+    def pos_heroes(self, p):
+        """Heroes really played in position p, best win rate first."""
+        c, G = self.c, self.c["G"]
+        hs = [h for h in c["heroes"] if G.idx.get(h) is not None and G.pick(h) >= 0.01 and pos_prior(h, c["meta"], c["heroes"])[p - 1] >= 0.15]
+        return sorted(hs, key=lambda h: -G.wr(h))
+
     def meta(self):
         t, c, G = self.t, self.c, self.c["G"]
         secs, best = [], []
         for p in range(1, 6):
-            hs = [h for h in c["heroes"] if G.idx.get(h) is not None and G.pick(h) >= 0.01 and pos_prior(h, c["meta"], c["heroes"])[p - 1] >= 0.15]
-            hs.sort(key=lambda h: -G.wr(h))
+            hs = self.pos_heroes(p)
             top = next((h for h in hs if h not in {b[0] for b in best}), None)  # a different hero for every position
             if top is not None:
                 best.append((top, f"{POS[self.lang][p].lower()} {c['heroes'][top]['localized_name']} {G.wr(top) * 100:.0f}%"))
             rows = "".join(f'<tr><td>{i + 1}</td><td>{self.hero_link(h)}</td><td class="num">{G.wr(h) * 100:.1f}%</td><td class="num">{G.pick(h) * 100:.1f}%</td></tr>' for i, h in enumerate(hs[:12]))
-            secs.append(f'<section class="section card pad"><h2 class="section-title">{POS[self.lang][p]} · {t("позиция", "position")} {p}</h2>'
-                        f'<div class="table-wrap"><table><thead><tr><th>#</th><th>{t("Герой", "Hero")}</th><th>{t("Винрейт", "Win rate")}</th><th>{t("Пикрейт", "Pick rate")}</th></tr></thead><tbody>{rows}</tbody></table></div></section>')
+            more = t(f"Все {POS_WHO['ru'][p]}", f"All {POS_WHO['en'][p]}")
+            secs.append(f'<section class="section card pad"><h2 class="section-title"><a href="{self.url("meta/" + POS_SLUG[p] + "/")}">{POS[self.lang][p]} · {t("позиция", "position")} {p}</a></h2>'
+                        f'<div class="table-wrap"><table><thead><tr><th>#</th><th>{t("Герой", "Hero")}</th><th>{t("Винрейт", "Win rate")}</th><th>{t("Пикрейт", "Pick rate")}</th></tr></thead><tbody>{rows}</tbody></table></div>'
+                        f'<p><a href="{self.url("meta/" + POS_SLUG[p] + "/")}">{more} ({len(hs)}) →</a></p></section>')
         body = f"""    <h1>{t(f'Мета Dota 2, патч {c["patch"]}: сильнейшие герои по позициям', f'Dota 2 meta, patch {c["patch"]}: strongest heroes by position')}</h1>
     <p class="lead">{t(f'Лучшие герои для каждой позиции по винрейту в пабах Divine–Immortal за последние {c["days"]} дней. Контрпики и подбор героя под драфт — в интерактивной мете.',
                       f'The best heroes for each position by win rate in Divine–Immortal pubs over the last {c["days"]} days. Counterpicks and draft help are in the interactive meta.')}</p>
@@ -377,6 +395,123 @@ class Page:
         desc = t(f"Тир-лист {c['patch']} на сегодня: {lead}. Пабы Divine–Immortal, обновляется каждый день.",
                  f"Tier list for {c['patch']} today: {lead}. Divine–Immortal pubs, updated daily.")
         return "meta/", self.shell("meta/", title, desc, body, [(t("Главная", "Home"), ""), (t("Мета", "Meta"), "meta/")])
+
+    # ---------- best heroes of one position ----------
+    def meta_pos(self, p):
+        t, c, G = self.t, self.c, self.c["G"]
+        path, hs = f"meta/{POS_SLUG[p]}/", self.pos_heroes(p)
+        others = [x for x in c["heroes"] if G.idx.get(x) is not None and G.pick(x) >= 0.01]
+        rows = []
+        for i, h in enumerate(hs):
+            gp = c["hero_pos"].get(str(h), {}).get(str(p)) or {}
+            build = [r[0] for r in ((gp.get("pub") or {}).get("build") or gp.get("build") or [])][:4]
+            foe = max(others, key=lambda x: G.adv(x, h) if x != h else -99)
+            rows.append(f'<tr><td>{i + 1}</td><td>{self.hero_link(h)}</td><td class="num">{G.wr(h) * 100:.1f}%</td><td class="num">{G.pick(h) * 100:.1f}%</td>'
+                        f'<td class="build-mini">{"".join(self.item(k) for k in build)}</td><td>{self.hero_link(foe)}</td></tr>')
+        top3 = ", ".join(f"{c['heroes'][h]['localized_name']} ({G.wr(h) * 100:.1f}%)" for h in hs[:3])
+        who = POS_WHO[self.lang][p]
+        others_pos = " · ".join(f'<a href="{self.url("meta/" + POS_SLUG[q] + "/")}">{POS[self.lang][q]}</a>' for q in range(1, 6) if q != p)
+        body = f"""    <h1>{t(f'Лучшие {who} Dota 2, патч {c["patch"]}', f'Best {who} in Dota 2, patch {c["patch"]}')}</h1>
+    <p class="lead">{t(f'Сильнейшие {who} патча {c["patch"]} по винрейту в пабах Divine–Immortal за последние {c["days"]} дней: {top3}. Всего {len(hs)} героев, которых реально играют на позиции {p}. '
+                      f'Для каждого героя — сборка, с которой его играют, и герой, против которого ему тяжелее всего.',
+                      f'The strongest {who} of patch {c["patch"]} by win rate in Divine–Immortal pubs over the last {c["days"]} days: {top3}. {len(hs)} heroes that are really played in position {p}. '
+                      f'For each hero: the build it is played with and the hero it struggles against most.')}</p>
+    <p><a class="btn" href="{BASE}{'?lang=en' if self.lang == 'en' else ''}#meta">{t('Подобрать героя под драфт', 'Pick a hero for your draft')}</a></p>
+    <section class="section card pad"><div class="table-wrap"><table><thead><tr><th>#</th><th>{t("Герой", "Hero")}</th><th>{t("Винрейт", "Win rate")}</th><th>{t("Пикрейт", "Pick rate")}</th><th>{t("Сборка", "Build")}</th><th>{t("Тяжело против", "Struggles vs")}</th></tr></thead>
+      <tbody>{''.join(rows)}</tbody></table></div>
+      <p class="note">{t('Винрейт сглажен по количеству игр, чтобы редкие герои не попадали наверх случайно. «Тяжело против» — самый неудобный матчап с поправкой на общий винрейт героев.',
+                         'Win rates are smoothed by game count so rare heroes do not top the list by luck. “Struggles vs” is the worst matchup, adjusted for each hero’s overall win rate.')}</p></section>
+    <p class="note">{t('Другие позиции', 'Other positions')}: {others_pos} · <a href="{self.url('meta/')}">{t('вся мета', 'full meta')}</a></p>"""
+        titles = {"ru": ["", f"Лучшие керри Dota 2 {c['patch']}: топ героев на 1 позицию", f"Лучшие герои на мид Dota 2 {c['patch']}: топ мидеров",
+                         f"Лучшие оффлейнеры Dota 2 {c['patch']}: топ героев на 3 позицию", f"Лучшие саппорты 4 позиции Dota 2 {c['patch']}: топ героев",
+                         f"Лучшие саппорты 5 позиции Dota 2 {c['patch']}: топ героев"],
+                  "en": ["", f"Best Dota 2 carry heroes {c['patch']}: position 1 tier list", f"Best Dota 2 mid heroes {c['patch']}: position 2 tier list",
+                         f"Best Dota 2 offlaners {c['patch']}: position 3 tier list", f"Best Dota 2 position 4 supports {c['patch']}: tier list",
+                         f"Best Dota 2 position 5 supports {c['patch']}: tier list"]}
+        title = titles[self.lang][p] + " | Dota 2 Analyzer"
+        desc = short(t(f"Топ {who} на сегодня: {top3}. Винрейт, пикрейт, сборки и контрпики, пабы Divine–Immortal, обновляется каждый день.",
+                       f"Top {who} today: {top3}. Win rate, pick rate, builds and counters from Divine–Immortal pubs, updated daily."))
+        lst = {"@context": "https://schema.org", "@type": "ItemList", "name": titles[self.lang][p], "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "url": self.abs("hero/" + slug(c["heroes"][h]["localized_name"]) + "/"), "name": c["heroes"][h]["localized_name"]} for i, h in enumerate(hs[:20])]}
+        crumbs = [(t("Главная", "Home"), ""), (t("Мета", "Meta"), "meta/"), (POS[self.lang][p], path)]
+        return path, self.shell(path, title, desc, body, crumbs, lst)
+
+    # ---------- D2A Mods ----------
+    def mods(self):
+        t, lang, cat = self.t, self.lang, self.c["mods"]
+        app = cat["app"]
+        label = {"fps": "FPS", "sound": t("Звук", "Sound"), "visual": t("Вид", "Visual")}
+        secs = []
+        for tab in cat["tabs"]:
+            items = []
+            for m in [m for m in cat["mods"] if m.get("tab", "optimize") == tab["id"] and not m.get("hidden")]:
+                fig = (f'<img src="{BASE}{esc(m["image"])}" alt="{esc(m["name"][lang])}: {t("было и стало", "before and after")}" loading="lazy" width="1016" height="252">'
+                       if m.get("image") else "")
+                items.append(f'<li><h3>{esc(m.get("icon", ""))} {esc(m["name"][lang])} <span class="chip">{label.get(m.get("category"), "")}</span></h3><p>{esc(m["desc"][lang])}</p>{fig}</li>')
+            secs.append(f'<section class="section card pad"><h2 class="section-title">{esc(tab["name"][lang])}</h2><ul class="mod-list">{"".join(items)}</ul></section>')
+        n = sum(1 for m in cat["mods"] if not m.get("hidden"))
+        body = f"""    <h1>{t('Моды для Dota 2: D2A Mods', 'Dota 2 mods: D2A Mods')}</h1>
+    <p class="lead">{t(f'Бесплатная программа для Windows: {n} своих модов и больше 200 модов сообщества. Больше FPS без погоды и лишних эффектов, без травы и кустов, тёмный ландшафт, контрастное ХП крипов, шрифты, курсоры, фоны меню и перекраска героев. Отмечаешь моды, нажимаешь «Установить» — программа сама находит Dota.',
+                      f'A free Windows app with {n} of our own mods and over 200 community mods. More FPS without weather and extra effects, no grass and bushes, dark terrain, high-contrast creep HP, fonts, cursors, menu backgrounds and hero recolours. Tick the mods, press Install, the app finds Dota by itself.')}</p>
+    <p><a class="btn" href="{esc(app['download'])}" rel="noopener">{t('Скачать D2A Mods', 'Download D2A Mods')} {esc(app['version'])}</a></p>
+    <p class="note">{t('Только визуальные и звуковые моды без преимущества в игре и без вмешательства в процесс Dota. Файлы игры не меняются: моды ставятся отдельными файлами и удаляются одной кнопкой. Valve официально моды не поддерживает.',
+                       'Visual and sound mods only, with no in-game advantage and no hooking into the Dota process. Game files stay untouched: mods go in as separate files and are removed with one button. Valve does not officially support mods.')}</p>
+{''.join(secs)}
+    <section class="section card pad"><h2 class="section-title">{t('Как поставить моды', 'How to install the mods')}</h2><ol class="facts">
+      <li>{t('Скачай D2AMods.exe и закрой Dota 2.', 'Download D2AMods.exe and close Dota 2.')}</li>
+      <li>{t('Запусти программу. Если Windows предупредит о неизвестном издателе: «Подробнее» → «Выполнить в любом случае».', 'Run it. If Windows warns about an unknown publisher: More info → Run anyway.')}</li>
+      <li>{t('Отметь моды и нажми «Установить».', 'Tick the mods and press Install.')}</li>
+      <li>{t('После обновления Dota, если моды пропали, нажми «Установить» ещё раз. Вернуть всё как было: «Удалить все моды».', 'If a Dota update turns the mods off, press Install again. To undo everything: Remove all mods.')}</li></ol></section>
+    <p class="note">{t('Моды сообщества:', 'Community mods:')} <a href="https://github.com/h6rd/Dota2PornFxWeb" rel="noopener">Dota2PornFx</a>, <a href="https://github.com/Egezenn/dota2-minify" rel="noopener">Minify</a>. <a href="{self.url('paint/')}">{t('Кастомизация героев', 'Hero customisation')}</a> · <a href="{BASE}{'?lang=en' if lang == 'en' else ''}#mods">{t('Моды на сайте', 'Mods in the app')}</a></p>"""
+        title = t("Моды для Dota 2: больше FPS, без травы, тёмный ландшафт, шрифты | D2A Mods", "Dota 2 mods: more FPS, no grass, dark terrain, fonts | D2A Mods")
+        desc = short(t(f"Бесплатные моды для Dota 2 в одной программе: больше FPS, без погоды и травы, тёмный ландшафт, контрастное ХП крипов, шрифты и перекраска героев. Установка в один клик.",
+                       f"Free Dota 2 mods in one app: more FPS, no weather and grass, dark terrain, high-contrast creep HP, fonts and hero recolours. One-click install."))
+        soft = {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "D2A Mods", "operatingSystem": "Windows", "applicationCategory": "GameApplication",
+                "softwareVersion": app["version"], "downloadUrl": app["download"], "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "inLanguage": ["ru", "en"]}
+        return "mods/", self.shell("mods/", title, desc, body, [(t("Главная", "Home"), ""), (t("Моды", "Mods"), "mods/")], soft)
+
+    # ---------- hero customisation ----------
+    def paint(self):
+        t, c = self.t, self.c
+        by_npc = {hs.get("name"): (h, hs) for h, hs in c["heroes"].items()}
+        cards = []
+        for x in sorted(c["paint"], key=lambda x: x["name"]):
+            h, hs = by_npc.get(x["npc"], (None, None))
+            img = self.hero_img(h) if h else ""
+            cards.append(f'<a href="{BASE}{"?lang=en" if self.lang == "en" else ""}#paint-{x["npc"].replace("npc_dota_hero_", "")}">{img}<span>{esc(x["name"])}</span></a>')
+        body = f"""    <h1>{t('Кастомизация героев Dota 2: перекраска в 3D', 'Dota 2 hero customisation: recolour in 3D')}</h1>
+    <p class="lead">{t(f'Перекрась любого из {len(c["paint"])} героев в любой цвет: открой 3D-модель, крути её мышкой, кликни по части тела или оружию и выбери цвет на RGB-круге. Можно красить отдельные части или всего героя сразу, а также иконки способностей. В игру цвета ставит программа D2A Mods, и видишь их только ты.',
+                      f'Recolour any of the {len(c["paint"])} heroes in any colour: open the 3D model, turn it with the mouse, click a body part or weapon and pick a colour on the RGB wheel. Colour single parts or the whole hero at once, plus the ability icons. The D2A Mods app puts the colours into the game, and only you see them.')}</p>
+    <p><a class="btn" href="{BASE}{'?lang=en' if self.lang == 'en' else ''}#paint">{t('Открыть 3D-редактор', 'Open the 3D editor')}</a></p>
+    <section class="section card pad"><h2 class="section-title">{t('Как это работает', 'How it works')}</h2><ol class="facts">
+      <li>{t('Выбери героя ниже и раскрась его в редакторе.', 'Pick a hero below and colour it in the editor.')}</li>
+      <li>{t('Скопируй код цветов или открой редактор прямо из программы', 'Copy the colour code, or open the editor straight from the')} <a href="{self.url('mods/')}">D2A Mods</a>.</li>
+      <li>{t('Нажми «Установить» в программе: она перекрасит текстуры героя из файлов самой игры.', 'Press Install in the app: it recolours the hero’s textures from the game’s own files.')}</li>
+      <li>{t('Перекрашиваются стандартные модели героев. Платная косметика Valve не подключается и не открывается.', 'Default hero models are recoloured. Paid Valve cosmetics are neither included nor unlocked.')}</li></ol></section>
+    <section class="section"><h2 class="section-title">{t('Герои', 'Heroes')}</h2><div class="hero-index">{''.join(cards)}</div></section>"""
+        title = t("Кастомизация героев Dota 2: перекраска моделей в любой цвет | Dota 2 Analyzer", "Dota 2 hero customisation: recolour models in any colour | Dota 2 Analyzer")
+        desc = t(f"Перекрась героев Dota 2 в 3D-редакторе: части тела, оружие, весь герой и иконки способностей. {len(c['paint'])} героев, цвета ставятся в игру одной кнопкой.",
+                 f"Recolour Dota 2 heroes in a 3D editor: body parts, weapons, the whole hero and ability icons. {len(c['paint'])} heroes, colours go into the game with one button.")
+        return "paint/", self.shell("paint/", title, desc, body, [(t("Главная", "Home"), ""), (t("Кастомизация героев", "Hero customisation"), "paint/")])
+
+    # ---------- who pressed the glyph ----------
+    def glyph(self):
+        t = self.t
+        app = f"{BASE}{'?lang=en' if self.lang == 'en' else ''}"
+        body = f"""    <h1>{t('Кто нажал глиф в Dota 2', 'Who pressed the glyph in Dota 2')}</h1>
+    <p class="lead">{t('Вставь номер матча или ссылку на него с Dotabuff, OpenDota или Stratz: покажем, кто из игроков нажимал глиф укреплений, сколько раз и на какой минуте. Удобно, когда глиф сожгли впустую и в чате начинаются споры.',
+                      'Paste a match ID or a Dotabuff, OpenDota or Stratz link: you will see which players pressed the glyph of fortification, how many times and at what minute. Handy when the glyph was wasted and the chat starts arguing.')}</p>
+    <form class="search-row card pad" onsubmit="var m=(this.q.value.match(/\\d{{6,}}/)||[])[0];if(m)location.href='{app}#glyph-'+m;return false">
+      <input type="text" name="q" placeholder="{t('Например 9057311648', 'For example 9057311648')}" aria-label="{t('Номер матча или ссылка', 'Match ID or link')}" autocomplete="off">
+      <button class="btn" type="submit">{t('Проверить', 'Check')}</button></form>
+    <section class="section card pad"><h2 class="section-title">{t('Как это работает', 'How it works')}</h2><ul class="facts">
+      <li>{t('Нажатия глифа берутся из разобранной записи матча на OpenDota. Если матч ещё не разобран, сайт сам отправит его на разбор и подождёт.', 'Glyph presses come from the parsed match replay on OpenDota. If the match is not parsed yet, the site requests parsing and waits.')}</li>
+      <li>{t('Номер матча есть в клиенте Dota во вкладке матча, а также на Dotabuff, OpenDota и Stratz.', 'The match ID is in the Dota client on the match page, and on Dotabuff, OpenDota and Stratz.')}</li>
+      <li>{t('Разбор матча целиком — карта, варды, драки и ход игры — в', 'The full match breakdown (map, wards, fights and game flow) is in the')} <a href="{app}">{t('разборе игрока', 'player analysis')}</a>.</li></ul></section>"""
+        title = t("Кто нажал глиф в Dota 2: проверка по номеру матча | Dota 2 Analyzer", "Who pressed the glyph in Dota 2: check by match ID | Dota 2 Analyzer")
+        desc = t("Узнай, кто нажал глиф в матче Dota 2: вставь номер матча или ссылку Dotabuff, OpenDota, Stratz. Все нажатия игроков по минутам.",
+                 "Find out who pressed the glyph in a Dota 2 match: paste a match ID or a Dotabuff, OpenDota or Stratz link. Every player's presses by minute.")
+        return "glyph/", self.shell("glyph/", title, desc, body, [(t("Главная", "Home"), ""), (t("Кто нажал глиф", "Who pressed the glyph"), "glyph/")])
 
 
 def write(rel, text):
@@ -394,12 +529,14 @@ def main():
     with open(os.path.join(ROOT, "index.html"), encoding="utf-8") as f:
         v = re.search(r"style\.css\?v=(\d+)", f.read()).group(1)
     ctx = {"heroes": heroes, "items": items, "meta": meta, "G": Group(g4), "hero_pos": load("heroes.json"),
-           "patch": meta["patch"], "updated": meta["generated_at"], "days": g4.get("days", 5), "v": v}
+           "patch": meta["patch"], "updated": meta["generated_at"], "days": g4.get("days", 5), "v": v,
+           "mods": load("../mods/catalog.json"), "paint": load("../paint/index.json")}
     urls = ["", "heroes/", "meta/"]
     for lang in ("ru", "en"):
         pg = Page(lang, ctx)
         prefix = "en/" if lang == "en" else ""
-        for path, text in [pg.index(), pg.meta()] + [pg.hero(h) for h in heroes]:
+        pages = [pg.index(), pg.meta()] + [pg.meta_pos(p) for p in range(1, 6)] + [pg.mods(), pg.paint(), pg.glyph()]
+        for path, text in pages + [pg.hero(h) for h in heroes]:
             write(prefix + path + "index.html", text)
             if lang == "ru" and path not in urls:
                 urls.append(path)

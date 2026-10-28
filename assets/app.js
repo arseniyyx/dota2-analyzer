@@ -2284,6 +2284,7 @@ function applyStaticLang() {
   }
   if (!EN) return;
   $('footHeroes').href = 'en/heroes/'; $('footMeta').href = 'en/meta/';
+  document.querySelectorAll('.foot-static').forEach(a => { a.href = 'en/' + a.getAttribute('href'); });
   document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; });
   document.querySelectorAll('[data-en-placeholder]').forEach(el => { el.placeholder = el.dataset.enPlaceholder; });
   document.querySelectorAll('[data-en-aria]').forEach(el => { el.setAttribute('aria-label', el.dataset.enAria); });

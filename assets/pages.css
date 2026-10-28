@@ -31,3 +31,14 @@
 .page td.num, .page th:nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
 .page-foot { padding: 24px 0 32px; color: var(--fg-muted); font-size: 12px; }
 a.lang-btn { display: inline-grid; place-items: center; text-decoration: none; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; }
+.foot-links a { color: var(--fg-muted); text-decoration: none; }
+.foot-links a:hover { color: var(--accent-strong); }
+.section-title a { color: inherit; text-decoration: none; }
+.section-title a:hover { color: var(--accent-strong); }
+.build-mini { white-space: nowrap; }
+.build-mini .item-icon { width: 33px; height: 24px; margin-right: 2px; vertical-align: middle; }
+.mod-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.mod-list h3 { margin: 0 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mod-list p { line-height: 1.5; color: var(--fg-muted); }
+.mod-list img { width: 100%; max-width: 760px; height: auto; margin-top: 8px; border-radius: 8px; }
