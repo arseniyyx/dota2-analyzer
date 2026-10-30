@@ -171,7 +171,6 @@ class Page:
         foot += [(self.t("Моды Dota 2", "Dota 2 mods"), self.url("mods/")), (self.t("Кастомизация героев", "Hero customisation"), self.url("paint/")),
                  (self.t("Кто нажал глиф", "Who pressed the glyph"), self.url("glyph/")), (self.t("Все герои", "All heroes"), self.url("heroes/"))]
         crumb_html = " › ".join(f'<a href="{self.url(p)}">{esc(n)}</a>' if i < len(crumbs) - 1 else f"<span>{esc(n)}</span>" for i, (n, p) in enumerate(crumbs))
-        updated = datetime.fromtimestamp(self.c["updated"], timezone.utc).strftime("%d.%m.%Y")
         return f"""<!doctype html>
 <html lang="{lang}">
 <head>
@@ -187,7 +186,7 @@ class Page:
 <link rel="alternate" hreflang="x-default" href="{self.abs(path, 'ru')}">
 <link rel="icon" href="{BASE}assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{BASE}assets/apple-touch-icon.png">
-<meta property="og:type" content="article">
+<meta property="og:type" content="website">
 <meta property="og:site_name" content="Dota 2 Analyzer">
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(desc)}">
@@ -210,7 +209,7 @@ class Page:
       <span class="brand-text"><small>Dota 2</small><span>Analyzer</span></span>
     </a>
     <nav class="nav" aria-label="{self.t('Разделы', 'Sections')}">{''.join(f'<a href="{h}">{esc(n)}</a>' for n, h in nav)}</nav>
-    <span class="updated">{self.t('Патч', 'Patch')} {esc(self.c['patch'])} · {self.t('данные от', 'data from')} {updated}</span>
+    <span class="updated">{self.t('Патч', 'Patch')} {esc(self.c['patch'])} · {self.t('обновляется каждый день', 'updated daily')}</span>
     <a class="lang-btn" href="{self.abs(path, other)}" hreflang="{other}">{other.upper()}</a>
   </header>
   <main class="stack page">
@@ -343,9 +342,9 @@ class Page:
         title = t(f"{name}: сборка, контрпики и гайд, патч {c['patch']} | Dota 2 Analyzer", f"{name} build, counters and guide, patch {c['patch']} | Dota 2 Analyzer")
         desc = short(" ".join(summary))
         crumbs = [(t("Главная", "Home"), ""), (t("Герои", "Heroes"), "heroes/"), (name, path)]
-        art = {"@context": "https://schema.org", "@type": "Article", "headline": title.split(" | ")[0], "inLanguage": self.lang,
-               "about": {"@type": "VideoGame", "name": "Dota 2"}, "dateModified": datetime.fromtimestamp(c["updated"], timezone.utc).isoformat(),
-               "author": {"@type": "Person", "name": "arseniyyx"}, "image": f"{CDN}{hs['img']}"}
+        # a WebPage without dates: an Article with dateModified made Google print "7 days ago" in the snippet
+        art = {"@context": "https://schema.org", "@type": "WebPage", "name": title.split(" | ")[0], "inLanguage": self.lang,
+               "about": {"@type": "VideoGame", "name": "Dota 2"}, "image": f"{CDN}{hs['img']}"}
         return path, self.shell(path, title, desc, body, crumbs, art)
 
     # ---------- hero index ----------
