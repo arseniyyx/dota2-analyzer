@@ -169,7 +169,9 @@ class Page:
         # every static page links to every landing page, so crawlers reach all of them from any hero guide
         foot = [(self.t(f"Лучшие {POS_WHO['ru'][p]}", f"Best {POS_WHO['en'][p]}"), self.url(f"meta/{POS_SLUG[p]}/")) for p in range(1, 6)]
         foot += [(self.t("Моды Dota 2", "Dota 2 mods"), self.url("mods/")), (self.t("Кастомизация героев", "Hero customisation"), self.url("paint/")),
-                 (self.t("Кто нажал глиф", "Who pressed the glyph"), self.url("glyph/")), (self.t("Все герои", "All heroes"), self.url("heroes/"))]
+                 (self.t("Кто нажал глиф", "Who pressed the glyph"), self.url("glyph/")), (self.t("Арт-сетка", "Grid art"), self.url("grid-art/")),
+                 (self.t("Мета-сетка", "Meta grid"), self.url("grid-meta/")), (self.t("Оптимизация и FPS", "Optimisation and FPS"), self.url("optimize/")),
+                 (self.t("Все герои", "All heroes"), self.url("heroes/"))]
         crumb_html = " › ".join(f'<a href="{self.url(p)}">{esc(n)}</a>' if i < len(crumbs) - 1 else f"<span>{esc(n)}</span>" for i, (n, p) in enumerate(crumbs))
         return f"""<!doctype html>
 <html lang="{lang}">
@@ -512,6 +514,95 @@ class Page:
                  "Find out who pressed the glyph in a Dota 2 match: paste a match ID or a Dotabuff, OpenDota or Stratz link. Every player's presses by minute.")
         return "glyph/", self.shell("glyph/", title, desc, body, [(t("Главная", "Home"), ""), (t("Кто нажал глиф", "Who pressed the glyph"), "glyph/")])
 
+    def grid_steps(self):
+        t = self.t
+        return f"""<ol class="facts">
+      <li>{t('Закрой Dota 2 и скачай файл hero_grid_config.json.', 'Close Dota 2 and download hero_grid_config.json.')}</li>
+      <li>{t('Положи его в папку', 'Put it into')} <code>Steam\\userdata\\&lt;Friend ID&gt;\\570\\remote\\cfg\\</code> {t('с заменой.', 'replacing the old one.')}</li>
+      <li>{t('Уже есть свои сетки? Загрузи текущий файл через «Добавить к моему файлу…» — новая сетка добавится, старые сохранятся.', 'Already have your own grids? Load your current file with “Add to my file…”: the new grid is added and the old ones stay.')}</li>
+      <li>{t('Запусти Dota: сетка появится в выборе героев и в разделе «Герои».', 'Start Dota: the grid shows up in hero pick and on the Heroes page.')}</li></ol>"""
+
+    # ---------- art hero grid ----------
+    def grid_art(self):
+        t = self.t
+        app = f"{BASE}{'?lang=en' if self.lang == 'en' else ''}"
+        body = f"""    <h1>{t('Арт-сетка героев Dota 2', 'Dota 2 hero grid art')}</h1>
+    <p class="lead">{t('Нарисуй картинку прямо в сетке героев Dota 2: рисунок собирается из сотен маленьких пустых категорий, а рядом остаются настоящие зоны, куда ты перетаскиваешь героев. Загрузи фото — лицо, персонажа, логотип — или рисуй кистью сам, и скачай готовый hero_grid_config.json.',
+                      'Draw a picture right in the Dota 2 hero grid: it is made of hundreds of tiny empty categories, with real zones next to it where you drag your heroes. Upload a photo (a face, a character, a logo) or paint with a brush, then download a ready hero_grid_config.json.')}</p>
+    <p><a class="btn" href="{app}#grid-art">{t('Сделать арт-сетку', 'Make a grid art')}</a></p>
+    <section class="section card pad"><h2 class="section-title">{t('Что можно настроить', 'What you can tune')}</h2><ul class="facts">
+      <li>{t('Стиль: контуры или заливка точками, количество точек, плотность и символ.', 'Style: outlines or dot fill, dot count, density and the symbol.')}</li>
+      <li>{t('Зоны для героев: пять справа, пять снизу или без зон, с рамками из точек.', 'Hero zones: five on the right, five at the bottom or none, with dot frames.')}</li>
+      <li>{t('Сразу заполнить зоны мета-героями по позициям и добавить свой текст в углу.', 'Fill the zones with meta heroes by position right away and add your own text in the corner.')}</li>
+      <li>{t('Масштаб — если рисунок не влезает в сетку.', 'Scale, if the picture does not fit the grid.')}</li></ul></section>
+    <section class="section card pad"><h2 class="section-title">{t('Как поставить сетку в Dota 2', 'How to install the grid in Dota 2')}</h2>{self.grid_steps()}</section>
+    <p class="note">{t('Нужна сетка без рисунка, просто сильнейшие герои по позициям?', 'Need a plain grid with the strongest heroes by position?')} <a href="{self.url('grid-meta/')}">{t('Мета-сетка героев', 'Meta hero grid')}</a></p>"""
+        title = t("Арт-сетка героев Dota 2: картинка из hero grid по фото | Dota 2 Analyzer", "Dota 2 hero grid art: turn a photo into a hero grid | Dota 2 Analyzer")
+        desc = t("Сделай рисунок из сетки героев Dota 2: загрузи фото или рисуй сам, выбери стиль и скачай hero_grid_config.json. Бесплатно, прямо в браузере.",
+                 "Make a picture out of the Dota 2 hero grid: upload a photo or draw, pick a style and download hero_grid_config.json. Free, right in the browser.")
+        return "grid-art/", self.shell("grid-art/", title, desc, body, [(t("Главная", "Home"), ""), (t("Арт-сетка", "Grid art"), "grid-art/")])
+
+    # ---------- meta hero grid ----------
+    def grid_meta(self):
+        t, c, G = self.t, self.c, self.c["G"]
+        app = f"{BASE}{'?lang=en' if self.lang == 'en' else ''}"
+        cols = []
+        for p in range(1, 6):
+            hs = self.pos_heroes(p)[:10]
+            cols.append(f'<div class="card pad"><h3><a href="{self.url("meta/" + POS_SLUG[p] + "/")}">{POS[self.lang][p]}</a></h3><ul class="hero-list">'
+                        + "".join(f'<li>{self.hero_link(h)}<span class="note">{G.wr(h) * 100:.1f}%</span></li>' for h in hs) + "</ul></div>")
+        body = f"""    <h1>{t(f'Мета-сетка героев Dota 2, патч {c["patch"]}', f'Dota 2 meta hero grid, patch {c["patch"]}')}</h1>
+    <p class="lead">{t(f'Готовая сетка героев для Dota 2: пять категорий по позициям, сильнейшие герои первыми по винрейту в пабах Divine–Immortal за последние {c["days"]} дней. Собери её в один клик, при желании поправь и скачай hero_grid_config.json — в выборе героев сразу видно, кого брать на свою позицию.',
+                      f'A ready hero grid for Dota 2: five categories by position, the strongest heroes first by win rate in Divine–Immortal pubs over the last {c["days"]} days. Build it in one click, tweak it if you like and download hero_grid_config.json: in hero pick you see at once whom to take for your role.')}</p>
+    <p><a class="btn" href="{app}#grid-meta">{t('Собрать мета-сетку', 'Build the meta grid')}</a></p>
+    <section class="section"><h2 class="section-title">{t('Что будет в сетке сегодня', 'What the grid holds today')}</h2><div class="grid-cols">{''.join(cols)}</div></section>
+    <section class="section card pad"><h2 class="section-title">{t('Как поставить сетку в Dota 2', 'How to install the grid in Dota 2')}</h2>{self.grid_steps()}</section>
+    <p class="note">{t('Хочешь картинку вместо списка?', 'Want a picture instead of a list?')} <a href="{self.url('grid-art/')}">{t('Арт-сетка героев', 'Hero grid art')}</a></p>"""
+        title = t(f"Мета-сетка героев Dota 2 {c['patch']}: hero grid по позициям | Dota 2 Analyzer", f"Dota 2 meta hero grid {c['patch']}: hero grid by position | Dota 2 Analyzer")
+        desc = t(f"Сетка героев Dota 2 по позициям на патч {c['patch']}: сильнейшие керри, мидеры, оффлейнеры и саппорты первыми. Обновляется каждый день, скачай hero_grid_config.json.",
+                 f"A Dota 2 hero grid by position for patch {c['patch']}: the strongest carries, mids, offlaners and supports first. Updated daily, download hero_grid_config.json.")
+        return "grid-meta/", self.shell("grid-meta/", title, desc, body, [(t("Главная", "Home"), ""), (t("Мета-сетка", "Meta grid"), "grid-meta/")])
+
+    # ---------- optimisation ----------
+    def optimize(self):
+        t = self.t
+        app = f"{BASE}{'?lang=en' if self.lang == 'en' else ''}"
+        tiers = [(t("Слабый ПК / ноутбук", "Low-end PC / laptop"), "70–80%", t("Низкие", "Low"), t("Низкие", "Low"), t("Низкие", "Low")),
+                 (t("Средний ПК", "Mid-range PC"), "90–100%", t("Средние", "Medium"), t("Средние", "Medium"), t("Средние", "Medium")),
+                 (t("Мощный ПК", "High-end PC"), "100%", t("Высокие", "High"), t("Высокие", "High"), t("Высокие", "High"))]
+        rows = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{s}</td><td>{x}</td><td>{e}</td></tr>" for a, b, s, x, e in tiers)
+        off = [t("Фоновые существа — птицы и живность на карте, на игру не влияют", "Ambient creatures: birds and critters, no gameplay value"),
+               t("Вертикальная синхронизация — добавляет задержку ввода, лучше ограничить FPS", "Vsync: adds input lag, cap FPS instead"),
+               t("Трава, симуляция ткани, ветер в деревьях, атмосферный туман, ambient occlusion, качественная вода — на слабом и среднем ПК", "Grass, cloth simulation, tree wind, atmospheric fog, ambient occlusion, high-quality water: on low and mid PCs"),
+               t("Анимированный портрет героя — ощутимо ест FPS на слабых видеокартах", "Animated hero portrait: costs FPS on weak GPUs"),
+               t("Блики, карты нормалей, освещение мира, дополнительный проход света — только на слабом ПК", "Specular, normal maps, world lighting, additive light pass: on low PCs only")]
+        cfg = "\n".join(["con_enable 1", "fps_max 174", "net_graph 1", "dota_player_auto_repeat_right_mouse 1", 'echo "autoexec loaded"'])
+        body = f"""    <h1>{t('Оптимизация Dota 2: как поднять FPS', 'Dota 2 optimisation: how to get more FPS')}</h1>
+    <p class="lead">{t('Параметры запуска, autoexec.cfg и настройки графики Dota 2 под слабый, средний и мощный компьютер. Только официальные настройки и команды консоли, файлы игры не трогаем. В интерактивной версии выбираешь свой ПК, частоту монитора и DirectX или Vulkan — и копируешь готовый результат.',
+                      'Dota 2 launch options, autoexec.cfg and video settings for low, mid and high-end PCs. Official settings and console commands only, game files stay untouched. In the interactive version you pick your PC, monitor refresh rate and DirectX or Vulkan, then copy the result.')}</p>
+    <p><a class="btn" href="{app}#optimize">{t('Подобрать под мой ПК', 'Tune for my PC')}</a></p>
+    <section class="section card pad"><h2 class="section-title">{t('Параметры запуска', 'Launch options')}</h2>
+      <p>{t('Steam → Dota 2 → Свойства → Параметры запуска:', 'Steam → Dota 2 → Properties → Launch options:')}</p>
+      <pre class="card pad"><code>-novid -console -map dota -dx11 +exec autoexec</code></pre>
+      <ul class="facts"><li><b>-novid</b> — {t('без заставки при запуске', 'no intro video')}</li><li><b>-console</b> — {t('включает консоль', 'enables the console')}</li>
+        <li><b>-map dota</b> — {t('карта грузится заранее, матч открывается быстрее', 'preloads the map so matches open faster')}</li>
+        <li><b>-dx11</b> / <b>-vulkan</b> — {t('графический API: на большинстве ПК стабильнее DirectX 11, на части видеокарт AMD быстрее Vulkan', 'graphics API: DirectX 11 is steadier on most PCs, Vulkan is faster on some AMD GPUs')}</li>
+        <li><b>+exec autoexec</b> — {t('выполняет autoexec.cfg при запуске', 'runs autoexec.cfg on start')}</li></ul></section>
+    <section class="section card pad"><h2 class="section-title">autoexec.cfg</h2>
+      <p>{t('Файл кладётся в', 'The file goes into')} <code>steamapps\\common\\dota 2 beta\\game\\dota\\cfg\\</code>. {t('Пример для монитора 144 Гц:', 'Example for a 144 Hz monitor:')}</p>
+      <pre class="card pad"><code>{esc(cfg)}</code></pre>
+      <ul class="facts"><li><b>fps_max</b> — {t('потолок FPS чуть выше частоты монитора: ровная картинка и меньше нагрев', 'an FPS cap a bit above the refresh rate: smoother frames and less heat')}</li>
+        <li><b>net_graph 1</b> — {t('FPS, пинг и потери пакетов в углу экрана', 'FPS, ping and packet loss in the corner')}</li>
+        <li><b>dota_player_auto_repeat_right_mouse 1</b> — {t('зажатый ПКМ продолжает двигать героя', 'holding right click keeps your hero moving')}</li></ul></section>
+    <section class="section card pad"><h2 class="section-title">{t('Настройки графики', 'Video settings')}</h2>
+      <div class="table-wrap"><table><thead><tr><th>{t('Компьютер', 'PC')}</th><th>{t('Разрешение рендера', 'Render quality')}</th><th>{t('Тени', 'Shadows')}</th><th>{t('Текстуры', 'Textures')}</th><th>{t('Эффекты', 'Effects')}</th></tr></thead><tbody>{rows}</tbody></table></div>
+      <h3>{t('Что выключить', 'What to turn off')}</h3><ul class="facts">{''.join(f'<li>{x}</li>' for x in off)}</ul></section>
+    <p class="note">{t('Ещё больше FPS — без погоды, лишних эффектов карты и травы:', 'Even more FPS without weather, extra map effects and grass:')} <a href="{self.url('mods/')}">{t('моды D2A Mods', 'D2A Mods')}</a>.</p>"""
+        title = t("Оптимизация Dota 2: параметры запуска, autoexec и настройки для FPS | Dota 2 Analyzer", "Dota 2 optimisation: launch options, autoexec and settings for FPS | Dota 2 Analyzer")
+        desc = t("Как поднять FPS в Dota 2: параметры запуска, autoexec.cfg и настройки графики для слабого, среднего и мощного ПК. Только официальные настройки.",
+                 "How to get more FPS in Dota 2: launch options, autoexec.cfg and video settings for low, mid and high-end PCs. Official settings only.")
+        return "optimize/", self.shell("optimize/", title, desc, body, [(t("Главная", "Home"), ""), (t("Оптимизация", "Optimisation"), "optimize/")])
+
 
 def write(rel, text):
     full = os.path.join(ROOT, rel)
@@ -534,7 +625,7 @@ def main():
     for lang in ("ru", "en"):
         pg = Page(lang, ctx)
         prefix = "en/" if lang == "en" else ""
-        pages = [pg.index(), pg.meta()] + [pg.meta_pos(p) for p in range(1, 6)] + [pg.mods(), pg.paint(), pg.glyph()]
+        pages = [pg.index(), pg.meta()] + [pg.meta_pos(p) for p in range(1, 6)] + [pg.mods(), pg.paint(), pg.glyph(), pg.grid_art(), pg.grid_meta(), pg.optimize()]
         for path, text in pages + [pg.hero(h) for h in heroes]:
             write(prefix + path + "index.html", text)
             if lang == "ru" and path not in urls:

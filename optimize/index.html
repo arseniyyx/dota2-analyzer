@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Оптимизация Dota 2: параметры запуска, autoexec и настройки для FPS | Dota 2 Analyzer</title>
+<meta name="description" content="Как поднять FPS в Dota 2: параметры запуска, autoexec.cfg и настройки графики для слабого, среднего и мощного ПК. Только официальные настройки.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0b0e14">
+<link rel="canonical" href="https://arseniyyx.github.io/dota2-analyzer/optimize/">
+<link rel="alternate" hreflang="ru" href="https://arseniyyx.github.io/dota2-analyzer/optimize/">
+<link rel="alternate" hreflang="en" href="https://arseniyyx.github.io/dota2-analyzer/en/optimize/">
+<link rel="alternate" hreflang="x-default" href="https://arseniyyx.github.io/dota2-analyzer/optimize/">
+<link rel="icon" href="/dota2-analyzer/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/dota2-analyzer/assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dota 2 Analyzer">
+<meta property="og:title" content="Оптимизация Dota 2: параметры запуска, autoexec и настройки для FPS | Dota 2 Analyzer">
+<meta property="og:description" content="Как поднять FPS в Dota 2: параметры запуска, autoexec.cfg и настройки графики для слабого, среднего и мощного ПК. Только официальные настройки.">
+<meta property="og:url" content="https://arseniyyx.github.io/dota2-analyzer/optimize/">
+<meta property="og:image" content="https://arseniyyx.github.io/dota2-analyzer/assets/og-image.png">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
+<link rel="stylesheet" href="/dota2-analyzer/assets/style.css?v=77">
+<link rel="stylesheet" href="/dota2-analyzer/assets/pages.css?v=77">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Главная", "item": "https://arseniyyx.github.io/dota2-analyzer/"}, {"@type": "ListItem", "position": 2, "name": "Оптимизация", "item": "https://arseniyyx.github.io/dota2-analyzer/optimize/"}]}</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <a class="brand" href="/dota2-analyzer/" aria-label="Dota 2 Analyzer">
+      <span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20 6v6c0 4.6-3.3 8.4-8 9.5-4.7-1.1-8-4.9-8-9.5V6l8-3.5Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
+      <span class="brand-text"><small>Dota 2</small><span>Analyzer</span></span>
+    </a>
+    <nav class="nav" aria-label="Разделы"><a href="/dota2-analyzer/">Игрок</a><a href="/dota2-analyzer/meta/">Мета</a><a href="/dota2-analyzer/heroes/">Герои</a><a href="/dota2-analyzer/mods/">Моды</a></nav>
+    <span class="updated">Патч 7.41 · обновляется каждый день</span>
+    <a class="lang-btn" href="https://arseniyyx.github.io/dota2-analyzer/en/optimize/" hreflang="en">EN</a>
+  </header>
+  <main class="stack page">
+    <nav class="crumbs" aria-label="Навигация"><a href="/dota2-analyzer/">Главная</a> › <span>Оптимизация</span></nav>
+    <h1>Оптимизация Dota 2: как поднять FPS</h1>
+    <p class="lead">Параметры запуска, autoexec.cfg и настройки графики Dota 2 под слабый, средний и мощный компьютер. Только официальные настройки и команды консоли, файлы игры не трогаем. В интерактивной версии выбираешь свой ПК, частоту монитора и DirectX или Vulkan — и копируешь готовый результат.</p>
+    <p><a class="btn" href="/dota2-analyzer/#optimize">Подобрать под мой ПК</a></p>
+    <section class="section card pad"><h2 class="section-title">Параметры запуска</h2>
+      <p>Steam → Dota 2 → Свойства → Параметры запуска:</p>
+      <pre class="card pad"><code>-novid -console -map dota -dx11 +exec autoexec</code></pre>
+      <ul class="facts"><li><b>-novid</b> — без заставки при запуске</li><li><b>-console</b> — включает консоль</li>
+        <li><b>-map dota</b> — карта грузится заранее, матч открывается быстрее</li>
+        <li><b>-dx11</b> / <b>-vulkan</b> — графический API: на большинстве ПК стабильнее DirectX 11, на части видеокарт AMD быстрее Vulkan</li>
+        <li><b>+exec autoexec</b> — выполняет autoexec.cfg при запуске</li></ul></section>
+    <section class="section card pad"><h2 class="section-title">autoexec.cfg</h2>
+      <p>Файл кладётся в <code>steamapps\common\dota 2 beta\game\dota\cfg\</code>. Пример для монитора 144 Гц:</p>
+      <pre class="card pad"><code>con_enable 1
+fps_max 174
+net_graph 1
+dota_player_auto_repeat_right_mouse 1
+echo &quot;autoexec loaded&quot;</code></pre>
+      <ul class="facts"><li><b>fps_max</b> — потолок FPS чуть выше частоты монитора: ровная картинка и меньше нагрев</li>
+        <li><b>net_graph 1</b> — FPS, пинг и потери пакетов в углу экрана</li>
+        <li><b>dota_player_auto_repeat_right_mouse 1</b> — зажатый ПКМ продолжает двигать героя</li></ul></section>
+    <section class="section card pad"><h2 class="section-title">Настройки графики</h2>
+      <div class="table-wrap"><table><thead><tr><th>Компьютер</th><th>Разрешение рендера</th><th>Тени</th><th>Текстуры</th><th>Эффекты</th></tr></thead><tbody><tr><td>Слабый ПК / ноутбук</td><td>70–80%</td><td>Низкие</td><td>Низкие</td><td>Низкие</td></tr><tr><td>Средний ПК</td><td>90–100%</td><td>Средние</td><td>Средние</td><td>Средние</td></tr><tr><td>Мощный ПК</td><td>100%</td><td>Высокие</td><td>Высокие</td><td>Высокие</td></tr></tbody></table></div>
+      <h3>Что выключить</h3><ul class="facts"><li>Фоновые существа — птицы и живность на карте, на игру не влияют</li><li>Вертикальная синхронизация — добавляет задержку ввода, лучше ограничить FPS</li><li>Трава, симуляция ткани, ветер в деревьях, атмосферный туман, ambient occlusion, качественная вода — на слабом и среднем ПК</li><li>Анимированный портрет героя — ощутимо ест FPS на слабых видеокартах</li><li>Блики, карты нормалей, освещение мира, дополнительный проход света — только на слабом ПК</li></ul></section>
+    <p class="note">Ещё больше FPS — без погоды, лишних эффектов карты и травы: <a href="/dota2-analyzer/mods/">моды D2A Mods</a>.</p>
+  </main>
+  <nav class="foot-links" aria-label="Разделы сайта"><a href="/dota2-analyzer/meta/carry/">Лучшие керри</a><a href="/dota2-analyzer/meta/mid/">Лучшие мидеры</a><a href="/dota2-analyzer/meta/offlane/">Лучшие оффлейнеры</a><a href="/dota2-analyzer/meta/soft-support/">Лучшие саппорты 4 позиции</a><a href="/dota2-analyzer/meta/hard-support/">Лучшие саппорты 5 позиции</a><a href="/dota2-analyzer/mods/">Моды Dota 2</a><a href="/dota2-analyzer/paint/">Кастомизация героев</a><a href="/dota2-analyzer/glyph/">Кто нажал глиф</a><a href="/dota2-analyzer/grid-art/">Арт-сетка</a><a href="/dota2-analyzer/grid-meta/">Мета-сетка</a><a href="/dota2-analyzer/optimize/">Оптимизация и FPS</a><a href="/dota2-analyzer/heroes/">Все герои</a></nav>
+  <footer class="page-foot">Данные: OpenDota и Stratz, пабы Divine–Immortal и про-сцена. Обновляется каждый день.</footer>
+</div>
+</body>
+</html>

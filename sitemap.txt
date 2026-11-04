@@ -20,6 +20,12 @@ https://arseniyyx.github.io/dota2-analyzer/paint/
 https://arseniyyx.github.io/dota2-analyzer/en/paint/
 https://arseniyyx.github.io/dota2-analyzer/glyph/
 https://arseniyyx.github.io/dota2-analyzer/en/glyph/
+https://arseniyyx.github.io/dota2-analyzer/grid-art/
+https://arseniyyx.github.io/dota2-analyzer/en/grid-art/
+https://arseniyyx.github.io/dota2-analyzer/grid-meta/
+https://arseniyyx.github.io/dota2-analyzer/en/grid-meta/
+https://arseniyyx.github.io/dota2-analyzer/optimize/
+https://arseniyyx.github.io/dota2-analyzer/en/optimize/
 https://arseniyyx.github.io/dota2-analyzer/hero/anti-mage/
 https://arseniyyx.github.io/dota2-analyzer/en/hero/anti-mage/
 https://arseniyyx.github.io/dota2-analyzer/hero/axe/

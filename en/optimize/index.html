@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dota 2 optimisation: launch options, autoexec and settings for FPS | Dota 2 Analyzer</title>
+<meta name="description" content="How to get more FPS in Dota 2: launch options, autoexec.cfg and video settings for low, mid and high-end PCs. Official settings only.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0b0e14">
+<link rel="canonical" href="https://arseniyyx.github.io/dota2-analyzer/en/optimize/">
+<link rel="alternate" hreflang="ru" href="https://arseniyyx.github.io/dota2-analyzer/optimize/">
+<link rel="alternate" hreflang="en" href="https://arseniyyx.github.io/dota2-analyzer/en/optimize/">
+<link rel="alternate" hreflang="x-default" href="https://arseniyyx.github.io/dota2-analyzer/optimize/">
+<link rel="icon" href="/dota2-analyzer/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/dota2-analyzer/assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dota 2 Analyzer">
+<meta property="og:title" content="Dota 2 optimisation: launch options, autoexec and settings for FPS | Dota 2 Analyzer">
+<meta property="og:description" content="How to get more FPS in Dota 2: launch options, autoexec.cfg and video settings for low, mid and high-end PCs. Official settings only.">
+<meta property="og:url" content="https://arseniyyx.github.io/dota2-analyzer/en/optimize/">
+<meta property="og:image" content="https://arseniyyx.github.io/dota2-analyzer/assets/og-image.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
+<link rel="stylesheet" href="/dota2-analyzer/assets/style.css?v=77">
+<link rel="stylesheet" href="/dota2-analyzer/assets/pages.css?v=77">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://arseniyyx.github.io/dota2-analyzer/en/"}, {"@type": "ListItem", "position": 2, "name": "Optimisation", "item": "https://arseniyyx.github.io/dota2-analyzer/en/optimize/"}]}</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <a class="brand" href="/dota2-analyzer/?lang=en" aria-label="Dota 2 Analyzer">
+      <span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20 6v6c0 4.6-3.3 8.4-8 9.5-4.7-1.1-8-4.9-8-9.5V6l8-3.5Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
+      <span class="brand-text"><small>Dota 2</small><span>Analyzer</span></span>
+    </a>
+    <nav class="nav" aria-label="Sections"><a href="/dota2-analyzer/?lang=en">Player</a><a href="/dota2-analyzer/en/meta/">Meta</a><a href="/dota2-analyzer/en/heroes/">Heroes</a><a href="/dota2-analyzer/en/mods/">Mods</a></nav>
+    <span class="updated">Patch 7.41 · updated daily</span>
+    <a class="lang-btn" href="https://arseniyyx.github.io/dota2-analyzer/optimize/" hreflang="ru">RU</a>
+  </header>
+  <main class="stack page">
+    <nav class="crumbs" aria-label="Breadcrumbs"><a href="/dota2-analyzer/en/">Home</a> › <span>Optimisation</span></nav>
+    <h1>Dota 2 optimisation: how to get more FPS</h1>
+    <p class="lead">Dota 2 launch options, autoexec.cfg and video settings for low, mid and high-end PCs. Official settings and console commands only, game files stay untouched. In the interactive version you pick your PC, monitor refresh rate and DirectX or Vulkan, then copy the result.</p>
+    <p><a class="btn" href="/dota2-analyzer/?lang=en#optimize">Tune for my PC</a></p>
+    <section class="section card pad"><h2 class="section-title">Launch options</h2>
+      <p>Steam → Dota 2 → Properties → Launch options:</p>
+      <pre class="card pad"><code>-novid -console -map dota -dx11 +exec autoexec</code></pre>
+      <ul class="facts"><li><b>-novid</b> — no intro video</li><li><b>-console</b> — enables the console</li>
+        <li><b>-map dota</b> — preloads the map so matches open faster</li>
+        <li><b>-dx11</b> / <b>-vulkan</b> — graphics API: DirectX 11 is steadier on most PCs, Vulkan is faster on some AMD GPUs</li>
+        <li><b>+exec autoexec</b> — runs autoexec.cfg on start</li></ul></section>
+    <section class="section card pad"><h2 class="section-title">autoexec.cfg</h2>
+      <p>The file goes into <code>steamapps\common\dota 2 beta\game\dota\cfg\</code>. Example for a 144 Hz monitor:</p>
+      <pre class="card pad"><code>con_enable 1
+fps_max 174
+net_graph 1
+dota_player_auto_repeat_right_mouse 1
+echo &quot;autoexec loaded&quot;</code></pre>
+      <ul class="facts"><li><b>fps_max</b> — an FPS cap a bit above the refresh rate: smoother frames and less heat</li>
+        <li><b>net_graph 1</b> — FPS, ping and packet loss in the corner</li>
+        <li><b>dota_player_auto_repeat_right_mouse 1</b> — holding right click keeps your hero moving</li></ul></section>
+    <section class="section card pad"><h2 class="section-title">Video settings</h2>
+      <div class="table-wrap"><table><thead><tr><th>PC</th><th>Render quality</th><th>Shadows</th><th>Textures</th><th>Effects</th></tr></thead><tbody><tr><td>Low-end PC / laptop</td><td>70–80%</td><td>Low</td><td>Low</td><td>Low</td></tr><tr><td>Mid-range PC</td><td>90–100%</td><td>Medium</td><td>Medium</td><td>Medium</td></tr><tr><td>High-end PC</td><td>100%</td><td>High</td><td>High</td><td>High</td></tr></tbody></table></div>
+      <h3>What to turn off</h3><ul class="facts"><li>Ambient creatures: birds and critters, no gameplay value</li><li>Vsync: adds input lag, cap FPS instead</li><li>Grass, cloth simulation, tree wind, atmospheric fog, ambient occlusion, high-quality water: on low and mid PCs</li><li>Animated hero portrait: costs FPS on weak GPUs</li><li>Specular, normal maps, world lighting, additive light pass: on low PCs only</li></ul></section>
+    <p class="note">Even more FPS without weather, extra map effects and grass: <a href="/dota2-analyzer/en/mods/">D2A Mods</a>.</p>
+  </main>
+  <nav class="foot-links" aria-label="Site sections"><a href="/dota2-analyzer/en/meta/carry/">Best carry heroes</a><a href="/dota2-analyzer/en/meta/mid/">Best mid heroes</a><a href="/dota2-analyzer/en/meta/offlane/">Best offlaners</a><a href="/dota2-analyzer/en/meta/soft-support/">Best position 4 supports</a><a href="/dota2-analyzer/en/meta/hard-support/">Best position 5 supports</a><a href="/dota2-analyzer/en/mods/">Dota 2 mods</a><a href="/dota2-analyzer/en/paint/">Hero customisation</a><a href="/dota2-analyzer/en/glyph/">Who pressed the glyph</a><a href="/dota2-analyzer/en/grid-art/">Grid art</a><a href="/dota2-analyzer/en/grid-meta/">Meta grid</a><a href="/dota2-analyzer/en/optimize/">Optimisation and FPS</a><a href="/dota2-analyzer/en/heroes/">All heroes</a></nav>
+  <footer class="page-foot">Data: OpenDota and Stratz, Divine–Immortal pubs and the pro scene. Updated daily.</footer>
+</div>
+</body>
+</html>
