@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=77">
+<link rel="stylesheet" href="assets/style.css?v=78">
 <script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -66,6 +66,7 @@
           <a href="#mods" role="menuitem"><b data-en="Mods for Dota 2">Моды для Dota 2</b><small data-en="Our app: no weather, effects and ambient sounds">Наша программа: без погоды, лишних эффектов и фоновых звуков</small></a>
           <a href="#optimize" role="menuitem"><b data-en="Optimisation">Оптимизация</b><small data-en="More FPS: launch options, autoexec, video settings">Больше FPS: параметры запуска, autoexec, графика</small></a>
           <a href="#paint" role="menuitem"><b data-en="Hero customisation">Кастомизация героев</b><small data-en="3D: click a part of the hero and pick any colour, then use it in the game">3D: кликни по части героя, выбери цвет и поставь в игру</small></a>
+          <a href="#arsenal" role="menuitem"><b data-en="Cosmetic arsenal">Арсенал косметики</b><small data-en="Pick immortals, arcanas and sets — the app swaps them in your game">Выбери иммортал, аркану или сет — программа поставит в игру</small></a>
           <a href="#glyph" role="menuitem"><b data-en="Who pressed the glyph">Кто нажал глиф</b><small data-en="Paste a match ID and see who used the glyph and how often">Вставь номер матча и увидишь, кто и сколько раз жал глиф</small></a>
           <a href="#grid-meta" role="menuitem"><b data-en="Meta hero grid">Мета-сетка героев</b><small data-en="Strongest heroes by position for your rank">Сильнейшие герои по позициям для твоего ранга</small></a>
         </div>
@@ -243,6 +244,38 @@
           <button class="btn" id="paintApply" type="button" hidden data-en="Apply in the game">Применить в игре</button>
           <button class="btn" id="paintCopy" type="button" data-en="Copy the code for D2A Mods">Скопировать код для D2A Mods</button>
           <span class="note" id="paintOutNote"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main id="viewArsenal" class="stack" hidden>
+    <section class="section">
+      <h1 class="section-title" data-en="Cosmetic arsenal">Арсенал косметики</h1>
+      <p class="note" data-en="Pick immortals, arcanas and sets for each hero. Copy the code into D2A Mods — the app swaps models from your own game files, so nothing is downloaded.">Выбери иммортал, аркану или сет для каждого героя. Скопируй код в D2A Mods — программа подменит модели из файлов твоей же игры, ничего не скачивается.</p>
+      <div class="arsenal-wrap">
+        <aside class="card pad arsenal-heroes">
+          <label class="label" for="arsenalSearch" data-en="Hero">Герой</label>
+          <input class="field" id="arsenalSearch" type="search" placeholder="Поиск" data-en-placeholder="Search" autocomplete="off">
+          <div class="arsenal-hero-grid" id="arsenalHeroes" role="listbox" aria-label="Герои" data-en-aria="Heroes"></div>
+        </aside>
+        <div class="arsenal-main">
+          <div id="arsenalPreview" class="arsenal-preview card" hidden>
+            <div class="arsenal-preview-hero">
+              <img id="arsenalPreviewImg" alt="" draggable="false">
+              <div class="arsenal-preview-name" id="arsenalPreviewName"></div>
+            </div>
+            <div class="arsenal-preview-loadout" id="arsenalLoadout"></div>
+          </div>
+          <div id="arsenalSlots" class="stack-sm"></div>
+        </div>
+      </div>
+      <div class="card pad arsenal-out">
+        <p id="arsenalSummary" class="note"></p>
+        <div class="row">
+          <button class="btn" id="arsenalCopy" type="button" data-en="Copy the code for D2A Mods">Скопировать код для D2A Mods</button>
+          <button class="btn ghost small" id="arsenalReset" type="button" data-en="Reset all">Сбросить всё</button>
+          <span class="note" id="arsenalOutNote"></span>
         </div>
       </div>
     </section>

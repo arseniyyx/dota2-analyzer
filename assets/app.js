@@ -2190,6 +2190,7 @@ const VIEW_TITLES = {
   mods: L('Моды для Dota 2: без погоды и лишних эффектов', 'Dota 2 mods: no weather and extra effects'),
   glyph: L('Кто нажал глиф в Dota 2: по номеру матча', 'Who pressed the glyph in Dota 2, by match ID'),
   paint: L('Кастомизация героев Dota 2 в 3D', 'Dota 2 hero customisation in 3D'),
+  arsenal: L('Арсенал косметики Dota 2', 'Dota 2 cosmetic arsenal'),
 };
 
 // "Полезное" dropdown in the top bar
@@ -2203,14 +2204,15 @@ document.addEventListener('click', e => { if (!e.target.closest('.nav-drop')) cl
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTools(); });
 function route() {
   const h = location.hash;
-  const view = h === '#meta' ? 'meta' : h === '#learn' ? 'learn' : h.startsWith('#grid') ? 'tools' : h === '#optimize' ? 'optimize' : h === '#mods' ? 'mods' : h.startsWith('#glyph') ? 'glyph' : h.startsWith('#paint') ? 'paint' : 'player';
+  const view = h === '#meta' ? 'meta' : h === '#learn' ? 'learn' : h.startsWith('#grid') ? 'tools' : h === '#optimize' ? 'optimize' : h === '#mods' ? 'mods' : h.startsWith('#glyph') ? 'glyph' : h.startsWith('#paint') ? 'paint' : h === '#arsenal' ? 'arsenal' : 'player';
   document.title = VIEW_TITLES[view];
   const meta = view === 'meta';
-  $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn'; $('viewTools').hidden = view !== 'tools'; $('viewOptimize').hidden = view !== 'optimize'; $('viewMods').hidden = view !== 'mods'; $('viewGlyph').hidden = view !== 'glyph'; $('viewPaint').hidden = view !== 'paint';
-  $('navTools').setAttribute('aria-current', ['tools', 'optimize', 'mods', 'glyph', 'paint'].includes(view) ? 'page' : 'false');
+  $('viewPlayer').hidden = view !== 'player'; $('viewMeta').hidden = !meta; $('viewLearn').hidden = view !== 'learn'; $('viewTools').hidden = view !== 'tools'; $('viewOptimize').hidden = view !== 'optimize'; $('viewMods').hidden = view !== 'mods'; $('viewGlyph').hidden = view !== 'glyph'; $('viewPaint').hidden = view !== 'paint'; $('viewArsenal').hidden = view !== 'arsenal';
+  $('navTools').setAttribute('aria-current', ['tools', 'optimize', 'mods', 'glyph', 'paint', 'arsenal'].includes(view) ? 'page' : 'false');
   if (view === 'optimize') renderOptimize();
   if (view === 'glyph') renderGlyph();
   if (view === 'paint') import('./paint.js?v=73').then(m => m.renderPaint()).catch(() => { $('paintHint').textContent = L('Не удалось загрузить 3D-редактор', 'Could not load the 3D editor'); });
+  if (view === 'arsenal') import('./arsenal.js?v=2').then(m => m.renderArsenal()).catch(() => { $('arsenalSlots').innerHTML = `<div class="empty">${L('Не удалось загрузить арсенал', 'Could not load the arsenal')}</div>`; });
   if (view === 'mods') renderMods();
   // the last analysed profile loads on the first visit to a page that needs it, not on the tools pages
   const last = store.get('lastId');

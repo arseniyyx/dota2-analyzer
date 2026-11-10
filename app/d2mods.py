@@ -808,6 +808,311 @@ def sheet_factors(m):
     return out
 
 
+# ---------- arsenal: cosmetic item swap from the player's own game files ----------
+
+ARSENAL_ID = "arsenal"
+ARSENAL_CATALOG_URL = SITE + "arsenal/catalog.json"
+ARSENAL_SKIP_PREFABS = {
+    'courier', 'courier_wearable', 'ward', 'loading_screen', 'pennant',
+    'taunt', 'tool', 'bundle', 'retired_treasure', 'treasure_chest',
+    'dynamic_recipe', 'recipe', 'emoticon', 'spray', 'terrain',
+    'music', 'announcer', 'mega_kills', 'hud_skin', 'cursor_pack',
+    'player_card', 'gem', 'effigy', 'summons', 'pet',
+    'persona_selector', 'guild_item',
+}
+ARSENAL_HERO_PREFABS = {'wearable', 'default_item'}
+ARSENAL_RARITY = {'arcana': 6, 'ancient': 5, 'immortal': 5, 'legendary': 4, 'mythical': 3, 'rare': 2, 'uncommon': 1, 'common': 0}
+
+
+def parse_items_game(text):
+    """Valve KeyValues text → nested dict (handles items_game.txt quirks)."""
+    text = re.sub(r'//[^\n]*', '', text)
+    tokens = re.findall(r'"((?:[^"\\]|\\.)*)"|([{}])', text)
+    root, stack = {}, []
+    cur, key = root, None
+    for s, brace in tokens:
+        if brace == '{':
+            child = {}
+            if key and key in cur and isinstance(cur[key], dict):
+                child = cur[key]
+            if key:
+                cur[key] = child
+            stack.append(cur)
+            cur = child
+            key = None
+        elif brace == '}':
+            cur = stack.pop() if stack else root
+        elif key is None:
+            key = s
+        else:
+            if not (key in cur and isinstance(cur[key], dict)):
+                cur[key] = s
+            key = None
+    return root
+
+
+def _resolve_prefab(prefabs, name):
+    seen, merged = set(), {}
+    names = [p.strip() for p in name.split()] if name else []
+    while names:
+        n = names.pop(0)
+        if n in seen:
+            continue
+        seen.add(n)
+        p = prefabs.get(n)
+        if not p or not isinstance(p, dict):
+            continue
+        parent = p.get('prefab', '')
+        if parent:
+            names.extend(parent.split())
+        for k, v in p.items():
+            if k not in merged:
+                merged[k] = v
+    return merged
+
+
+def _item_val(item, prefab, key):
+    v = item.get(key)
+    return v if v is not None else prefab.get(key)
+
+
+def _item_hero(item, prefab):
+    heroes = item.get('used_by_heroes') or prefab.get('used_by_heroes')
+    if not heroes or not isinstance(heroes, dict):
+        return None
+    for h, v in heroes.items():
+        if v == '1' and h.startswith('npc_dota_hero_'):
+            return h
+    return None
+
+
+def _item_models(item, prefab):
+    paths = set()
+    mp = _item_val(item, prefab, 'model_player')
+    if mp and mp.endswith('.vmdl'):
+        paths.add(mp)
+    for src in (item, prefab):
+        vis = src.get('visuals') if isinstance(src, dict) else None
+        if not isinstance(vis, dict):
+            continue
+        for k, v in vis.items():
+            if not isinstance(v, dict):
+                continue
+            if v.get('type') in ('particle', 'particle_create'):
+                continue
+            asset = v.get('asset') or v.get('modifier')
+            if asset and isinstance(asset, str) and asset.endswith('.vmdl'):
+                paths.add(asset)
+    return paths
+
+
+def _item_particles(item, prefab):
+    particles = []
+    for src in (item, prefab):
+        vis = src.get('visuals') if isinstance(src, dict) else None
+        if not isinstance(vis, dict):
+            continue
+        for k, v in vis.items():
+            if not isinstance(v, dict):
+                continue
+            if v.get('type') in ('particle', 'particle_create'):
+                asset = v.get('modifier') or v.get('asset')
+                if asset:
+                    particles.append(asset)
+    return particles
+
+
+def build_arsenal_catalog(game):
+    """Parse items_game.txt from the local Dota install → {hero_slug: {npc, slots: {slot: [items]}}}."""
+    pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
+    raw = pak.get_file('scripts/items/items_game.txt').read().decode('utf-8', errors='replace')
+    ig = parse_items_game(raw)
+    ig = ig.get('items_game') or ig
+    items = ig.get('items') or {}
+    prefabs = ig.get('prefabs') or {}
+    item_sets = ig.get('item_sets') or {}
+
+    set_lookup = {}
+    for sn, sd in item_sets.items():
+        if isinstance(sd, dict) and isinstance(sd.get('items'), dict):
+            for iname in sd['items']:
+                set_lookup[iname] = sn
+
+    # localization
+    try:
+        loc_raw = pak.get_file('resource/localization/items_english.txt').read()
+        loc_raw = loc_raw.decode('utf-16-le', errors='replace') if loc_raw[:2] == b'\xff\xfe' else loc_raw.decode('utf-8', errors='replace')
+        loc_d = parse_items_game(loc_raw)
+        tokens = {}
+        for top in loc_d.values():
+            if isinstance(top, dict):
+                t = top.get('Tokens') or top.get('tokens') or top
+                if isinstance(t, dict):
+                    tokens.update({k.lower(): v for k, v in t.items() if isinstance(v, str)})
+    except Exception:
+        tokens = {}
+
+    heroes = {}
+    for def_id, item in items.items():
+        if not isinstance(item, dict) or not def_id or not def_id.isdigit():
+            continue
+        pname = item.get('prefab', '')
+        pres = _resolve_prefab(prefabs, pname)
+        base_p = set(pname.split()) | set(pres.get('prefab', '').split())
+        if base_p & ARSENAL_SKIP_PREFABS:
+            continue
+        if not (base_p & ARSENAL_HERO_PREFABS) and not any('wearable' in p for p in base_p):
+            continue
+        if 'persona' in pname.lower() or _item_val(item, pres, 'persona_id'):
+            continue
+
+        hero_npc = _item_hero(item, pres)
+        if not hero_npc:
+            continue
+        rarity = _item_val(item, pres, 'item_rarity') or 'common'
+        if ARSENAL_RARITY.get(rarity, 0) < 2:
+            continue
+        slot = _item_val(item, pres, 'item_slot') or ''
+        if not slot:
+            continue
+
+        models = _item_models(item, pres)
+        particles = _item_particles(item, pres)
+        if not models and not particles:
+            continue
+
+        name_token = _item_val(item, pres, 'item_name')
+        display = tokens.get((name_token or '').lstrip('#').lower()) or item.get('name', f'item_{def_id}')
+        hero_slug = hero_npc.replace('npc_dota_hero_', '')
+        internal = item.get('name', '')
+
+        entry = {'id': int(def_id), 'name': display, 'internal': internal,
+                 'slot': slot, 'rarity': rarity, 'models': sorted(models)}
+        if particles:
+            entry['particles'] = particles
+        sn = set_lookup.get(internal)
+        if sn:
+            entry['set'] = sn
+
+        hd = heroes.setdefault(hero_slug, {'npc': hero_npc, 'items': []})
+        hd['items'].append(entry)
+
+    for h in heroes.values():
+        h['items'].sort(key=lambda x: (-ARSENAL_RARITY.get(x['rarity'], 0), x['slot'], x['name']))
+    return heroes
+
+
+def load_arsenal_catalog(game):
+    """Build or load cached arsenal catalog."""
+    cache = os.path.join(DATA_DIR, "arsenal_catalog.json")
+    pak_path = os.path.join(game, "dota", "pak01_dir.vpk")
+    pak_mtime = os.path.getmtime(pak_path) if os.path.exists(pak_path) else 0
+    if os.path.exists(cache) and os.path.getmtime(cache) >= pak_mtime:
+        with open(cache, encoding="utf-8") as f:
+            return json.load(f)
+    heroes = build_arsenal_catalog(game)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(cache, "w", encoding="utf-8") as f:
+        json.dump(heroes, f, ensure_ascii=False)
+    return heroes
+
+
+def parse_arsenal_code(code):
+    """Parse a D2AA1 code from the site → {hero_slug: [item_id, ...]}."""
+    code = (code or "").strip()
+    if not code.startswith("D2AA1:"):
+        raise ValueError(T("Это не код арсенала: он начинается с D2AA1:", "This is not an arsenal code: it starts with D2AA1:"))
+    data = json.loads(base64.b64decode(code[6:] + "=" * (-len(code[6:]) % 4)).decode("utf-8"))
+    return data.get("items") or {}
+
+
+def save_arsenal(item_ids):
+    """Save the user's arsenal selection: {hero_slug: [item_id, ...]}."""
+    s = load_settings()
+    s[ARSENAL_ID] = {"items": item_ids}
+    save_settings(s)
+
+
+def save_arsenal_code(code):
+    items = parse_arsenal_code(code)
+    save_arsenal(items)
+    total = sum(len(v) for v in items.values())
+    return total
+
+
+def _collect_related_files(pak, pak_paths, base_path):
+    """Given a .vmdl path, collect the compiled model and all related material/texture files."""
+    files = {}
+    compiled = base_path + '_c' if not base_path.endswith('_c') else base_path
+    if compiled in pak_paths:
+        files[compiled] = pak.get_file(compiled).read()
+
+    stem = base_path.rsplit('.', 1)[0]
+    for suffix in ('.vmdl_c', '.vmesh_c', '.vagrp_c', '.vseq_c', '.vphys_c'):
+        p = stem + suffix
+        if p in pak_paths:
+            files[p] = pak.get_file(p).read()
+
+    mat_dir = stem.replace('models/', 'materials/models/', 1) if stem.startswith('models/') else None
+    if mat_dir:
+        prefix = mat_dir.rsplit('/', 1)[0] + '/'
+        for p in pak_paths:
+            if p.startswith(prefix) and p.endswith(('.vmat_c', '.vtex_c')):
+                if p not in files:
+                    files[p] = pak.get_file(p).read()
+    return files
+
+
+def arsenal_install(game, tmp, log=print):
+    """Copy selected cosmetic item files from pak01_dir.vpk into tmp for our mod VPK."""
+    sel = (load_settings().get(ARSENAL_ID) or {}).get("items")
+    if not sel:
+        return 0
+    item_ids = set()
+    for ids in sel.values():
+        item_ids.update(ids)
+    if not item_ids:
+        return 0
+
+    log(T("Арсенал: читаю каталог предметов…", "Arsenal: reading item catalog…"))
+    heroes = load_arsenal_catalog(game)
+
+    item_by_id = {}
+    for hslug, hdata in heroes.items():
+        for it in hdata['items']:
+            item_by_id[it['id']] = (hslug, it)
+
+    chosen = [(item_by_id[iid]) for iid in item_ids if iid in item_by_id]
+    if not chosen:
+        return 0
+
+    pak = vpk.open(os.path.join(game, "dota", "pak01_dir.vpk"))
+    pak_paths = set(pak)
+    count = 0
+
+    for hero_slug, item in chosen:
+        for model_path in item.get('models', []):
+            related = _collect_related_files(pak, pak_paths, model_path)
+            for fpath, fdata in related.items():
+                dst = os.path.join(tmp, *fpath.split("/"))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with open(dst, "wb") as f:
+                    f.write(fdata)
+                count += 1
+        for pcf in item.get('particles', []):
+            compiled = pcf + '_c' if not pcf.endswith('_c') else pcf
+            if compiled in pak_paths:
+                data = pak.get_file(compiled).read()
+                dst = os.path.join(tmp, *compiled.split("/"))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with open(dst, "wb") as f:
+                    f.write(data)
+                count += 1
+
+    log(T(f"Арсенал: {count} файлов из {len(chosen)} предметов", f"Arsenal: {count} files from {len(chosen)} items"))
+    return count
+
+
 def state_path():
     return os.path.join(DATA_DIR, "installed.json")
 
@@ -904,6 +1209,7 @@ def install(game, catalog, d2pfx, ids, log=print):
             total += patch_sheets(game, catalog, ids, tmp, lang, log)
             total += recolor_textures(game, catalog, ids, tmp, log)
             total += paint_textures(game, ids, tmp, log)
+            total += arsenal_install(game, tmp, log)
             for m in catalog["mods"]:
                 if m["id"] in ids and m.get("files"):
                     total += place_files(m, tmp, log)
@@ -1040,6 +1346,16 @@ def run_gui():
     button(row, T("Выбрать все", "Select all"), lambda: select_view(True)).pack(side="left")
     button(row, T("Снять все", "Clear all"), lambda: select_view(False)).pack(side="left", padx=8)
     tk.Label(row, textvariable=count_var, bg=C["bg"], fg=C["gold"], font=(F, 10, "bold")).pack(side="left", padx=8)
+    def paste_arsenal():
+        try:
+            n = save_arsenal_code(root.clipboard_get())
+            st["sel"].add(ARSENAL_ID)
+            draw()
+            messagebox.showinfo("D2A Mods", T(f"Арсенал принят: {n} предметов.", f"Arsenal accepted: {n} items."))
+        except Exception as e:
+            messagebox.showerror("D2A Mods", T(f"Не получилось прочитать код арсенала: {e}", f"Could not read the arsenal code: {e}"))
+    button(row, T("Арсенал", "Arsenal"), lambda: webbrowser.open(site_url("#arsenal"))).pack(side="right", padx=(0, 8))
+    button(row, T("Вставить арсенал", "Paste arsenal"), paste_arsenal).pack(side="right", padx=(0, 8))
     button(row, T("Сайт", "Website"), lambda: webbrowser.open(site_url("#mods"))).pack(side="right")
 
     wrap = tk.Frame(root, bg=C["bg"])

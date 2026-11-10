@@ -799,3 +799,170 @@ footer.site-foot { flex-direction: row; }
 .paint-wheel canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .paint-wheel-dot { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .5); pointer-events: none; }
 .mods-more { margin-top: 10px; }
+
+/* ---------- arsenal: Dota 2 armory style ---------- */
+.arsenal-wrap { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; align-items: start; }
+.arsenal-heroes { display: flex; flex-direction: column; gap: 6px; max-height: 680px; position: sticky; top: 80px; }
+.arsenal-hero-grid { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; padding: 2px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.arsenal-hero-grid .ah { display: flex; align-items: center; gap: 8px; padding: 5px 8px; min-height: 38px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--fg-muted); font: inherit; font-size: 13px; text-align: left; cursor: pointer; width: 100%; transition: all .15s; position: relative; }
+.arsenal-hero-grid .ah img { width: 44px; height: 25px; border-radius: 3px; object-fit: cover; filter: saturate(.7) brightness(.85); transition: filter .15s; }
+.arsenal-hero-grid .ah span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arsenal-hero-grid .ah:hover { background: var(--surface-hover); color: var(--fg); }
+.arsenal-hero-grid .ah:hover img { filter: saturate(1) brightness(1); }
+.arsenal-hero-grid .ah.active { border-color: var(--accent); background: linear-gradient(135deg, rgba(227,176,75,.12), rgba(227,176,75,.04)); color: var(--accent-strong); }
+.arsenal-hero-grid .ah.active img { filter: saturate(1.1) brightness(1.05); }
+.arsenal-hero-grid .ah.dim { opacity: .3; cursor: default; pointer-events: none; }
+.arsenal-hero-grid .ah .ah-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+/* slot sections */
+/* hero loadout preview */
+.arsenal-preview {
+  display: grid; grid-template-columns: 200px 1fr; gap: 0; overflow: hidden;
+  background: linear-gradient(135deg, #0d1018 0%, #141922 50%, #0d1018 100%);
+  border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px;
+  min-height: 200px;
+}
+.arsenal-preview-hero {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #1a1f2a 0%, #0b0e14 100%);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.arsenal-preview-hero img {
+  width: 100%; height: 100%; object-fit: cover; object-position: center top;
+  filter: saturate(1.1) brightness(1.05); min-height: 200px;
+}
+.arsenal-preview-name {
+  position: absolute; bottom: 0; left: 0; right: 0; padding: 28px 12px 8px;
+  background: linear-gradient(transparent, rgba(0,0,0,.9));
+  font-family: var(--display); font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--fg);
+  text-shadow: 0 1px 4px rgba(0,0,0,.7);
+}
+.arsenal-preview-loadout {
+  padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px; align-content: start; overflow-y: auto; max-height: 320px;
+}
+.arsenal-preview-loadout .arsenal-loadout-empty {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--fg-dim); font-size: 13px; text-align: center; padding: 24px;
+}
+.arsenal-loadout-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px;
+  border-radius: 5px; background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.05); transition: background .15s;
+}
+.arsenal-loadout-row:hover { background: rgba(255,255,255,.06); }
+.arsenal-loadout-row img {
+  width: 44px; height: 33px; object-fit: contain; border-radius: 3px; flex-shrink: 0;
+  background: linear-gradient(180deg, #181d27, #0e1117);
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,.4));
+}
+.arsenal-loadout-row .loadout-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.arsenal-loadout-row .loadout-slot {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--fg-dim); font-family: var(--display);
+}
+.arsenal-loadout-row .loadout-name { font-size: 11px; font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arsenal-loadout-row .loadout-rarity { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.arsenal-loadout-row .loadout-remove {
+  width: 18px; height: 18px; border: none; border-radius: 50%; cursor: pointer;
+  background: rgba(255,255,255,.06); color: var(--fg-dim); font-size: 12px; line-height: 1;
+  display: grid; place-items: center; transition: all .15s; flex-shrink: 0;
+}
+.arsenal-loadout-row .loadout-remove:hover { background: rgba(235,75,75,.25); color: #eb4b4b; }
+@media (max-width: 760px) {
+  .arsenal-preview { grid-template-columns: 1fr; }
+  .arsenal-preview-hero img { height: 160px; min-height: auto; }
+  .arsenal-preview-loadout { max-height: none; grid-template-columns: 1fr 1fr; }
+}
+
+.arsenal-slot { margin-bottom: 16px; }
+.arsenal-slot .label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); font-family: var(--display); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-dim); }
+.arsenal-slot .label::before { content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--accent); }
+
+/* item tile grid — Dota 2 armory style */
+.arsenal-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.arsenal-item {
+  position: relative; display: flex; flex-direction: column; gap: 0;
+  padding: 0; border: none; border-radius: 4px;
+  background: linear-gradient(180deg, #1a1f2a, #12161e);
+  color: var(--fg); font: inherit; font-size: 12px; text-align: left;
+  cursor: pointer; transition: transform .12s var(--ease), box-shadow .2s;
+  overflow: hidden; isolation: isolate;
+  outline: 2px solid transparent; outline-offset: -2px;
+}
+.arsenal-item::before {
+  content: ''; position: absolute; inset: 0; border-radius: 4px; pointer-events: none; z-index: 2;
+  border: 1px solid var(--item-color, var(--border));
+  opacity: .5; transition: opacity .15s;
+}
+.arsenal-item:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,.6); }
+.arsenal-item:hover::before { opacity: 1; }
+.arsenal-item.active { outline-color: var(--accent); }
+.arsenal-item.active::before { opacity: 1; border-width: 2px; }
+
+/* rarity strip — the coloured bar at the bottom like Dota 2 item cards */
+.arsenal-item::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; z-index: 2;
+  background: var(--item-color, var(--border));
+  opacity: .7; transition: opacity .15s, height .15s;
+}
+.arsenal-item:hover::after { opacity: 1; height: 4px; }
+.arsenal-item.active::after { opacity: 1; height: 4px; }
+
+/* rarity glow on hover */
+.arsenal-item:hover { box-shadow: 0 8px 24px -8px rgba(0,0,0,.6), 0 0 12px -4px var(--item-color, transparent); }
+
+/* item image — Dota 2 armory card preview */
+.arsenal-item-img {
+  position: relative; width: 100%; aspect-ratio: 4/3; overflow: hidden;
+  background: linear-gradient(180deg, #181d27 0%, #0e1117 100%);
+  display: grid; place-items: center;
+}
+.arsenal-item-img img {
+  width: 100%; height: 100%; object-fit: contain; padding: 6px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.5));
+  transition: transform .2s var(--ease), filter .2s;
+}
+.arsenal-item:hover .arsenal-item-img img { transform: scale(1.05); filter: drop-shadow(0 4px 12px rgba(0,0,0,.6)) brightness(1.1); }
+
+/* item inner content */
+.arsenal-item-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.arsenal-item-name { font-weight: 600; font-size: 13px; line-height: 1.3; color: var(--fg); }
+.arsenal-item-rarity {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--item-color, var(--fg-dim));
+}
+.arsenal-item-set { font-size: 11px; color: var(--fg-dim); line-height: 1.3; }
+.arsenal-item-meta { font-size: 10px; color: var(--fg-dim); margin-top: auto; padding-top: 4px; display: flex; gap: 6px; align-items: center; }
+.arsenal-item-meta svg { width: 12px; height: 12px; }
+
+/* equipped checkmark */
+.arsenal-item.active .arsenal-item-check {
+  position: absolute; top: 6px; right: 6px; z-index: 3;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); display: grid; place-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+.arsenal-item-check { display: none; }
+.arsenal-item.active .arsenal-item-check { display: grid; }
+.arsenal-item-check svg { width: 12px; height: 12px; stroke: var(--accent-ink); stroke-width: 3; fill: none; }
+
+/* output bar */
+.arsenal-out { margin-top: 12px; }
+.arsenal-out .row { gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+
+/* empty state */
+.arsenal-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 80px 24px; color: var(--fg-dim); text-align: center; }
+.arsenal-empty svg { width: 48px; height: 48px; opacity: .3; }
+
+/* responsive */
+@media (max-width: 900px) { .arsenal-items { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
+@media (max-width: 760px) {
+  .arsenal-wrap { grid-template-columns: 1fr; }
+  .arsenal-heroes { max-height: none; position: static; }
+  .arsenal-hero-grid { flex-direction: row; overflow-x: auto; flex-wrap: nowrap; gap: 4px; padding-bottom: 4px; }
+  .arsenal-hero-grid .ah { flex: 0 0 auto; min-width: 120px; }
+  .arsenal-items { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
