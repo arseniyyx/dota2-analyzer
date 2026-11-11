@@ -952,6 +952,8 @@ def build_arsenal_catalog(game):
     except Exception:
         tokens = {}
 
+    # first pass: collect default items (base models) per hero per slot
+    defaults = {}  # {hero_slug: {slot: model_player_path}}
     heroes = {}
     for def_id, item in items.items():
         if not isinstance(item, dict) or not def_id or not def_id.isdigit():
@@ -961,18 +963,27 @@ def build_arsenal_catalog(game):
         base_p = set(pname.split()) | set(pres.get('prefab', '').split())
         if base_p & ARSENAL_SKIP_PREFABS:
             continue
+
+        hero_npc = _item_hero(item, pres)
+        if not hero_npc:
+            continue
+        hero_slug = hero_npc.replace('npc_dota_hero_', '')
+        slot = _item_val(item, pres, 'item_slot') or ''
+
+        # collect default items for model swapping
+        if 'default_item' in base_p and slot:
+            mp = _item_val(item, pres, 'model_player')
+            if mp and mp.endswith('.vmdl'):
+                defaults.setdefault(hero_slug, {})[slot] = mp
+
         if not (base_p & ARSENAL_HERO_PREFABS) and not any('wearable' in p for p in base_p):
             continue
         if 'persona' in pname.lower() or _item_val(item, pres, 'persona_id'):
             continue
 
-        hero_npc = _item_hero(item, pres)
-        if not hero_npc:
-            continue
         rarity = _item_val(item, pres, 'item_rarity') or 'common'
         if ARSENAL_RARITY.get(rarity, 0) < 2:
             continue
-        slot = _item_val(item, pres, 'item_slot') or ''
         if not slot:
             continue
 
@@ -983,7 +994,6 @@ def build_arsenal_catalog(game):
 
         name_token = _item_val(item, pres, 'item_name')
         display = tokens.get((name_token or '').lstrip('#').lower()) or item.get('name', f'item_{def_id}')
-        hero_slug = hero_npc.replace('npc_dota_hero_', '')
         internal = item.get('name', '')
 
         entry = {'id': int(def_id), 'name': display, 'internal': internal,
@@ -997,8 +1007,9 @@ def build_arsenal_catalog(game):
         hd = heroes.setdefault(hero_slug, {'npc': hero_npc, 'items': []})
         hd['items'].append(entry)
 
-    for h in heroes.values():
-        h['items'].sort(key=lambda x: (-ARSENAL_RARITY.get(x['rarity'], 0), x['slot'], x['name']))
+    for slug, hd in heroes.items():
+        hd['items'].sort(key=lambda x: (-ARSENAL_RARITY.get(x['rarity'], 0), x['slot'], x['name']))
+        hd['defaults'] = defaults.get(slug, {})
     return heroes
 
 
@@ -1063,8 +1074,15 @@ def _collect_related_files(pak, pak_paths, base_path):
     return files
 
 
+def _write_file(tmp, rel_path, data):
+    dst = os.path.join(tmp, *rel_path.split("/"))
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, "wb") as f:
+        f.write(data)
+
+
 def arsenal_install(game, tmp, log=print):
-    """Copy selected cosmetic item files from pak01_dir.vpk into tmp for our mod VPK."""
+    """Swap default hero models with selected cosmetic items from pak01_dir.vpk."""
     sel = (load_settings().get(ARSENAL_ID) or {}).get("items")
     if not sel:
         return 0
@@ -1091,22 +1109,40 @@ def arsenal_install(game, tmp, log=print):
     count = 0
 
     for hero_slug, item in chosen:
-        for model_path in item.get('models', []):
-            related = _collect_related_files(pak, pak_paths, model_path)
-            for fpath, fdata in related.items():
-                dst = os.path.join(tmp, *fpath.split("/"))
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                with open(dst, "wb") as f:
-                    f.write(fdata)
+        slot = item.get('slot', '')
+        hero_defaults = heroes.get(hero_slug, {}).get('defaults', {})
+        default_model = hero_defaults.get(slot)
+        item_models = item.get('models', [])
+
+        if default_model and item_models:
+            # swap: copy the cosmetic item's compiled model to the default model's path
+            default_compiled = default_model + '_c'
+            cosmetic_model = item_models[0]
+            cosmetic_compiled = cosmetic_model + '_c' if not cosmetic_model.endswith('_c') else cosmetic_model
+            if cosmetic_compiled in pak_paths and default_compiled in pak_paths:
+                data = pak.get_file(cosmetic_compiled).read()
+                _write_file(tmp, default_compiled, data)
                 count += 1
+                log(T(f"  {item['name']}: подмена {slot}", f"  {item['name']}: swap {slot}"))
+
+            # also copy the cosmetic item's mesh/material files so the swapped model can reference them
+            related = _collect_related_files(pak, pak_paths, cosmetic_model)
+            for fpath, fdata in related.items():
+                if fpath != cosmetic_compiled:
+                    _write_file(tmp, fpath, fdata)
+                    count += 1
+        else:
+            # no default found — just place cosmetic files at their own paths (particles, etc.)
+            for model_path in item_models:
+                related = _collect_related_files(pak, pak_paths, model_path)
+                for fpath, fdata in related.items():
+                    _write_file(tmp, fpath, fdata)
+                    count += 1
+
         for pcf in item.get('particles', []):
             compiled = pcf + '_c' if not pcf.endswith('_c') else pcf
             if compiled in pak_paths:
-                data = pak.get_file(compiled).read()
-                dst = os.path.join(tmp, *compiled.split("/"))
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                with open(dst, "wb") as f:
-                    f.write(data)
+                _write_file(tmp, compiled, pak.get_file(compiled).read())
                 count += 1
 
     log(T(f"Арсенал: {count} файлов из {len(chosen)} предметов", f"Arsenal: {count} files from {len(chosen)} items"))
