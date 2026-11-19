@@ -1,5 +1,8 @@
 /* ---------- arsenal: cosmetic item picker for D2A Mods ----------
    Loaded on demand from app.js; uses its globals ($, L, EN, esc, heroImg, heroName, getJSON, dataUrl, store, S, CDN). */
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const RARITY_ORDER = { arcana: 6, ancient: 5, immortal: 5, legendary: 4, mythical: 3, rare: 2 };
 const RARITY_COLOR = { arcana: '#ade55c', ancient: '#eb4b4b', immortal: '#e4ae39', legendary: '#d32ce6', mythical: '#8847ff', rare: '#4b69ff' };
@@ -18,11 +21,195 @@ const SLOT_NAMES = {
 const slotLabel = s => SLOT_NAMES[s] || s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 const CHECK_SVG = '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
 const MODEL_SVG = '<svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
-const FX_SVG = '<svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8l4-2"/><circle cx="12" cy="14" r="8"/></svg>';
+
+const PAINT_BASE = 'paint/';
+const ARSENAL3D_BASE = 'assets/arsenal3d/items/';
 
 const A = { catalog: null, hero: null };
 const saved = store.get('arsenal') || {};
 const persist = () => store.set('arsenal', saved);
+
+/* ---- 3D state ---- */
+const V = {
+  inited: false, renderer: null, scene: null, camera: null, controls: null,
+  group: null, heroSlug: null, loading: 0,
+  defaultParts: {},   // slot -> { mesh: THREE.Object3D, part: meta part }
+  customParts: {},    // slot -> { mesh: THREE.Object3D, itemId: number }
+  paintIndex: null,
+};
+
+function setup3D() {
+  if (V.inited) return;
+  V.inited = true;
+  const host = $('arsenal3d');
+  V.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  V.renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  V.renderer.outputColorSpace = THREE.SRGBColorSpace;
+  host.appendChild(V.renderer.domElement);
+
+  V.scene = new THREE.Scene();
+  V.camera = new THREE.PerspectiveCamera(35, 1, 0.1, 5000);
+  V.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x2a2420, 1.6));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  key.position.set(1, 2, 1.5); V.scene.add(key);
+  const rim = new THREE.DirectionalLight(0xffd9a0, 1.1);
+  rim.position.set(-1.5, 1, -1); V.scene.add(rim);
+
+  V.controls = new OrbitControls(V.camera, V.renderer.domElement);
+  V.controls.enableDamping = true;
+  V.controls.enablePan = false;
+
+  V.group = new THREE.Group();
+  V.scene.add(V.group);
+
+  const resize = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    if (w < 1 || h < 1) return;
+    V.renderer.setSize(w, h, false);
+    V.camera.aspect = w / h;
+    V.camera.updateProjectionMatrix();
+  };
+  new ResizeObserver(resize).observe(host);
+  resize();
+
+  const loop = () => {
+    requestAnimationFrame(loop);
+    if ($('viewArsenal').hidden) return;
+    V.controls.update();
+    V.renderer.render(V.scene, V.camera);
+  };
+  loop();
+}
+
+async function loadPaintIndex() {
+  if (V.paintIndex) return V.paintIndex;
+  try {
+    V.paintIndex = await getJSON(`${PAINT_BASE}index.json?d=${new Date().toISOString().slice(0, 10)}`);
+  } catch { V.paintIndex = []; }
+  return V.paintIndex;
+}
+
+function heroHasPaintModel(slug) {
+  if (!V.paintIndex) return false;
+  return V.paintIndex.some(h => h.npc === `npc_dota_hero_${slug}`);
+}
+
+async function loadHero3D(slug) {
+  const token = ++V.loading;
+  V.heroSlug = slug;
+  V.defaultParts = {};
+  V.customParts = {};
+
+  if (!heroHasPaintModel(slug)) {
+    $('arsenal3d').hidden = true;
+    $('arsenalPreviewImg').hidden = false;
+    return;
+  }
+
+  $('arsenal3d').hidden = false;
+  $('arsenalPreviewImg').hidden = true;
+  setup3D();
+  V.group.clear();
+
+  const hint = $('arsenal3dHint');
+  hint.hidden = false;
+  hint.textContent = L('Загрузка модели…', 'Loading model…');
+
+  let meta;
+  try {
+    meta = await getJSON(`${PAINT_BASE}h/${slug}/meta.json?d=${new Date().toISOString().slice(0, 10)}`);
+  } catch {
+    $('arsenal3d').hidden = true;
+    $('arsenalPreviewImg').hidden = false;
+    hint.hidden = true;
+    return;
+  }
+  if (token !== V.loading) return;
+
+  const loader = new GLTFLoader().setPath(`${PAINT_BASE}h/${slug}/`);
+  const results = await Promise.all(
+    meta.parts.map(p => loader.loadAsync(p.glb).then(g => [p, g]).catch(() => null))
+  );
+  if (token !== V.loading) return;
+
+  for (const res of results.filter(Boolean)) {
+    const [part, gltf] = res;
+    V.defaultParts[part.slot] = { mesh: gltf.scene, part };
+    V.group.add(gltf.scene);
+  }
+
+  const box = new THREE.Box3().setFromObject(V.group);
+  const size = box.getSize(new THREE.Vector3());
+  const mid = box.getCenter(new THREE.Vector3());
+  V.group.position.sub(mid);
+  const dist = Math.max(size.x, size.y, size.z) * 1.7;
+  V.camera.position.set(dist * 0.35, dist * 0.15, dist);
+  V.controls.target.set(0, 0, 0);
+  V.controls.minDistance = dist * 0.3;
+  V.controls.maxDistance = dist * 3;
+  V.controls.update();
+
+  hint.textContent = L('Тяни, чтобы повернуть · колесо для зума', 'Drag to turn · scroll to zoom');
+  setTimeout(() => { hint.hidden = true; }, 3000);
+
+  await sync3DEquipment();
+}
+
+async function sync3DEquipment() {
+  if (!V.heroSlug || !A.catalog?.[V.heroSlug]) return;
+  const heroSel = saved[V.heroSlug] || {};
+  const hdata = A.catalog[V.heroSlug];
+  const items = hdata?.items || [];
+
+  for (const slot of Object.keys(V.defaultParts)) {
+    const itemId = heroSel[slot];
+    if (itemId && V.customParts[slot]?.itemId !== itemId) {
+      const item = items.find(i => i.id === itemId);
+      if (item) await tryLoadItemModel(slot, item);
+    } else if (!itemId && V.customParts[slot]) {
+      restoreDefaultPart(slot);
+    }
+  }
+}
+
+const glbCache = {};
+
+async function tryLoadItemModel(slot, item) {
+  if (!V.group) return;
+  const glbUrl = `${ARSENAL3D_BASE}${item.id}/model.glb`;
+
+  let gltfScene;
+  if (glbCache[item.id]) {
+    gltfScene = glbCache[item.id].clone();
+  } else {
+    try {
+      const gltf = await new GLTFLoader().loadAsync(glbUrl);
+      glbCache[item.id] = gltf.scene;
+      gltfScene = gltf.scene.clone();
+    } catch { return; }
+  }
+
+  if (V.defaultParts[slot]) {
+    V.defaultParts[slot].mesh.visible = false;
+  }
+  if (V.customParts[slot]) {
+    V.group.remove(V.customParts[slot].mesh);
+  }
+  V.customParts[slot] = { mesh: gltfScene, itemId: item.id };
+  V.group.add(gltfScene);
+}
+
+function restoreDefaultPart(slot) {
+  if (V.customParts[slot]) {
+    V.group.remove(V.customParts[slot].mesh);
+    delete V.customParts[slot];
+  }
+  if (V.defaultParts[slot]) {
+    V.defaultParts[slot].mesh.visible = true;
+  }
+}
+
+/* ---- core logic ---- */
 
 function heroSlugFromId(id) {
   const h = S.heroes[id];
@@ -82,6 +269,7 @@ function renderPreview() {
   $('arsenalPreviewImg').src = id ? heroImg(Number(id)) : '';
   $('arsenalPreviewName').textContent = id ? heroName(Number(id)) : A.hero;
   renderLoadout();
+  loadHero3D(A.hero);
 }
 
 function renderLoadout() {
@@ -119,6 +307,7 @@ function renderLoadout() {
     persist();
     renderSlots();
     renderLoadout();
+    restoreDefaultPart(slot);
     updateHeroDot();
     updateSummary();
   }));
@@ -168,8 +357,11 @@ function renderSlots() {
     if (saved[A.hero][slot] === id) {
       delete saved[A.hero][slot];
       if (!Object.keys(saved[A.hero]).length) delete saved[A.hero];
+      restoreDefaultPart(slot);
     } else {
       saved[A.hero][slot] = id;
+      const item = A.catalog[A.hero]?.items?.find(i => i.id === id);
+      if (item) tryLoadItemModel(slot, item);
     }
     persist();
     renderSlots();
@@ -218,7 +410,8 @@ function generateCode() {
   return 'D2AA1:' + btoa(JSON.stringify({ v: 1, items: data }));
 }
 
-export function renderArsenal() {
+export async function renderArsenal() {
+  await loadPaintIndex();
   loadCatalog().then(() => {
     renderHeroList();
     if (A.hero) { renderPreview(); renderSlots(); }
@@ -248,7 +441,11 @@ export function renderArsenal() {
   $('arsenalReset').onclick = () => {
     for (const k of Object.keys(saved)) delete saved[k];
     persist();
+    if (V.heroSlug) {
+      for (const slot of Object.keys(V.customParts)) restoreDefaultPart(slot);
+    }
     renderSlots();
+    renderLoadout();
     updateHeroDot();
     updateSummary();
   };

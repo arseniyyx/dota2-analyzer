@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=78">
+<link rel="stylesheet" href="assets/style.css?v=80">
 <script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -261,9 +261,11 @@
         </aside>
         <div class="arsenal-main">
           <div id="arsenalPreview" class="arsenal-preview card" hidden>
-            <div class="arsenal-preview-hero">
+            <div class="arsenal-preview-hero" id="arsenalPreviewHero">
+              <div id="arsenal3d" class="arsenal-3d"></div>
               <img id="arsenalPreviewImg" alt="" draggable="false">
               <div class="arsenal-preview-name" id="arsenalPreviewName"></div>
+              <div id="arsenal3dHint" class="arsenal-3d-hint" hidden></div>
             </div>
             <div class="arsenal-preview-loadout" id="arsenalLoadout"></div>
           </div>
@@ -406,6 +408,7 @@
 <footer class="site-foot wrap">
   <a href="heroes/" id="footHeroes" data-en="Hero guides">Гайды по героям</a>
   <a href="meta/" id="footMeta" data-en="Patch meta">Мета патча</a>
+  <a href="patch/" class="foot-static" data-en="Patch changes">Изменения патча</a>
   <a href="meta/carry/" class="foot-static" data-en="Best carries">Лучшие керри</a>
   <a href="meta/mid/" class="foot-static" data-en="Best mids">Лучшие мидеры</a>
   <a href="meta/offlane/" class="foot-static" data-en="Best offlaners">Лучшие оффлейнеры</a>
@@ -476,7 +479,7 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=77"></script>
+<script src="assets/app.js?v=78"></script>
 <script src="assets/grid.js?v=77"></script>
 <script src="assets/gridart.js?v=77"></script>
 <script src="assets/optimize.js?v=77"></script>

@@ -21,6 +21,34 @@ POS_SLUG = ["", "carry", "mid", "offlane", "soft-support", "hard-support"]
 # what people search for: "лучшие керри", "лучшие саппорты 5 позиции"
 POS_WHO = {"ru": ["", "керри", "мидеры", "оффлейнеры", "саппорты 4 позиции", "саппорты 5 позиции"],
            "en": ["", "carry heroes", "mid heroes", "offlaners", "position 4 supports", "position 5 supports"]}
+# the key points of a patch in our own words, shown above Valve's per-hero notes
+PATCH_SUMMARY = {"7.42": {
+    "ru": ["Базовое здоровье героев выросло со 120 до 200, а одна единица силы теперь даёт 20 здоровья вместо 22. Интеллект даёт больше сопротивления магии.",
+           "Пассивное золото больше не растёт со временем: всегда 90 в минуту. Награда за убийство героя пересчитана, за башни, бараки и Рошана дают меньше золота.",
+           "Все герои получают 50 опыта в минуту даже мёртвыми, а до 30-го уровня нужно больше опыта.",
+           "Единые правила для юнитов с «пипами» здоровья: курьеры, варды, призывы. Удар героя снимает целый пип, крипов и иллюзий — четверть.",
+           "Сила заклинаний снижена: предметы меньше усиливают способности, урон большинства магических и чистых заклинаний уменьшен, часть долгих замедлений стала короче.",
+           "Новая механика Item Potency — сила эффектов предметов при атаке. Иллюзии теперь накладывают большинство эффектов предметов с силой 20%.",
+           "Глиф больше не сбрасывается после потери зданий: 2 заряда, восстановление 6 минут.",
+           "После 30-й минуты знаменосцы идут в каждой волне, а осадные крипы — каждые 2,5 минуты.",
+           "Торментор появляется на 15:00 и всегда даёт новый предмет Greater Horn of Battle — призыв мега-крипов на все линии.",
+           "Рошан возрождается на минуту быстрее после каждого убийства, но не быстрее 5 минут.",
+           "Руна невидимости теперь ещё и маскирует от True Sight вдали от врагов, как смок.",
+           "Карта: Twin Gates перенесены на края карты, башни мида сдвинуты для симметрии, новые лагеря нейтралов, у каждого лагеря свой лес.",
+           "Нейтральные предметы: 4 тира вместо 5 — на 0:00, 15:00, 30:00 и 50:00, варианты известны с начала игры."],
+    "en": ["Base hero health went up from 120 to 200, and each point of strength now gives 20 health instead of 22. Intelligence gives more magic resistance.",
+           "Passive gold no longer grows over time: a flat 90 per minute. Hero kill bounty is rescaled, towers, barracks and Roshan give less gold.",
+           "Every hero gets 50 experience per minute, even while dead, and level 30 needs more experience.",
+           "One set of rules for units with health pips: couriers, wards, summons. A hero attack takes a full pip, creeps and illusions a quarter.",
+           "Spell power is down: items amplify abilities less, most magic and pure damage spells deal less, some long slows are shorter.",
+           "New Item Potency mechanic sets how strong item on-hit effects are. Illusions now apply most item effects at 20% potency.",
+           "The glyph no longer refreshes when buildings fall: 2 charges, 6 minutes to replenish.",
+           "After 30:00 flagbearers come with every wave and siege creeps every 2.5 minutes.",
+           "Tormentor spawns at 15:00 and always drops the new Greater Horn of Battle, which summons mega creeps on every lane.",
+           "Roshan respawns a minute faster after each kill, down to 5 minutes.",
+           "The invisibility rune also disguises you from True Sight away from enemies, like Smoke.",
+           "Map: Twin Gates moved to the map edges, mid towers shifted for symmetry, new neutral camps, each camp lives in its own jungle.",
+           "Neutral items: 4 tiers instead of 5, at 0:00, 15:00, 30:00 and 50:00, with all options known from the start."]}}
 DUR = {"ru": ["до 20", "20–25", "25–30", "30–35", "35–40", "40–45", "45–50", "50+"], "en": ["<20", "20–25", "25–30", "30–35", "35–40", "40–45", "45–50", "50+"]}
 BOOTS = re.compile(r"boots|treads|greaves|bearing")
 esc = html.escape
@@ -168,6 +196,8 @@ class Page:
                (self.t("Герои", "Heroes"), self.url("heroes/")), (self.t("Моды", "Mods"), self.url("mods/"))]
         # every static page links to every landing page, so crawlers reach all of them from any hero guide
         foot = [(self.t(f"Лучшие {POS_WHO['ru'][p]}", f"Best {POS_WHO['en'][p]}"), self.url(f"meta/{POS_SLUG[p]}/")) for p in range(1, 6)]
+        if "notes" in self.c:
+            foot.insert(0, (self.t(f"Патч {self.c['patch']}: изменения", f"Patch {self.c['patch']} changes"), self.url("patch/")))
         foot += [(self.t("Моды Dota 2", "Dota 2 mods"), self.url("mods/")), (self.t("Кастомизация героев", "Hero customisation"), self.url("paint/")),
                  (self.t("Кто нажал глиф", "Who pressed the glyph"), self.url("glyph/")), (self.t("Арт-сетка", "Grid art"), self.url("grid-art/")),
                  (self.t("Мета-сетка", "Meta grid"), self.url("grid-meta/")), (self.t("Оптимизация и FPS", "Optimisation and FPS"), self.url("optimize/")),
@@ -337,6 +367,7 @@ class Page:
       <a class="btn" href="{BASE}?{'lang=en&' if self.lang == 'en' else ''}hero={h}#learn">{t('Интерактивный гайд', 'Interactive guide')}</a></div>
     <p class="lead">{' '.join(summary)}</p>
 {''.join(sections)}
+{self.hero_patch_section(h)}
     <section class="section"><div class="two-col">
       <div class="card pad"><h2 class="section-title">{t('Кто контрит', 'Countered by')} {esc(name)}</h2><ul class="hero-list">{cnt(counters, lambda x: G.adv(x, h), "neg")}</ul></div>
       <div class="card pad"><h2 class="section-title">{t('Кого контрит', 'Counters')} {esc(name)}</h2><ul class="hero-list">{cnt(victims, lambda x: G.adv(h, x), "pos")}</ul></div>
@@ -385,10 +416,12 @@ class Page:
             secs.append(f'<section class="section card pad"><h2 class="section-title"><a href="{self.url("meta/" + POS_SLUG[p] + "/")}">{POS[self.lang][p]} · {t("позиция", "position")} {p}</a></h2>'
                         f'<div class="table-wrap"><table><thead><tr><th>#</th><th>{t("Герой", "Hero")}</th><th>{t("Винрейт", "Win rate")}</th><th>{t("Пикрейт", "Pick rate")}</th></tr></thead><tbody>{rows}</tbody></table></div>'
                         f'<p><a href="{self.url("meta/" + POS_SLUG[p] + "/")}">{more} ({len(hs)}) →</a></p></section>')
+        changed = t(f"Что изменилось в {c['patch']}", f"What changed in {c['patch']}")
+        patch_btn = f' <a class="btn ghost" href="{self.url("patch/")}">{changed}</a>' if "notes" in c else ""
         body = f"""    <h1>{t(f'Мета Dota 2, патч {c["patch"]}: сильнейшие герои по позициям', f'Dota 2 meta, patch {c["patch"]}: strongest heroes by position')}</h1>
     <p class="lead">{t(f'Лучшие герои для каждой позиции по винрейту в пабах Divine–Immortal за последние {c["days"]} дней. Контрпики и подбор героя под драфт — в интерактивной мете.',
                       f'The best heroes for each position by win rate in Divine–Immortal pubs over the last {c["days"]} days. Counterpicks and draft help are in the interactive meta.')}</p>
-    <p><a class="btn" href="{BASE}{'?lang=en' if self.lang == 'en' else ''}#meta">{t('Интерактивная мета и контрпики', 'Interactive meta and counterpicks')}</a></p>
+    <p><a class="btn" href="{BASE}{'?lang=en' if self.lang == 'en' else ''}#meta">{t('Интерактивная мета и контрпики', 'Interactive meta and counterpicks')}</a>{patch_btn}</p>
 {''.join(secs)}"""
         title = t(f"Мета Dota 2 {c['patch']}: тир-лист героев по позициям | Dota 2 Analyzer", f"Dota 2 meta {c['patch']}: hero tier list by position | Dota 2 Analyzer")
         # today's leaders right in the snippet: a concrete answer gets more clicks than a general promise
@@ -514,6 +547,63 @@ class Page:
                  "Find out who pressed the glyph in a Dota 2 match: paste a match ID or a Dotabuff, OpenDota or Stratz link. Every player's presses by minute.")
         return "glyph/", self.shell("glyph/", title, desc, body, [(t("Главная", "Home"), ""), (t("Кто нажал глиф", "Who pressed the glyph"), "glyph/")])
 
+    # ---------- patch notes ----------
+    def note_lines(self, lines):
+        """Valve's note lines as list items: tags stripped, <br> kept as line breaks."""
+        out = []
+        for line in lines:
+            parts = [re.sub(r"<[^>]+>", "", p).strip() for p in re.split(r"<br\s*/?>", line)]
+            parts = [esc(p) for p in parts if p]
+            if parts:
+                out.append("<br>".join(parts))
+        return "".join(f"<li>{x}</li>" for x in out)
+
+    def hero_notes(self, h):
+        """This hero's changes in the current patch, grouped by ability."""
+        notes = (self.c.get("notes") or {}).get("heroes", {}).get(self.c["heroes"][h]["name"].replace("npc_dota_hero_", ""))
+        if not notes:
+            return ""
+        t, abil = self.t, self.c["abilities"]
+        label = lambda k: {"talents": t("Таланты", "Talents"), "general": t("Общее", "General"), "info": t("Общее", "General")}.get(
+            k, (abil.get(k) or {}).get("dname") or k.split("_", 1)[-1].replace("_", " ").title())
+        blocks = "".join(f'<h3>{esc(label(k))}</h3><ul class="facts">{self.note_lines(v)}</ul>' for k, v in notes.items() if not k.endswith("_info") and v)
+        return blocks
+
+    def hero_patch_section(self, h):
+        notes = self.hero_notes(h)
+        if not notes:
+            return ""
+        t, p = self.t, self.c["patch"]
+        return (f'    <section class="section card pad" id="patch"><h2 class="section-title">{t(f"Изменения в патче {p}", f"Changes in patch {p}")}</h2>{notes}'
+                f'<p class="note">{t("Формулировка Valve.", "Worded by Valve.")} <a href="{self.url("patch/")}">{t(f"Все изменения патча {p}", f"Every change in patch {p}")} →</a></p></section>')
+
+    def patch(self):
+        t, c = self.t, self.c
+        n, p = c["notes"], c["patch"]
+        summary = PATCH_SUMMARY.get(p, {}).get(self.lang, [])
+        new_items = [k for k, v in n.get("items", {}).items() if v and v[0] in ("New Item", "Returning Item")]
+        heroes = sorted(((h, hs) for h, hs in c["heroes"].items() if hs["name"].replace("npc_dota_hero_", "") in n.get("heroes", {})), key=lambda x: x[1]["localized_name"])
+        item_rows = "".join(f'<details><summary>{self.item(k)} {esc(self.iname(k))}</summary><ul class="facts">{self.note_lines(v)}</ul></details>'
+                            for k, v in n.get("items", {}).items() if v and k in c["items"])
+        hero_rows = "".join(f'<details><summary>{self.hero_img(h, "mini-hero")} {esc(hs["localized_name"])}</summary>{self.hero_notes(h)}'
+                            f'<p><a href="{self.url("hero/" + slug(hs["localized_name"]) + "/")}#patch">{t("Гайд и сборка", "Guide and build")} {esc(hs["localized_name"])} →</a></p></details>'
+                            for h, hs in heroes)
+        date = c.get("patch_date") or ""
+        when = (t(f"Вышел {date[8:10]}.{date[5:7]}.{date[:4]}.", f"Released {date}.") if date else "")
+        body = f"""    <h1>{t(f'Патч {p} Dota 2: все изменения', f'Dota 2 patch {p}: all changes')}</h1>
+    <p class="lead">{when} {t(f'Изменено героев: {len(heroes)}, новых и вернувшихся предметов: {len(new_items)}. Ниже — главное своими словами, затем изменения каждого героя и предмета в формулировке Valve (на английском). Мета, сборки и контрпики на сайте уже считаются по патчу {p}.',
+                      f'Heroes changed: {len(heroes)}, new and returning items: {len(new_items)}. Below: the key points in plain words, then every hero and item change as worded by Valve. The meta, builds and counters on the site already use patch {p}.')}</p>
+    <p><a class="btn" href="{self.url('meta/')}">{t(f'Мета патча {p}', f'Patch {p} meta')}</a></p>
+    {f'<section class="section card pad"><h2 class="section-title">{t("Главное в патче", "Key changes")}</h2><ul class="facts">{"".join(f"<li>{x}</li>" for x in summary)}</ul></section>' if summary else ''}
+    {f'<section class="section card pad"><h2 class="section-title">{t("Новые и вернувшиеся предметы", "New and returning items")}</h2><div class="build-line">{"".join(f"<div class=build-step>{self.item(k)}<span class=note>{esc(self.iname(k))}</span></div>" for k in new_items)}</div></section>' if new_items else ''}
+    <section class="section card pad patch-list"><h2 class="section-title">{t('Изменения героев', 'Hero changes')}</h2>{hero_rows}</section>
+    <section class="section card pad patch-list"><h2 class="section-title">{t('Изменения предметов', 'Item changes')}</h2>{item_rows}</section>
+    <p class="note">{t('Источник: официальные заметки к патчу Valve через OpenDota.', 'Source: Valve’s official patch notes via OpenDota.')}</p>"""
+        title = t(f"Патч {p} Dota 2: все изменения героев и предметов | Dota 2 Analyzer", f"Dota 2 patch {p}: all hero and item changes | Dota 2 Analyzer")
+        desc = short(t(f"Что изменилось в патче {p} Dota 2: {len(heroes)} героев, новые предметы, золото, опыт, Торментор, Рошан и карта. Главное коротко и все изменения героев.",
+                       f"What changed in Dota 2 patch {p}: {len(heroes)} heroes, new items, gold, experience, Tormentor, Roshan and the map. The key points and every hero change."))
+        return "patch/", self.shell("patch/", title, desc, body, [(t("Главная", "Home"), ""), (t(f"Патч {p}", f"Patch {p}"), "patch/")])
+
     def grid_steps(self):
         t = self.t
         return f"""<ol class="facts">
@@ -621,11 +711,17 @@ def main():
     ctx = {"heroes": heroes, "items": items, "meta": meta, "G": Group(g4), "hero_pos": load("heroes.json"),
            "patch": meta["patch"], "updated": meta["generated_at"], "days": g4.get("days", 5), "v": v,
            "mods": load("../mods/catalog.json"), "paint": load("../paint/index.json")}
+    notes = get("constants/patchnotes").get(meta["patch"].replace(".", "_"))
+    if notes:  # Valve's notes for the current patch, via OpenDota
+        ctx["notes"], ctx["abilities"] = notes, get("constants/abilities")
+        ctx["patch_date"] = next((p["date"][:10] for p in get("constants/patch") if p["name"] == meta["patch"]), "")
     urls = ["", "heroes/", "meta/"]
     for lang in ("ru", "en"):
         pg = Page(lang, ctx)
         prefix = "en/" if lang == "en" else ""
         pages = [pg.index(), pg.meta()] + [pg.meta_pos(p) for p in range(1, 6)] + [pg.mods(), pg.paint(), pg.glyph(), pg.grid_art(), pg.grid_meta(), pg.optimize()]
+        if "notes" in ctx:
+            pages.append(pg.patch())
         for path, text in pages + [pg.hero(h) for h in heroes]:
             write(prefix + path + "index.html", text)
             if lang == "ru" and path not in urls:

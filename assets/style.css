@@ -817,10 +817,10 @@ footer.site-foot { flex-direction: row; }
 /* slot sections */
 /* hero loadout preview */
 .arsenal-preview {
-  display: grid; grid-template-columns: 200px 1fr; gap: 0; overflow: hidden;
+  display: grid; grid-template-columns: 320px 1fr; gap: 0; overflow: hidden;
   background: linear-gradient(135deg, #0d1018 0%, #141922 50%, #0d1018 100%);
   border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px;
-  min-height: 200px;
+  min-height: 340px;
 }
 .arsenal-preview-hero {
   position: relative; overflow: hidden;
@@ -829,14 +829,24 @@ footer.site-foot { flex-direction: row; }
 }
 .arsenal-preview-hero img {
   width: 100%; height: 100%; object-fit: cover; object-position: center top;
-  filter: saturate(1.1) brightness(1.05); min-height: 200px;
+  filter: saturate(1.1) brightness(1.05); min-height: 340px;
+}
+.arsenal-3d {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+}
+.arsenal-3d canvas { display: block; width: 100% !important; height: 100% !important; cursor: grab; }
+.arsenal-3d canvas:active { cursor: grabbing; }
+.arsenal-3d-hint {
+  position: absolute; bottom: 28px; left: 0; right: 0; z-index: 2;
+  text-align: center; font-size: 10px; color: var(--fg-dim); opacity: .6;
+  pointer-events: none;
 }
 .arsenal-preview-name {
   position: absolute; bottom: 0; left: 0; right: 0; padding: 28px 12px 8px;
   background: linear-gradient(transparent, rgba(0,0,0,.9));
   font-family: var(--display); font-size: 14px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .06em; color: var(--fg);
-  text-shadow: 0 1px 4px rgba(0,0,0,.7);
+  text-shadow: 0 1px 4px rgba(0,0,0,.7); z-index: 3; pointer-events: none;
 }
 .arsenal-preview-loadout {
   padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -873,7 +883,8 @@ footer.site-foot { flex-direction: row; }
 .arsenal-loadout-row .loadout-remove:hover { background: rgba(235,75,75,.25); color: #eb4b4b; }
 @media (max-width: 760px) {
   .arsenal-preview { grid-template-columns: 1fr; }
-  .arsenal-preview-hero img { height: 160px; min-height: auto; }
+  .arsenal-preview-hero img { height: 200px; min-height: auto; }
+  .arsenal-preview-hero .arsenal-3d { height: 260px; position: relative; }
   .arsenal-preview-loadout { max-height: none; grid-template-columns: 1fr 1fr; }
 }
 

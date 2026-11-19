@@ -47,3 +47,7 @@ a.lang-btn { display: inline-grid; place-items: center; text-decoration: none; }
 .grid-cols h3 a { color: var(--fg); text-decoration: none; }
 .page pre { overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 8px 0; }
 .page code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.patch-list details { border-top: 1px solid var(--border); padding: 8px 0; }
+.patch-list summary { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.patch-list summary .item-icon { width: 33px; height: 24px; }
+.patch-list details[open] summary { margin-bottom: 6px; }

@@ -2212,7 +2212,7 @@ function route() {
   if (view === 'optimize') renderOptimize();
   if (view === 'glyph') renderGlyph();
   if (view === 'paint') import('./paint.js?v=73').then(m => m.renderPaint()).catch(() => { $('paintHint').textContent = L('Не удалось загрузить 3D-редактор', 'Could not load the 3D editor'); });
-  if (view === 'arsenal') import('./arsenal.js?v=2').then(m => m.renderArsenal()).catch(() => { $('arsenalSlots').innerHTML = `<div class="empty">${L('Не удалось загрузить арсенал', 'Could not load the arsenal')}</div>`; });
+  if (view === 'arsenal') import('./arsenal.js?v=3').then(m => m.renderArsenal()).catch(() => { $('arsenalSlots').innerHTML = `<div class="empty">${L('Не удалось загрузить арсенал', 'Could not load the arsenal')}</div>`; });
   if (view === 'mods') renderMods();
   // the last analysed profile loads on the first visit to a page that needs it, not on the tools pages
   const last = store.get('lastId');
