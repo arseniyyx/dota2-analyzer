@@ -21,6 +21,7 @@ DAYS = int(os.environ.get("DAYS", "7"))
 CHUNK = 200_000
 DUR_BINS = ["<20", "20-25", "25-30", "30-35", "35-40", "40-45", "45-50", "50+"]
 EXTRA_ITEMS = {"blink", "gem", "dust", "ward_sentry"}
+MIN_PRO_MATCHES = 300  # below this, a fresh patch is topped up with the previous one
 
 
 def get(path, params=None, tries=6):
@@ -157,9 +158,15 @@ def assign_positions(team):
 
 
 def build_pro(item_consts):
-    patch = sql("SELECT patch FROM match_patch ORDER BY match_id DESC LIMIT 1")[0]["patch"]
+    patches = [r["patch"] for r in sql("SELECT patch, MAX(match_id) m FROM match_patch GROUP BY patch ORDER BY m DESC LIMIT 2")]
+    patch = patches[0]
     ids = [r["match_id"] for r in sql(
         f"SELECT match_id FROM matches JOIN match_patch USING(match_id) WHERE patch = '{patch}' ORDER BY match_id")]
+    if len(ids) < MIN_PRO_MATCHES and len(patches) > 1:
+        # the first days of a patch: too few pro games for builds and players, so the previous patch fills in
+        ids = [r["match_id"] for r in sql(
+            f"SELECT match_id FROM matches JOIN match_patch USING(match_id) WHERE patch IN ('{patch}', '{patches[1]}') ORDER BY match_id")]
+        print(f"  pro: patch {patch} is new, using {patch} + {patches[1]}")
     print(f"  pro: patch {patch}, {len(ids)} matches")
 
     allowed = {k for k, v in item_consts.items()
@@ -516,7 +523,7 @@ def build_pros(patch, ids, by_match, items, hero_ids=()):
                 picked.add(c[2])
                 chosen.append(c[:3])
     names = {r["account_id"]: r["name"] for r in sql(
-        f"SELECT account_id, name FROM notable_players WHERE account_id IN ({','.join(str(c[0]) for c in chosen)})")}
+        f"SELECT account_id, name FROM notable_players WHERE account_id IN ({','.join(str(c[0]) for c in chosen)})")} if chosen else {}
 
     accounts = [c[0] for c in chosen]
     rows = chunked_sql(accounts, 5, lambda part: (
