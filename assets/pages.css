@@ -51,3 +51,7 @@ a.lang-btn { display: inline-grid; place-items: center; text-decoration: none; }
 .patch-list summary { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .patch-list summary .item-icon { width: 33px; height: 24px; }
 .patch-list details[open] summary { margin-bottom: 6px; }
+.voice-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.voice { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.voice details summary { cursor: pointer; font-weight: 600; color: var(--accent-strong); }
+.voice .facts { margin-top: 6px; }

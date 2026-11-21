@@ -550,13 +550,33 @@ class Page:
     # ---------- patch notes ----------
     def note_lines(self, lines):
         """Valve's note lines as list items: tags stripped, <br> kept as line breaks."""
-        out = []
-        for line in lines:
-            parts = [re.sub(r"<[^>]+>", "", p).strip() for p in re.split(r"<br\s*/?>", line)]
-            parts = [esc(p) for p in parts if p]
-            if parts:
-                out.append("<br>".join(parts))
+        out = ["<br>".join(esc(p) for p in parts) for parts in map(note_parts, lines) if parts]
         return "".join(f"<li>{x}</li>" for x in out)
+
+    def meta_voices(self):
+        """What video creators say about the new patch, each hero with a collapsible "why"."""
+        pm = self.c.get("pmeta")
+        if not pm:
+            return ""
+        t, lang = self.t, self.lang
+        srcs = pm["sources"]
+        cite = lambda ids: ", ".join(f'<a href="{esc(srcs[i]["url"])}" rel="noopener">{esc(srcs[i]["channel"])}</a>' for i in ids)
+        why = lambda x: f'<details><summary>{t("Почему", "Why")}</summary><ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in x[lang])}</ul><p class="note">{t("Источник", "Source")}: {cite(x["src"])}</p></details>'
+        rows = []
+        for tag, head in (("up", t("Сильные сейчас", "Strong right now")), ("down", t("Ослабли", "Got weaker"))):
+            hs = [x for x in pm["heroes"] if x["tag"] == tag and x["id"] in self.c["heroes"]]
+            if hs:
+                rows.append(f'<h3>{head}</h3><div class="voice-list">' + "".join(
+                    f'<div class="voice">{self.hero_link(x["id"])}<span class="chip">{POS[lang][x["pos"]]}</span>{why(x)}</div>' for x in hs) + "</div>")
+        items = [x for x in pm.get("items", []) if x["key"] in self.c["items"]]
+        if items:
+            rows.append(f'<h3>{t("Предметы", "Items")}</h3><div class="voice-list">' + "".join(
+                f'<div class="voice"><span class="hero-link">{self.item(x["key"])}<span>{esc(self.iname(x["key"]))}</span></span>{why(x)}</div>' for x in items) + "</div>")
+        gen = pm.get("general")
+        lead = f'<ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in gen[lang])}</ul>' if gen else ""
+        return (f'<section class="section card pad"><h2 class="section-title">{t(f"Новая мета {pm["patch"]}: что говорят авторы", f"The new {pm["patch"]} meta: what creators say")}</h2>{lead}{"".join(rows)}'
+                f'<p class="note">{t("По видео на YouTube с", "From YouTube videos since")} {min(s["date"] for s in srcs)}: {cite(range(len(srcs)))}. '
+                f'{t("Первые дни патча — мнения могут меняться, сверяйся с винрейтами на сайте.", "The first days of a patch: opinions change, check the win rates on the site.")}</p></section>')
 
     def hero_notes(self, h):
         """This hero's changes in the current patch, grouped by ability."""
@@ -596,6 +616,7 @@ class Page:
     <p><a class="btn" href="{self.url('meta/')}">{t(f'Мета патча {p}', f'Patch {p} meta')}</a></p>
     {f'<section class="section card pad"><h2 class="section-title">{t("Главное в патче", "Key changes")}</h2><ul class="facts">{"".join(f"<li>{x}</li>" for x in summary)}</ul></section>' if summary else ''}
     {f'<section class="section card pad"><h2 class="section-title">{t("Новые и вернувшиеся предметы", "New and returning items")}</h2><div class="build-line">{"".join(f"<div class=build-step>{self.item(k)}<span class=note>{esc(self.iname(k))}</span></div>" for k in new_items)}</div></section>' if new_items else ''}
+    {self.meta_voices()}
     <section class="section card pad patch-list"><h2 class="section-title">{t('Изменения героев', 'Hero changes')}</h2>{hero_rows}</section>
     <section class="section card pad patch-list"><h2 class="section-title">{t('Изменения предметов', 'Item changes')}</h2>{item_rows}</section>
     <p class="note">{t('Источник: официальные заметки к патчу Valve через OpenDota.', 'Source: Valve’s official patch notes via OpenDota.')}</p>"""
@@ -694,6 +715,27 @@ class Page:
         return "optimize/", self.shell("optimize/", title, desc, body, [(t("Главная", "Home"), ""), (t("Оптимизация", "Optimisation"), "optimize/")])
 
 
+def note_parts(line):
+    """One line of Valve's notes as plain text pieces: tags dropped, split at <br>."""
+    return [p for p in (re.sub(r"<[^>]+>", "", x).strip() for x in re.split(r"<br\s*/?>", line)) if p]
+
+
+def write_patch_json(ctx):
+    """data/patch.json for the app's patch tab: the summary, creators' takes and every hero and item change."""
+    n, abil = ctx["notes"], ctx["abilities"]
+    heroes = {}
+    for h, hs in ctx["heroes"].items():
+        notes = n.get("heroes", {}).get(hs["name"].replace("npc_dota_hero_", ""))
+        if notes:
+            heroes[h] = [[k if k in ("talents", "general", "info") else (abil.get(k) or {}).get("dname") or k.split("_", 1)[-1].replace("_", " ").title(),
+                          ["\n".join(note_parts(line)) for line in v if note_parts(line)]] for k, v in notes.items() if not k.endswith("_info") and v]
+    items = {k: ["\n".join(note_parts(line)) for line in v if note_parts(line)] for k, v in n.get("items", {}).items() if v and k in ctx["items"]}
+    out = {"patch": ctx["patch"], "date": ctx.get("patch_date", ""), "summary": PATCH_SUMMARY.get(ctx["patch"]), "meta": ctx.get("pmeta"),
+           "heroes": heroes, "items": items}
+    with open(os.path.join(DATA, "patch.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+
+
 def write(rel, text):
     full = os.path.join(ROOT, rel)
     os.makedirs(os.path.dirname(full), exist_ok=True)
@@ -715,6 +757,10 @@ def main():
     if notes:  # Valve's notes for the current patch, via OpenDota
         ctx["notes"], ctx["abilities"] = notes, get("constants/abilities")
         ctx["patch_date"] = next((p["date"][:10] for p in get("constants/patch") if p["name"] == meta["patch"]), "")
+        pm = os.path.join(DATA, "patch_meta.json")  # creators' takes, written by hand for a fresh patch
+        if os.path.exists(pm) and load("patch_meta.json").get("patch") == meta["patch"]:
+            ctx["pmeta"] = load("patch_meta.json")
+        write_patch_json(ctx)
     urls = ["", "heroes/", "meta/"]
     for lang in ("ru", "en"):
         pg = Page(lang, ctx)

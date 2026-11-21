@@ -39,7 +39,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Russo+One&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=80">
+<link rel="stylesheet" href="assets/style.css?v=81">
 <script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -58,6 +58,7 @@
     <nav class="nav" aria-label="Разделы" data-en-aria="Sections">
       <a href="#player" id="navPlayer" data-en="Player">Игрок</a>
       <a href="#meta" id="navMeta" data-en="Meta">Мета</a>
+      <a href="#patch" id="navPatch" class="nav-patch" data-en="7.42">7.42</a>
       <a href="#learn" id="navLearn" data-en="Learn">Обучение</a>
       <div class="nav-drop">
         <button type="button" id="navTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu"><span data-en="Tools">Полезное</span><svg class="i" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -149,6 +150,7 @@
   </main>
 
   <main id="viewMeta" class="stack" hidden>
+    <a class="card pad patch-banner" href="#patch"><b data-en="New meta 7.42">Новая мета 7.42</b><span class="note" data-en="Who got stronger and why, by creators' takes, plus every hero and item change">Кто стал сильнее и почему — по мнению авторов, и все изменения героев и предметов</span><span class="btn small" data-en="Open">Открыть</span></a>
     <div class="row">
       <div class="tabs" id="groupTabs"></div>
       <div class="tabs" id="posTabs"></div>
@@ -187,6 +189,10 @@
         <div class="section"><h3 class="label" data-en="Who counters it">Кто его контрит</h3><div class="card" id="heroCounters"></div></div>
       </div>
     </section>
+  </main>
+
+  <main id="viewPatch" class="stack" hidden>
+    <div id="patchBox" class="stack"></div>
   </main>
 
   <main id="viewMods" class="stack" hidden>
@@ -479,11 +485,12 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/motion@12.4.7/dist/motion.js"></script>
-<script src="assets/app.js?v=78"></script>
-<script src="assets/grid.js?v=77"></script>
-<script src="assets/gridart.js?v=77"></script>
-<script src="assets/optimize.js?v=77"></script>
-<script src="assets/mods.js?v=77"></script>
-<script src="assets/glyph.js?v=77"></script>
+<script src="assets/app.js?v=81"></script>
+<script src="assets/grid.js?v=81"></script>
+<script src="assets/gridart.js?v=81"></script>
+<script src="assets/optimize.js?v=81"></script>
+<script src="assets/mods.js?v=81"></script>
+<script src="assets/patch.js?v=81"></script>
+<script src="assets/glyph.js?v=81"></script>
 </body>
 </html>
