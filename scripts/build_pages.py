@@ -461,15 +461,18 @@ class Page:
       <p class="note">{t('Винрейт сглажен по количеству игр, чтобы редкие герои не попадали наверх случайно. «Тяжело против» — самый неудобный матчап с поправкой на общий винрейт героев.',
                          'Win rates are smoothed by game count so rare heroes do not top the list by luck. “Struggles vs” is the worst matchup, adjusted for each hero’s overall win rate.')}</p></section>
     <p class="note">{t('Другие позиции', 'Other positions')}: {others_pos} · <a href="{self.url('meta/')}">{t('вся мета', 'full meta')}</a></p>"""
-        titles = {"ru": ["", f"Лучшие керри Dota 2 {c['patch']}: топ героев на 1 позицию", f"Лучшие герои на мид Dota 2 {c['patch']}: топ мидеров",
-                         f"Лучшие оффлейнеры Dota 2 {c['patch']}: топ героев на 3 позицию", f"Лучшие саппорты 4 позиции Dota 2 {c['patch']}: топ героев",
-                         f"Лучшие саппорты 5 позиции Dota 2 {c['patch']}: топ героев"],
-                  "en": ["", f"Best Dota 2 carry heroes {c['patch']}: position 1 tier list", f"Best Dota 2 mid heroes {c['patch']}: position 2 tier list",
-                         f"Best Dota 2 offlaners {c['patch']}: position 3 tier list", f"Best Dota 2 position 4 supports {c['patch']}: tier list",
-                         f"Best Dota 2 position 5 supports {c['patch']}: tier list"]}
+        # worded after the queries that already find these pages: "мидеры дота 2", "мета мид", "оффлейн дота 2", "мета керри"
+        titles = {"ru": ["", f"Мета керри Dota 2 {c['patch']}: лучшие керри, топ героев на 1 позицию", f"Лучшие мидеры Dota 2 {c['patch']}: мета мида, топ героев на мид",
+                         f"Оффлейн Dota 2 {c['patch']}: лучшие оффлейнеры и мета оффлейна", f"Саппорты 4 позиции Dota 2 {c['patch']}: лучшие четвёрки и мета",
+                         f"Саппорты 5 позиции Dota 2 {c['patch']}: лучшие пятёрки и мета"],
+                  "en": ["", f"Dota 2 carry meta {c['patch']}: best carry heroes, position 1 tier list", f"Best Dota 2 mid heroes {c['patch']}: mid meta and tier list",
+                         f"Dota 2 offlane {c['patch']}: best offlaners and offlane meta", f"Dota 2 position 4 supports {c['patch']}: best soft supports",
+                         f"Dota 2 position 5 supports {c['patch']}: best hard supports"]}
         title = titles[self.lang][p] + " | Dota 2 Analyzer"
-        desc = short(t(f"Топ {who} на сегодня: {top3}. Винрейт, пикрейт, сборки и контрпики, пабы Divine–Immortal, обновляется каждый день.",
-                       f"Top {who} today: {top3}. Win rate, pick rate, builds and counters from Divine–Immortal pubs, updated daily."))
+        of = {"ru": ["", "керри", "мида", "оффлейна", "четвёрок", "пятёрок"], "en": ["", "carry", "mid", "offlane", "soft support", "hard support"]}[self.lang][p]
+        top3w = ", ".join(f"{c['heroes'][h]['localized_name']} {G.wr(h) * 100:.0f}%" for h in hs[:3])
+        desc = short(t(f"Мета {of} на сегодня: {top3w}. Все {who} патча {c['patch']} по винрейту — со сборками и контрпиками. Обновляется каждый день.",
+                       f"Today's {of} meta: {top3w}. Every one of the {who} of patch {c['patch']} by win rate, with builds and counters. Updated daily."))
         lst = {"@context": "https://schema.org", "@type": "ItemList", "name": titles[self.lang][p], "itemListElement": [
             {"@type": "ListItem", "position": i + 1, "url": self.abs("hero/" + slug(c["heroes"][h]["localized_name"]) + "/"), "name": c["heroes"][h]["localized_name"]} for i, h in enumerate(hs[:20])]}
         crumbs = [(t("Главная", "Home"), ""), (t("Мета", "Meta"), "meta/"), (POS[self.lang][p], path)]
