@@ -28,6 +28,8 @@ https://arseniyyx.github.io/dota2-analyzer/optimize/
 https://arseniyyx.github.io/dota2-analyzer/en/optimize/
 https://arseniyyx.github.io/dota2-analyzer/patch/
 https://arseniyyx.github.io/dota2-analyzer/en/patch/
+https://arseniyyx.github.io/dota2-analyzer/meta/7-42/
+https://arseniyyx.github.io/dota2-analyzer/en/meta/7-42/
 https://arseniyyx.github.io/dota2-analyzer/hero/anti-mage/
 https://arseniyyx.github.io/dota2-analyzer/en/hero/anti-mage/
 https://arseniyyx.github.io/dota2-analyzer/hero/axe/

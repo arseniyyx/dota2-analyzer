@@ -41,7 +41,7 @@ async function renderPatch() {
 
   box.innerHTML = `
   <section class="section"><h1 class="section-title">${L(`Патч ${d.patch}`, `Patch ${d.patch}`)}</h1>
-    <p class="note">${date} · ${L('Временная вкладка на первые недели патча.', 'A temporary tab for the first weeks of the patch.')} <a href="${EN ? 'en/' : ''}patch/">${L('Отдельная страница патча', 'Patch page')}</a></p>
+    <p class="note">${date} · ${L('Временная вкладка на первые недели патча.', 'A temporary tab for the first weeks of the patch.')} <a href="${EN ? 'en/' : ''}patch/">${L('Отдельная страница патча', 'Patch page')}</a> · <a href="${EN ? 'en/' : ''}meta/${d.patch.replace('.', '-')}/">${L(`Мета ${d.patch} отдельной страницей`, `The ${d.patch} meta page`)}</a></p>
     ${d.summary ? `<div class="card pad"><h2 class="label">${L('Главное в патче', 'Key changes')}</h2><ul class="facts">${d.summary[lang].map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
   </section>
   ${voices}

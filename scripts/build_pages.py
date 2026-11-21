@@ -198,6 +198,8 @@ class Page:
         foot = [(self.t(f"Лучшие {POS_WHO['ru'][p]}", f"Best {POS_WHO['en'][p]}"), self.url(f"meta/{POS_SLUG[p]}/")) for p in range(1, 6)]
         if "notes" in self.c:
             foot.insert(0, (self.t(f"Патч {self.c['patch']}: изменения", f"Patch {self.c['patch']} changes"), self.url("patch/")))
+        if "pmeta" in self.c:
+            foot.insert(0, (self.t(f"Мета {self.c['pmeta']['patch']}: имбы", f"{self.c['pmeta']['patch']} meta: best heroes"), self.url(self.new_meta_path())))
         foot += [(self.t("Моды Dota 2", "Dota 2 mods"), self.url("mods/")), (self.t("Кастомизация героев", "Hero customisation"), self.url("paint/")),
                  (self.t("Кто нажал глиф", "Who pressed the glyph"), self.url("glyph/")), (self.t("Арт-сетка", "Grid art"), self.url("grid-art/")),
                  (self.t("Мета-сетка", "Meta grid"), self.url("grid-meta/")), (self.t("Оптимизация и FPS", "Optimisation and FPS"), self.url("optimize/")),
@@ -418,6 +420,9 @@ class Page:
                         f'<p><a href="{self.url("meta/" + POS_SLUG[p] + "/")}">{more} ({len(hs)}) →</a></p></section>')
         changed = t(f"Что изменилось в {c['patch']}", f"What changed in {c['patch']}")
         patch_btn = f' <a class="btn ghost" href="{self.url("patch/")}">{changed}</a>' if "notes" in c else ""
+        if "pmeta" in c:
+            pp = c["pmeta"]["patch"]
+            patch_btn = f' <a class="btn ghost" href="{self.url(self.new_meta_path())}">{t(f"Имбы {pp}", f"Best heroes of {pp}")}</a>' + patch_btn
         body = f"""    <h1>{t(f'Мета Dota 2, патч {c["patch"]}: сильнейшие герои по позициям', f'Dota 2 meta, patch {c["patch"]}: strongest heroes by position')}</h1>
     <p class="lead">{t(f'Лучшие герои для каждой позиции по винрейту в пабах Divine–Immortal за последние {c["days"]} дней. Контрпики и подбор героя под драфт — в интерактивной мете.',
                       f'The best heroes for each position by win rate in Divine–Immortal pubs over the last {c["days"]} days. Counterpicks and draft help are in the interactive meta.')}</p>
@@ -581,7 +586,7 @@ class Page:
         lead = f'<ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in gen[lang])}</ul>' if gen else ""
         return (f'<section class="section card pad"><h2 class="section-title">{t(f"Новая мета {pm["patch"]}: что говорят авторы", f"The new {pm["patch"]} meta: what creators say")}</h2>{lead}{"".join(rows)}'
                 f'<p class="note">{t("По видео на YouTube с", "From YouTube videos since")} {min(s["date"] for s in srcs)}: {cite(range(len(srcs)))}. '
-                f'{t("Первые дни патча — мнения могут меняться, сверяйся с винрейтами на сайте.", "The first days of a patch: opinions change, check the win rates on the site.")}</p></section>')
+                f'{t("Первые дни патча — мнения могут меняться, сверяйся с винрейтами на сайте.", "The first days of a patch: opinions change, check the win rates on the site.")} <a href="{self.url(self.new_meta_path())}">{t(f"Мета {pm['patch']}: сборки и винрейты", f"{pm['patch']} meta: builds and win rates")} →</a></p></section>')
 
     def hero_notes(self, h):
         """This hero's changes in the current patch, grouped by ability."""
@@ -594,11 +599,68 @@ class Page:
         blocks = "".join(f'<h3>{esc(label(k))}</h3><ul class="facts">{self.note_lines(v)}</ul>' for k, v in notes.items() if not k.endswith("_info") and v)
         return blocks
 
+    # ---------- the new patch's meta: creators' takes + our numbers, for "мета 7.42 / имбы 7.42 / кем играть" ----------
+    def new_meta_path(self):
+        return f"meta/{self.c['pmeta']['patch'].replace('.', '-')}/"
+
+    def new_meta(self):
+        t, c, G, lang = self.t, self.c, self.c["G"], self.lang
+        pm, p = c["pmeta"], c["pmeta"]["patch"]
+        path = self.new_meta_path()
+        up = [x for x in pm["heroes"] if x["tag"] == "up" and x["id"] in c["heroes"]]
+        down = [x for x in pm["heroes"] if x["tag"] == "down" and x["id"] in c["heroes"]]
+        name = lambda h: c["heroes"][h]["localized_name"]
+
+        def build(x):
+            gp = c["hero_pos"].get(str(x["id"]), {}).get(str(x["pos"])) or {}
+            rows = (gp.get("pub") or {}).get("build") or gp.get("build") or []
+            if not rows:
+                return ""
+            items = ", ".join(f"{esc(self.iname(r[0]))} ({mmss(r[1])})" for r in rows[:6])
+            return (f'<div class="build-line mini">{"".join(f"<div class=build-step>{self.item(r[0])}<b>{mmss(r[1])}</b></div>" for r in rows[:6])}</div>'
+                    f'<p class="note">{t("Сборка", "Build")}: {items}.</p>')
+
+        def card(x):
+            wr = f'{G.wr(x["id"]) * 100:.1f}%' if G.idx.get(x["id"]) is not None else "—"
+            return (f'<article class="voice" id="{slug(name(x["id"]))}"><h3>{self.hero_link(x["id"])} <span class="chip">{POS[lang][x["pos"]]}</span></h3>'
+                    f'<p class="note">{t("Винрейт в пабах Divine–Immortal", "Win rate in Divine–Immortal pubs")}: {wr}</p>{build(x)}'
+                    f'<details><summary>{t("Почему", "Why")}</summary><ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in x[lang])}</ul></details></article>')
+        by_pos = "".join(f'<li><b>{POS[lang][q]}:</b> {", ".join(f"<a href=#{slug(name(x["id"]))}>{esc(name(x["id"]))}</a>" for x in up if x["pos"] == q)}</li>'
+                         for q in range(1, 6) if any(x["pos"] == q for x in up))
+        items = [x for x in pm.get("items", []) if x["key"] in c["items"]]
+        item_html = "".join(f'<article class="voice"><h3><span class="hero-link">{self.item(x["key"])}<span>{esc(self.iname(x["key"]))}</span></span></h3>'
+                            f'<details><summary>{t("Почему", "Why")}</summary><ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in x[lang])}</ul></details></article>' for x in items)
+        top = ", ".join(name(x["id"]) for x in up[:5])
+        srcs = pm["sources"]
+        body = f"""    <h1>{t(f'Мета {p} Dota 2: имбы и лучшие герои патча', f'Dota 2 {p} meta: the best and broken heroes of the patch')}</h1>
+    <p class="lead">{t(f'Кем играть в патче {p}: {top} и другие герои, которых сильные игроки и аналитики называют лучшими в первые дни патча. Для каждого — позиция, винрейт по нашим данным, сборка и почему он стал сильнее.',
+                      f'Who to play in patch {p}: {top} and other heroes that strong players and analysts rate highest in the first days of the patch. For each: the role, our win rate, the build and why it got stronger.')}</p>
+    <p><a class="btn" href="{BASE}{'?lang=en' if lang == 'en' else ''}#patch">{t('Вкладка 7.42 в приложении', 'The 7.42 tab in the app')}</a> <a class="btn ghost" href="{self.url('patch/')}">{t(f'Все изменения {p}', f'Every {p} change')}</a></p>
+    <section class="section card pad"><h2 class="section-title">{t(f'Кем играть в {p} по позициям', f'Who to play in {p} by role')}</h2><ul class="facts">{by_pos}</ul></section>
+    <section class="section card pad"><h2 class="section-title">{t('Как изменилась игра', 'How the game changed')}</h2><ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in pm["general"][lang])}</ul></section>
+    <section class="section"><h2 class="section-title">{t(f'Имбы и сильные герои {p}', f'Strong heroes of {p}')}</h2><div class="voice-list">{"".join(card(x) for x in up)}</div></section>
+    {f'<section class="section"><h2 class="section-title">{t("Кто ослаб", "Who got weaker")}</h2><div class="voice-list">{"".join(card(x) for x in down)}</div></section>' if down else ''}
+    {f'<section class="section"><h2 class="section-title">{t("Сильные предметы", "Strong items")}</h2><div class="voice-list">{item_html}</div></section>' if items else ''}
+    <p class="note">{t('По видео на YouTube', 'From YouTube videos')}: {", ".join(f'<a href="{esc(s["url"])}" rel="noopener">{esc(s["channel"])}</a>' for s in srcs)}. {t('Первые дни патча — мнения меняются, а винрейты и сборки на сайте обновляются каждый день:', 'The first days of a patch: opinions change, while the win rates and builds on the site update daily:')} <a href="{self.url('meta/')}">{t('мета по позициям', 'meta by role')}</a>.</p>"""
+        title = t(f"Мета {p} Dota 2: имбы и лучшие герои патча, кем играть | Dota 2 Analyzer", f"Dota 2 {p} meta: best and broken heroes, who to play | Dota 2 Analyzer")
+        desc = short(t(f"Имбы патча {p}: {top}. Кем играть на каждой позиции, почему герои стали сильнее, сборки и винрейты. Обновляется каждый день.",
+                       f"The strongest heroes of patch {p}: {top}. Who to play in every role, why they got stronger, builds and win rates. Updated daily."))
+        lst = {"@context": "https://schema.org", "@type": "ItemList", "name": title.split(" | ")[0], "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "name": name(x["id"]), "url": self.abs("hero/" + slug(name(x["id"])) + "/")} for i, x in enumerate(up)]}
+        crumbs = [(t("Главная", "Home"), ""), (t("Мета", "Meta"), "meta/"), (t(f"Мета {p}", f"{p} meta"), path)]
+        return path, self.shell(path, title, desc, body, crumbs, lst)
+
     def hero_patch_section(self, h):
         notes = self.hero_notes(h)
         if not notes:
             return ""
         t, p = self.t, self.c["patch"]
+        pm = self.c.get("pmeta") or {}
+        take = next((x for x in pm.get("heroes", []) if x["id"] == h), None)
+        if take:  # this hero is in the creators' take on the new meta: say so and link the reasons
+            nm = self.c["heroes"][h]["localized_name"]
+            verdict = t(f"{nm} — один из сильных героев {p}", f"{nm} is one of the strong heroes of {p}") if take["tag"] == "up" else t(f"{nm} ослаб в {p}", f"{nm} got weaker in {p}")
+            notes = f'<p><b>{verdict}.</b> <a href="{self.url(self.new_meta_path())}#{slug(nm)}">{t("Почему и сборка", "Why, and the build")} →</a></p>' + notes
         return (f'    <section class="section card pad" id="patch"><h2 class="section-title">{t(f"Изменения в патче {p}", f"Changes in patch {p}")}</h2>{notes}'
                 f'<p class="note">{t("Формулировка Valve.", "Worded by Valve.")} <a href="{self.url("patch/")}">{t(f"Все изменения патча {p}", f"Every change in patch {p}")} →</a></p></section>')
 
@@ -773,6 +835,8 @@ def main():
         pages = [pg.index(), pg.meta()] + [pg.meta_pos(p) for p in range(1, 6)] + [pg.mods(), pg.paint(), pg.glyph(), pg.grid_art(), pg.grid_meta(), pg.optimize()]
         if "notes" in ctx:
             pages.append(pg.patch())
+        if "pmeta" in ctx:
+            pages.append(pg.new_meta())
         for path, text in pages + [pg.hero(h) for h in heroes]:
             write(prefix + path + "index.html", text)
             if lang == "ru" and path not in urls:
