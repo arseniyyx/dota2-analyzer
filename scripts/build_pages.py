@@ -561,13 +561,18 @@ class Page:
         t, lang = self.t, self.lang
         srcs = pm["sources"]
         cite = lambda ids: ", ".join(f'<a href="{esc(srcs[i]["url"])}" rel="noopener">{esc(srcs[i]["channel"])}</a>' for i in ids)
-        why = lambda x: f'<details><summary>{t("Почему", "Why")}</summary><ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in x[lang])}</ul><p class="note">{t("Источник", "Source")}: {cite(x["src"])}</p></details>'
+        why = lambda x: f'<details><summary>{t("Почему", "Why")}</summary><ul class="facts">{"".join(f"<li>{esc(r)}</li>" for r in x[lang])}</ul></details>'
+
+        def build(x):  # the hero's build in that role: Divine+ pubs first, the pro scene when pubs are thin
+            gp = self.c["hero_pos"].get(str(x["id"]), {}).get(str(x["pos"])) or {}
+            rows = (gp.get("pub") or {}).get("build") or gp.get("build") or []
+            return f'<div class="build-line mini">{"".join(f"<div class=build-step>{self.item(r[0])}<b>{mmss(r[1])}</b></div>" for r in rows[:6])}</div>' if rows else ""
         rows = []
         for tag, head in (("up", t("Сильные сейчас", "Strong right now")), ("down", t("Ослабли", "Got weaker"))):
             hs = [x for x in pm["heroes"] if x["tag"] == tag and x["id"] in self.c["heroes"]]
             if hs:
                 rows.append(f'<h3>{head}</h3><div class="voice-list">' + "".join(
-                    f'<div class="voice">{self.hero_link(x["id"])}<span class="chip">{POS[lang][x["pos"]]}</span>{why(x)}</div>' for x in hs) + "</div>")
+                    f'<div class="voice">{self.hero_link(x["id"])}<span class="chip">{POS[lang][x["pos"]]}</span>{build(x)}{why(x)}</div>' for x in hs) + "</div>")
         items = [x for x in pm.get("items", []) if x["key"] in self.c["items"]]
         if items:
             rows.append(f'<h3>{t("Предметы", "Items")}</h3><div class="voice-list">' + "".join(

@@ -997,3 +997,7 @@ footer.site-foot { flex-direction: row; }
 .patch-row h4 { margin: 10px 0 4px; font-size: 13px; color: var(--fg-muted); }
 .patch-row .mini-hero { width: 32px; height: 18px; border-radius: 3px; object-fit: cover; }
 #patchSearch { max-width: 360px; }
+.voice-build .build-line { padding: 6px 0 2px; gap: 4px; }
+.voice-build .build-step { min-width: 46px; padding: 4px; }
+.voice-build .build-step .item-icon { width: 33px; height: 24px; }
+.voice-build .build-step b { font-size: 11px; }

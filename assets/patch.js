@@ -13,8 +13,15 @@ async function renderPatch() {
   const lines = arr => arr.map(x => `<li>${x.split('\n').map(esc).join('<br>')}</li>`).join('');
   const stat = h => G && G.idx[h] != null ? `<span class="note">${L('винрейт', 'win rate')} ${(heroWr(G, h) * 100).toFixed(1)}% · ${L('пик', 'pick')} ${(heroPick(G, h) * 100).toFixed(1)}%</span>` : '';
   const cite = ids => ids.map(i => pm.sources[i]).map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.channel)}</a>`).join(', ');
-  const why = x => `<details class="why"><summary>${L('Почему', 'Why')}</summary><ul class="facts">${x[lang].map(r => `<li>${esc(r)}</li>`).join('')}</ul><p class="note">${L('Источник', 'Source')}: ${cite(x.src)}</p></details>`;
-  const heroCard = x => `<div class="card pad voice"><div class="voice-head"><img class="hero-img" src="${heroImg(x.id)}" alt="" loading="lazy"><div><b>${esc(heroName(x.id))}</b> <span class="chip ${x.tag === 'up' ? 'pos' : 'neg'}">${POS_NAMES[x.pos]}</span><br>${stat(x.id)}</div></div>${why(x)}</div>`;
+  if (!S.heroPos) S.heroPos = await getJSON(dataUrl('heroes.json')).catch(() => ({}));
+  const why = x => `<details class="why"><summary>${L('Почему', 'Why')}</summary><ul class="facts">${x[lang].map(r => `<li>${esc(r)}</li>`).join('')}</ul></details>`;
+  // the hero's build in that role from our data: Divine+ pubs first, the pro scene when pubs are thin
+  const build = x => {
+    const gp = S.heroPos[x.id]?.[x.pos], pub = gp?.pub?.build?.length ? gp.pub.build : null, rows = pub || gp?.build || [];
+    return rows.length ? `<div class="voice-build"><span class="note">${L('Сборка', 'Build')} ${pub ? L('(пабы Divine+)', '(Divine+ pubs)') : L('(про-сцена)', '(pro scene)')}</span>
+      <div class="build-line">${rows.slice(0, 6).map(r => `<div class="build-step">${itemIcon(r[0])}<b>${mmss(r[1])}</b></div>`).join('')}</div></div>` : '';
+  };
+  const heroCard = x => `<div class="card pad voice"><div class="voice-head"><img class="hero-img" src="${heroImg(x.id)}" alt="" loading="lazy"><div><b>${esc(heroName(x.id))}</b> <span class="chip ${x.tag === 'up' ? 'pos' : 'neg'}">${POS_NAMES[x.pos]}</span><br>${stat(x.id)}</div></div>${build(x)}${why(x)}</div>`;
   const itemCard = x => `<div class="card pad voice"><div class="voice-head">${itemIcon(x.key)}<b>${esc(itemName(x.key))}</b></div>${why(x)}</div>`;
   const label = k => ({ talents: L('Таланты', 'Talents'), general: L('Общее', 'General'), info: L('Общее', 'General') })[k] || k;
 
